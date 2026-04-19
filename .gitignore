@@ -1,0 +1,10 @@
+node_modules/
+public/
+tasks.db
+lambda-build/
+lambda-deploy.zip
+.cf-config.tmp.json
+lambda-out.json
+UsersabhijAgenticTasksHomeNBabylambda-out.json
+server_new.js
+server-sqlite.js
