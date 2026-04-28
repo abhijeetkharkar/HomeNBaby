@@ -5,6 +5,7 @@ const {
   DynamoDBDocumentClient,
   ScanCommand,
   UpdateCommand,
+  PutCommand,
 } = require('@aws-sdk/lib-dynamodb');
 
 const app = express();
@@ -84,6 +85,62 @@ app.post('/api/tasks/owner', async (req, res) => {
         res.json({ success: true });
     } catch (err) {
         console.error('POST /api/tasks/owner error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── POST /api/tasks/create ──────────────────────────────────────────────────
+app.post('/api/tasks/create', async (req, res) => {
+    try {
+        const result = await ddb.send(new ScanCommand({ TableName: TABLE_NAME }));
+        const ids = (result.Items || []).map(item => Number(item.id) || 0);
+        const newId = ids.length > 0 ? Math.max(...ids) + 1 : 1;
+
+        const task = {
+            id: newId,
+            category: req.body.category,
+            section: req.body.section,
+            task: req.body.task,
+            description: req.body.description || '',
+            subtasks: req.body.subtasks || [],
+            target_date: req.body.target_date || null,
+            target_month: req.body.target_month || '',
+            completed: 0,
+            completed_at: null,
+            owner: req.body.owner || null,
+        };
+
+        await ddb.send(new PutCommand({ TableName: TABLE_NAME, Item: task }));
+        res.json(task);
+    } catch (err) {
+        console.error('POST /api/tasks/create error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── POST /api/tasks/update ──────────────────────────────────────────────────
+app.post('/api/tasks/update', async (req, res) => {
+    try {
+        const { id, category, section, task: taskName, description, subtasks, target_date, owner } = req.body;
+
+        await ddb.send(new UpdateCommand({
+            TableName: TABLE_NAME,
+            Key: { id },
+            UpdateExpression: 'SET category = :cat, #sec = :sec, #task = :task, description = :desc, subtasks = :s, target_date = :td, #o = :o',
+            ExpressionAttributeNames: { '#sec': 'section', '#task': 'task', '#o': 'owner' },
+            ExpressionAttributeValues: {
+                ':cat': category,
+                ':sec': section,
+                ':task': taskName,
+                ':desc': description || '',
+                ':s': subtasks || [],
+                ':td': target_date || null,
+                ':o': owner || null,
+            },
+        }));
+        res.json({ success: true });
+    } catch (err) {
+        console.error('POST /api/tasks/update error:', err);
         res.status(500).json({ error: err.message });
     }
 });

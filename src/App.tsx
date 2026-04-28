@@ -20,8 +20,9 @@ import { Header } from './components/layout/Header';
 import { CategoryView } from './components/views/CategoryView';
 import { TimetableView } from './components/views/TimetableView';
 import { ShoppingView } from './components/views/ShoppingView';
+import { TaskFormModal, type TaskFormData } from './components/tasks/TaskFormModal';
 import { useTasks } from './hooks/useTasks';
-import type { ViewTab } from './types';
+import type { Task, ViewTab } from './types';
 
 const TABS: { value: ViewTab; label: string; icon: React.ReactElement }[] = [
   { value: 'Admin', label: 'Admin', icon: <AdminPanelSettingsIcon fontSize="small" /> },
@@ -34,16 +35,59 @@ const TABS: { value: ViewTab; label: string; icon: React.ReactElement }[] = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ViewTab>('Admin');
-  const { tasks, loading, error, toggleTask, toggleSubtask, toggleNestedItem, setTaskOwner, setSubtaskOwner, setNestedItemOwner } = useTasks();
+  const { tasks, loading, error, toggleTask, toggleSubtask, toggleNestedItem, setTaskOwner, setSubtaskOwner, setNestedItemOwner, addTask, editTask } = useTasks();
   const theme = useTheme();
   const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
+  const [editingTask, setEditingTask] = useState<Task | undefined>();
+  const [defaultSection, setDefaultSection] = useState('');
+  const [defaultCategory, setDefaultCategory] = useState('');
+
+  const existingSections = [...new Set(tasks.map((t) => t.section))].sort();
+
+  const handleOpenAdd = (section = '', category = '') => {
+    setModalMode('add');
+    setEditingTask(undefined);
+    setDefaultSection(section);
+    setDefaultCategory(category || activeTab);
+    setModalOpen(true);
+  };
+
+  const handleOpenEdit = (task: Task) => {
+    setModalMode('edit');
+    setEditingTask(task);
+    setDefaultSection(task.section);
+    setDefaultCategory(task.category);
+    setModalOpen(true);
+  };
+
+  const handleSave = async (data: TaskFormData) => {
+    if (modalMode === 'add') {
+      await addTask({
+        ...data,
+        target_month: '',
+        description: '',
+        subtasks: data.subtasks as Task['subtasks'],
+      });
+    } else if (editingTask) {
+      await editTask({
+        ...editingTask,
+        ...data,
+        subtasks: data.subtasks as Task['subtasks'],
+      });
+    }
+    setModalOpen(false);
+  };
 
   const filteredTasks =
     activeTab === 'Timetable' ? tasks : tasks.filter((t) => t.category === activeTab);
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <Header />
+      <Header onAddTask={() => handleOpenAdd()} />
       <Container maxWidth="md" sx={{ py: 2.5 }}>
         <Paper elevation={1} sx={{ mb: 2.5, overflow: 'hidden', borderRadius: 2 }}>
           <Tabs
@@ -109,10 +153,23 @@ export default function App() {
               onSetTaskOwner={setTaskOwner}
               onSetSubtaskOwner={setSubtaskOwner}
               onSetNestedItemOwner={setNestedItemOwner}
+              onAddTask={handleOpenAdd}
+              onEditTask={handleOpenEdit}
             />
           )
         )}
       </Container>
+
+      <TaskFormModal
+        open={modalOpen}
+        mode={modalMode}
+        task={editingTask}
+        defaultCategory={defaultCategory}
+        defaultSection={defaultSection}
+        existingSections={existingSections}
+        onClose={() => setModalOpen(false)}
+        onSave={handleSave}
+      />
     </Box>
   );
 }

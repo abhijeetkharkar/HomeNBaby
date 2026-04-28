@@ -7,10 +7,12 @@ import {
   Chip,
   LinearProgress,
   Paper,
+  Button,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import AddIcon from '@mui/icons-material/Add';
 import type { Task, Owner } from '../../types';
 import { TaskCard } from '../tasks/TaskCard';
 
@@ -22,6 +24,8 @@ interface Props {
   onSetTaskOwner: (task: Task, owner: Owner) => void;
   onSetSubtaskOwner: (task: Task, si: number, owner: Owner) => void;
   onSetNestedItemOwner: (task: Task, si: number, ii: number, owner: Owner) => void;
+  onAddTask: (defaultSection: string, defaultCategory: string) => void;
+  onEditTask: (task: Task) => void;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -85,7 +89,7 @@ function formatDateShort(dateStr: string): string {
   return `${mon} ${day}`;
 }
 
-export function CategoryView({ tasks, onToggleTask, onToggleSubtask, onToggleNestedItem, onSetTaskOwner, onSetSubtaskOwner, onSetNestedItemOwner }: Props) {
+export function CategoryView({ tasks, onToggleTask, onToggleSubtask, onToggleNestedItem, onSetTaskOwner, onSetSubtaskOwner, onSetNestedItemOwner, onAddTask, onEditTask }: Props) {
   const sections: Record<string, Task[]> = {};
   tasks.forEach((task) => {
     if (!sections[task.section]) sections[task.section] = [];
@@ -282,6 +286,14 @@ export function CategoryView({ tasks, onToggleTask, onToggleSubtask, onToggleNes
                   color={allDone ? 'success' : 'default'}
                   sx={{ fontSize: '0.68rem', height: 18 }}
                 />
+                <Button
+                  size="small"
+                  startIcon={<AddIcon sx={{ fontSize: '13px !important' }} />}
+                  onClick={(e) => { e.stopPropagation(); onAddTask(section, category); }}
+                  sx={{ fontSize: '0.68rem', height: 22, px: 1, minWidth: 0, textTransform: 'none' }}
+                >
+                  Add Task
+                </Button>
               </Box>
             </AccordionSummary>
             <AccordionDetails sx={{ pt: 0.5 }}>
@@ -295,6 +307,7 @@ export function CategoryView({ tasks, onToggleTask, onToggleSubtask, onToggleNes
                   onSetTaskOwner={onSetTaskOwner}
                   onSetSubtaskOwner={onSetSubtaskOwner}
                   onSetNestedItemOwner={onSetNestedItemOwner}
+                  onEditTask={onEditTask}
                 />
               ))}
             </AccordionDetails>

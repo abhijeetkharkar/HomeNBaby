@@ -9,10 +9,12 @@ import {
   Chip,
   Collapse,
   IconButton,
+  Tooltip,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import type { Task, Owner } from '../../types';
 import { SubtaskRow } from './SubtaskRow';
 import { OwnerChip } from './OwnerChip';
@@ -25,6 +27,7 @@ interface Props {
   onSetTaskOwner: (task: Task, owner: Owner) => void;
   onSetSubtaskOwner: (task: Task, subtaskIndex: number, owner: Owner) => void;
   onSetNestedItemOwner: (task: Task, subtaskIndex: number, itemIndex: number, owner: Owner) => void;
+  onEditTask: (task: Task) => void;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -68,7 +71,7 @@ function formatDateLabel(dateStr: string, completed?: number | null): { text: st
   return { text, color: '#546e7a', bgcolor: '#f5f5f5' };
 }
 
-export function TaskCard({ task, onToggleTask, onToggleSubtask, onToggleNestedItem, onSetTaskOwner, onSetSubtaskOwner, onSetNestedItemOwner }: Props) {
+export function TaskCard({ task, onToggleTask, onToggleSubtask, onToggleNestedItem, onSetTaskOwner, onSetSubtaskOwner, onSetNestedItemOwner, onEditTask }: Props) {
   const [expanded, setExpanded] = useState(true);
 
   const total = task.subtasks.length;
@@ -148,6 +151,15 @@ export function TaskCard({ task, onToggleTask, onToggleSubtask, onToggleNestedIt
                 <Chip label="Done" size="small" color="success" sx={{ fontSize: '0.68rem', height: 20 }} />
               ) : null}
               <OwnerChip owner={task.owner} onChange={(owner) => onSetTaskOwner(task, owner)} />
+              <Tooltip title="Edit task">
+                <IconButton
+                  size="small"
+                  onClick={() => onEditTask(task)}
+                  sx={{ p: 0.25, color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+                >
+                  <EditOutlinedIcon sx={{ fontSize: 15 }} />
+                </IconButton>
+              </Tooltip>
             </Box>
 
             {summaryText && total > 0 && (

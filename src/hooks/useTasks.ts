@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Task, Subtask, Owner } from '../types';
-import { fetchTasks, saveTask, saveTaskOwner } from '../api/tasks';
+import { fetchTasks, saveTask, saveTaskOwner, createTask as apiCreateTask, updateTaskData } from '../api/tasks';
 
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -121,5 +121,15 @@ export function useTasks() {
     [updateOwnerAndSave]
   );
 
-  return { tasks, loading, error, toggleTask, toggleSubtask, toggleNestedItem, setTaskOwner, setSubtaskOwner, setNestedItemOwner };
+  const addTask = useCallback(async (data: Omit<Task, 'id' | 'completed' | 'completed_at'>) => {
+    const newTask = await apiCreateTask(data);
+    setTasks((prev) => [...prev, newTask]);
+  }, []);
+
+  const editTask = useCallback(async (updated: Task) => {
+    setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    await updateTaskData(updated);
+  }, []);
+
+  return { tasks, loading, error, toggleTask, toggleSubtask, toggleNestedItem, setTaskOwner, setSubtaskOwner, setNestedItemOwner, addTask, editTask };
 }

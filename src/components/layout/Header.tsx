@@ -1,8 +1,13 @@
-import { AppBar, Toolbar, Typography, Box, Chip } from '@mui/material';
+import { AppBar, Toolbar, Typography, Box, Chip, IconButton, Tooltip } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
 import ChildCareIcon from '@mui/icons-material/ChildCare';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 
-export function Header() {
+interface Props {
+  onAddTask: () => void;
+}
+
+export function Header({ onAddTask }: Props) {
   return (
     <AppBar position="static" sx={{ background: 'linear-gradient(135deg, #2e7d8f 0%, #1a5f6e 100%)' }}>
       <Toolbar>
@@ -11,7 +16,7 @@ export function Header() {
         <Typography variant="h6" fontWeight={700} sx={{ flexGrow: 1 }}>
           Home & Baby Tracker
         </Typography>
-        <Box display="flex" gap={1}>
+        <Box display="flex" gap={1} alignItems="center">
           <Chip
             label="Move: Jun 1"
             size="small"
@@ -22,6 +27,11 @@ export function Header() {
             size="small"
             sx={{ bgcolor: 'rgba(194,24,91,0.6)', color: 'white', fontSize: '0.7rem' }}
           />
+          <Tooltip title="Add Task">
+            <IconButton onClick={onAddTask} sx={{ color: 'white', ml: 0.5 }}>
+              <AddCircleOutlineIcon />
+            </IconButton>
+          </Tooltip>
         </Box>
       </Toolbar>
     </AppBar>
