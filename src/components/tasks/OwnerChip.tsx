@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Chip, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import PeopleIcon from '@mui/icons-material/People';
 import ClearIcon from '@mui/icons-material/Clear';
 import type { Owner } from '../../types';
 
@@ -14,11 +15,13 @@ interface Props {
 const OWNER_COLORS: Record<string, string> = {
   Abhijeet: '#1565c0',
   Prajakta: '#c2185b',
+  Both: '#6a1b9a',
 };
 
 const OWNERS: { label: string; value: Owner }[] = [
   { label: 'Abhijeet', value: 'Abhijeet' },
   { label: 'Prajakta', value: 'Prajakta' },
+  { label: 'Both', value: 'Both' },
   { label: 'Unassigned', value: null },
 ];
 
@@ -40,7 +43,13 @@ export function OwnerChip({ owner, onChange, size = 'small' }: Props) {
   return (
     <>
       <Chip
-        icon={owner ? <PersonIcon sx={{ fontSize: '14px !important' }} /> : <PersonOutlineIcon sx={{ fontSize: '14px !important' }} />}
+        icon={
+          owner === 'Both'
+            ? <PeopleIcon sx={{ fontSize: '14px !important' }} />
+            : owner
+            ? <PersonIcon sx={{ fontSize: '14px !important' }} />
+            : <PersonOutlineIcon sx={{ fontSize: '14px !important' }} />
+        }
         label={owner ?? 'Assign'}
         size={size}
         variant={owner ? 'filled' : 'outlined'}
@@ -73,6 +82,8 @@ export function OwnerChip({ owner, onChange, size = 'small' }: Props) {
             <ListItemIcon sx={{ minWidth: 28 }}>
               {value === null ? (
                 <ClearIcon fontSize="small" />
+              ) : value === 'Both' ? (
+                <PeopleIcon fontSize="small" sx={{ color: OWNER_COLORS['Both'] }} />
               ) : (
                 <PersonIcon fontSize="small" sx={{ color: OWNER_COLORS[value] }} />
               )}

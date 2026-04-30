@@ -27,6 +27,7 @@ const OWNERS: { label: string; value: Owner }[] = [
   { label: 'Not Assigned', value: null },
   { label: 'Abhijeet', value: 'Abhijeet' },
   { label: 'Prajakta', value: 'Prajakta' },
+  { label: 'Both', value: 'Both' },
 ];
 
 interface ItemForm {
@@ -53,7 +54,7 @@ interface Props {
   task?: Task;
   defaultCategory?: string;
   defaultSection?: string;
-  existingSections: string[];
+  existingSections: { section: string; category: string }[];
   onClose: () => void;
   onSave: (data: TaskFormData) => Promise<void>;
 }
@@ -160,11 +161,11 @@ export function TaskFormModal({
         {/* Type + Section */}
         <Box display="flex" gap={2}>
           <FormControl size="small" sx={{ flex: 1 }}>
-            <InputLabel>Type</InputLabel>
+            <InputLabel>Category</InputLabel>
             <Select
               value={category}
-              label="Type"
-              onChange={(e) => setCategory(e.target.value)}
+              label="Category"
+              onChange={(e) => { setCategory(e.target.value); setSection(''); }}
             >
               {CATEGORIES.map((c) => (
                 <MenuItem key={c} value={c}>{c}</MenuItem>
@@ -174,7 +175,7 @@ export function TaskFormModal({
 
           <Autocomplete
             freeSolo
-            options={existingSections}
+            options={existingSections.filter((s) => s.category === category).map((s) => s.section)}
             value={section}
             onInputChange={(_, v) => setSection(v)}
             size="small"

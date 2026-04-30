@@ -1,4 +1,4 @@
-export type Owner = 'Abhijeet' | 'Prajakta' | null;
+export type Owner = 'Abhijeet' | 'Prajakta' | 'Both' | null;
 
 export interface NestedItem {
   text: string;

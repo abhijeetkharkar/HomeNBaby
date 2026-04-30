@@ -46,7 +46,8 @@ export default function App() {
   const [defaultSection, setDefaultSection] = useState('');
   const [defaultCategory, setDefaultCategory] = useState('');
 
-  const existingSections = [...new Set(tasks.map((t) => t.section))].sort();
+  const existingSections = [...new Map(tasks.map((t) => [`${t.category}:${t.section}`, { section: t.section, category: t.category }])).values()]
+    .sort((a, b) => a.section.localeCompare(b.section));
 
   const handleOpenAdd = (section = '', category = '') => {
     setModalMode('add');
