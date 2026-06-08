@@ -29,4 +29,16 @@ export interface Task {
   owner?: Owner;
 }
 
-export type ViewTab = 'Admin' | 'Garden' | 'Baby' | 'Hospital' | 'Shopping' | 'Timetable';
+export type ViewTab = 'Admin' | 'Garden' | 'Baby' | 'Hospital' | 'Shopping' | 'Timetable' | 'Names';
+
+export interface BabyName {
+  id: string;
+  name: string;
+  devanagari: string;
+  meaning: string;
+  etymology: string;
+  nickname: string;
+  category: 'PPP' | 'AgentNoun' | 'ParentEcho';
+  theme: string;
+  favourite: boolean;
+}

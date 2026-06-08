@@ -11,6 +11,7 @@ const {
 const app = express();
 const port = 3000;
 const TABLE_NAME = 'tracker-tasks';
+const NAMES_TABLE = 'tracker-baby-names';
 const REGION = 'us-east-1';
 
 app.use(express.json());
@@ -151,6 +152,34 @@ if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
         res.sendFile(path.join(__dirname, 'public', 'index.html'));
     });
 }
+
+// ─── GET /api/names ──────────────────────────────────────────────────────────
+app.get('/api/names', async (req, res) => {
+    try {
+        const result = await ddb.send(new ScanCommand({ TableName: NAMES_TABLE }));
+        res.json(result.Items || []);
+    } catch (err) {
+        console.error('GET /api/names error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── POST /api/names/favourite ───────────────────────────────────────────────
+app.post('/api/names/favourite', async (req, res) => {
+    try {
+        const { id, favourite } = req.body;
+        await ddb.send(new UpdateCommand({
+            TableName: NAMES_TABLE,
+            Key: { id },
+            UpdateExpression: 'SET favourite = :f',
+            ExpressionAttributeValues: { ':f': favourite ? true : false },
+        }));
+        res.json({ success: true });
+    } catch (err) {
+        console.error('POST /api/names/favourite error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // Start server locally; export app for Lambda
 if (require.main === module) {

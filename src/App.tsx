@@ -16,10 +16,12 @@ import ChildCareIcon from '@mui/icons-material/ChildCare';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { Header } from './components/layout/Header';
 import { CategoryView } from './components/views/CategoryView';
 import { TimetableView } from './components/views/TimetableView';
 import { ShoppingView } from './components/views/ShoppingView';
+import { NamesView } from './components/views/NamesView';
 import { TaskFormModal, type TaskFormData } from './components/tasks/TaskFormModal';
 import { useTasks } from './hooks/useTasks';
 import type { Task, ViewTab } from './types';
@@ -31,6 +33,7 @@ const TABS: { value: ViewTab; label: string; icon: React.ReactElement }[] = [
   { value: 'Hospital', label: 'Hospital', icon: <LocalHospitalIcon fontSize="small" /> },
   { value: 'Shopping', label: 'Shopping', icon: <ShoppingCartIcon fontSize="small" /> },
   { value: 'Timetable', label: 'Timeline', icon: <CalendarMonthIcon fontSize="small" /> },
+  { value: 'Names', label: 'Names', icon: <AutoAwesomeIcon fontSize="small" /> },
 ];
 
 export default function App() {
@@ -145,6 +148,8 @@ export default function App() {
               onSetSubtaskOwner={setSubtaskOwner}
               onSetNestedItemOwner={setNestedItemOwner}
             />
+          ) : activeTab === 'Names' ? (
+            <NamesView />
           ) : (
             <CategoryView
               tasks={filteredTasks}
