@@ -38,7 +38,7 @@ export interface BabyName {
   meaning: string;
   etymology: string;
   nickname: string;
-  category: 'PPP' | 'AgentNoun' | 'ParentEcho';
+  category: 'PPP' | 'AgentNoun' | 'ParentEcho' | 'Nominal' | 'Adjective';
   theme: string;
   favourite: boolean;
 }

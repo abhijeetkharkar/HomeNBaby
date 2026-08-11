@@ -1,9 +1,9 @@
 /**
- * scripts/make-lambda-zip.js
+ * scripts/build-backend-zip.js
  * Cross-platform Lambda deployment package builder.
  * Uses archiver for better Windows compatibility.
  *
- * Usage: node scripts/make-lambda-zip.js
+ * Usage: node scripts/build-backend-zip.js
  */
 const { execSync } = require('child_process');
 const path = require('path');
@@ -11,7 +11,7 @@ const fs = require('fs');
 
 const projectDir = path.resolve(__dirname, '..');
 const buildDir = path.join(projectDir, 'lambda-build');
-const zipPath = path.join(projectDir, 'lambda-deploy.zip');
+const zipPath = path.join(projectDir, 'tracker-api-deploy.zip');
 
 // Clean up
 if (fs.existsSync(buildDir)) fs.rmSync(buildDir, { recursive: true });
@@ -20,9 +20,23 @@ fs.mkdirSync(buildDir);
 
 // Copy source files
 console.log('  Copying source files...');
-['server.js', 'lambda.js', 'package.json'].forEach(f => {
+['server.js', 'tracker-api-lambda.js'].forEach(f => {
   fs.copyFileSync(path.join(projectDir, f), path.join(buildDir, f));
 });
+
+// Generate minimal package.json for backend
+const minimalPackageJson = {
+  name: "home-baby-tracker-lambda",
+  version: "2.0.0",
+  main: "tracker-api-lambda.js",
+  dependencies: {
+    "@aws-sdk/client-dynamodb": "^3.1029.0",
+    "@aws-sdk/lib-dynamodb": "^3.1029.0",
+    "express": "^4.18.2",
+    "serverless-http": "^4.0.0"
+  }
+};
+fs.writeFileSync(path.join(buildDir, 'package.json'), JSON.stringify(minimalPackageJson, null, 2));
 
 // Install production deps — no platform-specific binaries needed (DynamoDB SDK is pure JS)
 console.log('  Installing production deps...');

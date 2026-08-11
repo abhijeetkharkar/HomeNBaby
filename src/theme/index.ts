@@ -3,22 +3,22 @@ import { createTheme } from '@mui/material/styles';
 export const theme = createTheme({
   palette: {
     primary: {
-      main: '#2e7d8f',
+      main: '#d4788c', // rose
     },
     secondary: {
-      main: '#c2185b',
+      main: '#7c6bc4', // soft purple
     },
     background: {
-      default: '#f0f4f8',
+      default: '#faf7f5', // warm off-white
     },
   },
   typography: {
-    fontFamily: '"Segoe UI", "Roboto", "Helvetica Neue", sans-serif',
+    fontFamily: '"Inter", "Segoe UI", "Roboto", "Helvetica Neue", sans-serif',
   },
   components: {
     MuiCard: {
       styleOverrides: {
-        root: { borderRadius: 10 },
+        root: { borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' },
       },
     },
     MuiAccordion: {
@@ -26,6 +26,15 @@ export const theme = createTheme({
         root: {
           borderRadius: '8px !important',
           '&:before': { display: 'none' },
+          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          textTransform: 'none',
         },
       },
     },

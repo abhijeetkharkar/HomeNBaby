@@ -100,48 +100,76 @@ fi
 rm -f lambda-deploy.zip
 echo "  Function ready ✓"
 
-# ── 5. Create Lambda Function URL ────────────────────────────────────────────
-echo "▶ Creating Lambda Function URL..."
-if aws lambda get-function-url-config \
-    --function-name "$FUNCTION_NAME" \
-    --region "$REGION" --profile "$PROFILE" 2>/dev/null; then
-  echo "  Function URL already exists — skipping"
-  LAMBDA_URL=$(aws lambda get-function-url-config \
-    --function-name "$FUNCTION_NAME" \
-    --region "$REGION" --profile "$PROFILE" \
-    --query 'FunctionUrl' --output text)
+# ── 5. Create API Gateway HTTP API ────────────────────────────────────────────
+echo "▶ Creating API Gateway HTTP API..."
+EXISTING_APIGW=$(aws apigatewayv2 get-apis \
+  --region "$REGION" --profile "$PROFILE" \
+  --query "Items[?Name=='tracker-api'].ApiId" --output text 2>/dev/null || true)
+
+if [[ -n "$EXISTING_APIGW" ]]; then
+  API_ID="$EXISTING_APIGW"
+  echo "  API Gateway already exists (${API_ID}) — skipping"
 else
-  LAMBDA_URL=$(aws lambda create-function-url-config \
+  LAMBDA_ARN=$(aws lambda get-function \
     --function-name "$FUNCTION_NAME" \
-    --auth-type NONE \
     --region "$REGION" --profile "$PROFILE" \
-    --query 'FunctionUrl' --output text)
+    --query 'Configuration.FunctionArn' --output text)
+
+  API_ID=$(aws apigatewayv2 create-api \
+    --name "tracker-api" \
+    --protocol-type HTTP \
+    --region "$REGION" --profile "$PROFILE" \
+    --query 'ApiId' --output text)
+
+  INTEG_ID=$(aws apigatewayv2 create-integration \
+    --api-id "$API_ID" \
+    --integration-type AWS_PROXY \
+    --integration-uri "$LAMBDA_ARN" \
+    --payload-format-version "2.0" \
+    --region "$REGION" --profile "$PROFILE" \
+    --query 'IntegrationId' --output text)
+
+  aws apigatewayv2 create-route \
+    --api-id "$API_ID" \
+    --route-key '$default' \
+    --target "integrations/${INTEG_ID}" \
+    --region "$REGION" --profile "$PROFILE" > /dev/null
+
+  aws apigatewayv2 create-stage \
+    --api-id "$API_ID" \
+    --stage-name '$default' \
+    --auto-deploy \
+    --region "$REGION" --profile "$PROFILE" > /dev/null
 
   aws lambda add-permission \
     --function-name "$FUNCTION_NAME" \
-    --statement-id AllowPublicAccess \
-    --action lambda:InvokeFunctionUrl \
-    --principal "*" \
-    --function-url-auth-type NONE \
+    --statement-id AllowAPIGateway \
+    --action lambda:InvokeFunction \
+    --principal apigateway.amazonaws.com \
+    --source-arn "arn:aws:execute-api:${REGION}:$(aws sts get-caller-identity --profile "$PROFILE" --query 'Account' --output text):${API_ID}/*/*" \
     --region "$REGION" --profile "$PROFILE" > /dev/null
+
+  echo "  API Gateway created (${API_ID}) ✓"
 fi
 
-# Strip https:// and trailing slash
-LAMBDA_DOMAIN=$(echo "$LAMBDA_URL" | sed 's|https://||' | sed 's|/$||')
-echo "  Function URL: https://$LAMBDA_DOMAIN"
+APIGW_DOMAIN=$(aws apigatewayv2 get-api \
+  --api-id "$API_ID" \
+  --region "$REGION" --profile "$PROFILE" \
+  --query 'ApiEndpoint' --output text | sed 's|https://||')
+echo "  API endpoint: https://$APIGW_DOMAIN"
 
-# ── 6. Update CloudFront — add Lambda origin + /api/* behaviour ───────────────
+# ── 6. Update CloudFront — add API Gateway origin + /api/* behaviour ──────────
 echo "▶ Updating CloudFront distribution: $CLOUDFRONT_ID..."
 
 # Use Node.js + AWS SDK to avoid Windows path/escaping issues
-node "$SCRIPT_DIR/update-cloudfront.js" "$CLOUDFRONT_ID" "$LAMBDA_DOMAIN" "$PROFILE"
+node "$SCRIPT_DIR/update-cloudfront.js" "$CLOUDFRONT_ID" "$APIGW_DOMAIN" "$PROFILE"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
 echo "✅ Lambda API setup complete!"
 echo ""
-echo "  /api/* → Lambda (Express + SQLite)"
-echo "  /*     → S3 (React frontend)"
+echo "  /api/* → CloudFront → API Gateway → Lambda (Express + DynamoDB)"
+echo "  /*     → CloudFront → S3 (React frontend)"
 echo ""
 echo "  Open scripts/deploy.sh and set:"
 echo "  LAMBDA_FUNCTION_NAME=\"$FUNCTION_NAME\""
