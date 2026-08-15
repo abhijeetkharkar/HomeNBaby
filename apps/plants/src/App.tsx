@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useCareApi } from './hooks/useCareApi';
 import { PLANTS, PLANT_GROUPS } from './data/plants';
+import { FERTILIZERS } from './data/fertilizers';
 import type { PlantGroup, PlantDef } from './data/plants';
 import { PlantCard } from './components/PlantCard';
 import { LogCareModal } from './components/LogCareModal';
@@ -26,6 +27,14 @@ function App() {
 
   const handleConfirmLog = async (plantId: string, type: 'water' | 'fertilize', fertilizer?: string, notes?: string) => {
     await logCare(plantId, type, fertilizer, notes);
+
+    // Auto-log watering if they fertilize with a liquid fertilizer (since it is water-based)
+    if (type === 'fertilize' && fertilizer) {
+      const fert = FERTILIZERS.find(f => f.id === fertilizer);
+      if (fert && fert.type === 'liquid') {
+        await logCare(plantId, 'water', undefined, `Auto-logged from fertilizing with ${fert.name}`);
+      }
+    }
   };
 
   return (
