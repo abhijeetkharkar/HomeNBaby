@@ -48,19 +48,7 @@ export class TrackerFrontendStack extends cdk.Stack {
       ]
     });
 
-    // Reference the API Gateway / Lambda Function URL from the API stack
-    const apiUrl = ssm.StringParameter.valueForStringParameter(this, '/tracker/api/endpoint');
-    
-    // apiUrl format: "https://<id>.lambda-url.us-east-1.on.aws/"
-    // Split by "/" -> ["https:", "", "<id>.lambda-url..."]
-    const apiDomainName = cdk.Fn.select(2, cdk.Fn.split('/', apiUrl));
-
-    distribution.addBehavior('/api/*', new origins.HttpOrigin(apiDomainName), {
-      viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-      allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
-      cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-      originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-    });
+    // API is now hosted independently at api.abhijeetkharkar.com
 
     // Create a Route53 alias record for the custom domain
     new route53.ARecord(this, 'SiteAliasRecord', {

@@ -3,6 +3,8 @@ import { Box, Typography } from '@mui/material';
 import { format } from 'date-fns';
 import { BabyLog } from '../types/baby';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'https://api.abhijeetkharkar.com';
+
 export function HeaderStats() {
   const [logs, setLogs] = useState<BabyLog[]>([]);
 
@@ -17,8 +19,8 @@ export function HeaderStats() {
 
       try {
         const [resToday, resYesterday] = await Promise.all([
-          fetch(`/api/logs/${todayStr}`),
-          fetch(`/api/logs/${yesterdayStr}`)
+          fetch(`${API_BASE}/tracker/logs/${todayStr}`),
+          fetch(`${API_BASE}/tracker/logs/${yesterdayStr}`)
         ]);
         
         const todayLogs = resToday.ok ? await resToday.json() : [];

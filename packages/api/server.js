@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const path = require('path');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const {
@@ -15,8 +16,9 @@ const TABLE_NAME = 'tracker-baby-logs';
 const REGION = 'us-east-1';
 
 app.use(express.json());
-
-// Static files + SPA fallback — local only (CloudFront + S3 handles this in prod)
+app.use(cors({
+    origin: [/abhijeetkharkar\.com$/, /localhost/]
+}));// Static files + SPA fallback — local only (CloudFront + S3 handles this in prod)
 if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
     app.use(express.static('public'));
 }
@@ -45,7 +47,7 @@ function getDatesInRange(startDate, endDate) {
 }
 
 // ─── GET /api/logs?from=YYYY-MM-DD&to=YYYY-MM-DD ─────────────────────────────
-app.get('/api/logs', async (req, res) => {
+app.get('/tracker/logs', async (req, res) => {
     try {
         const { from, to } = req.query;
         if (!from || !to) return res.status(400).json({ error: 'from and to dates are required' });
@@ -77,7 +79,7 @@ app.get('/api/logs', async (req, res) => {
 });
 
 // ─── GET /api/logs/:date ─────────────────────────────────────────────────────
-app.get('/api/logs/:date', async (req, res) => {
+app.get('/tracker/logs/:date', async (req, res) => {
     try {
         const { date } = req.params;
         const result = await ddb.send(new QueryCommand({
@@ -94,7 +96,7 @@ app.get('/api/logs/:date', async (req, res) => {
 });
 
 // ─── POST /api/logs ──────────────────────────────────────────────────────────
-app.post('/api/logs', async (req, res) => {
+app.post('/tracker/logs', async (req, res) => {
     try {
         const { date, category, ...rest } = req.body;
         if (!date || !category) return res.status(400).json({ error: 'date and category are required' });
@@ -111,7 +113,7 @@ app.post('/api/logs', async (req, res) => {
 });
 
 // ─── PUT /api/logs/:date/:logId ──────────────────────────────────────────────────
-app.put('/api/logs/:date/:logId', async (req, res) => {
+app.put('/tracker/logs/:date/:logId', async (req, res) => {
     try {
         const { date, logId } = req.params;
         const body = req.body;
@@ -128,7 +130,7 @@ app.put('/api/logs/:date/:logId', async (req, res) => {
 });
 
 // ─── DELETE /api/logs/:date/:logId ───────────────────────────────────────────
-app.delete('/api/logs/:date/:logId', async (req, res) => {
+app.delete('/tracker/logs/:date/:logId', async (req, res) => {
     try {
         const { date, logId } = req.params;
         await ddb.send(new DeleteCommand({
@@ -143,7 +145,7 @@ app.delete('/api/logs/:date/:logId', async (req, res) => {
 });
 
 // ─── POST /api/logs/bulk ─────────────────────────────────────────────────────
-app.post('/api/logs/bulk', async (req, res) => {
+app.post('/tracker/logs/bulk', async (req, res) => {
     try {
         const items = req.body;
         if (!Array.isArray(items)) return res.status(400).json({ error: 'Body must be an array' });
@@ -174,7 +176,7 @@ app.post('/api/logs/bulk', async (req, res) => {
 });
 
 // ─── GET /api/summary?from=YYYY-MM-DD&to=YYYY-MM-DD ──────────────────────────
-app.get('/api/summary', async (req, res) => {
+app.get('/tracker/summary', async (req, res) => {
     try {
         const { from, to } = req.query;
         if (!from || !to) return res.status(400).json({ error: 'from and to dates are required' });

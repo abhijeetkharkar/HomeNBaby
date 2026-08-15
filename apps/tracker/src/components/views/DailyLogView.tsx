@@ -62,7 +62,7 @@ export function DailyLogView() {
     const prevDate = new Date(currentDate);
     prevDate.setDate(prevDate.getDate() - 1);
     const prevDateStr = format(prevDate, 'yyyy-MM-dd');
-    fetch(`/api/logs/${prevDateStr}`)
+    fetch(`${import.meta.env.VITE_API_URL || 'https://api.abhijeetkharkar.com'}/tracker/logs/${prevDateStr}`)
       .then(res => res.ok ? res.json() : [])
       .then(data => setPrevDayLogs(data))
       .catch(console.error);

@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { BabyLog, DailySummary } from '../types/baby';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'https://api.abhijeetkharkar.com';
+
 interface UseBabyLogsReturn {
   logs: BabyLog[];
   summary: DailySummary | null;
@@ -24,7 +26,7 @@ export function useBabyLogs(): UseBabyLogsReturn {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/logs/${date}`);
+      const response = await fetch(`${API_BASE}/tracker/logs/${date}`);
       if (!response.ok) throw new Error('Failed to fetch logs');
       const data = await response.json();
       setLogs(data);
@@ -40,7 +42,7 @@ export function useBabyLogs(): UseBabyLogsReturn {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/summary?from=${from}&to=${to}`);
+      const response = await fetch(`${API_BASE}/tracker/summary?from=${from}&to=${to}`);
       if (!response.ok) throw new Error('Failed to fetch summary');
       const data = await response.json();
       return data;
@@ -60,7 +62,7 @@ export function useBabyLogs(): UseBabyLogsReturn {
     setLogs((prev) => [...prev, newLog as BabyLog]);
 
     try {
-      const response = await fetch('/api/logs', {
+      const response = await fetch(`${API_BASE}/tracker/logs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newLog),
@@ -82,7 +84,7 @@ export function useBabyLogs(): UseBabyLogsReturn {
     setLogs((prev) => prev.map(log => log.logId === logId ? { ...log, ...updatedData } : log));
 
     try {
-      const response = await fetch(`/api/logs/${date}/${logId}`, {
+      const response = await fetch(`${API_BASE}/tracker/logs/${date}/${encodeURIComponent(logId)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedData),
@@ -107,7 +109,7 @@ export function useBabyLogs(): UseBabyLogsReturn {
     });
 
     try {
-      const response = await fetch(`/api/logs/${date}/${logId}`, {
+      const response = await fetch(`${API_BASE}/tracker/logs/${date}/${encodeURIComponent(logId)}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

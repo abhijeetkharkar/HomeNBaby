@@ -12,10 +12,12 @@
     "@aws-sdk/lib-dynamodb": "^3.1029.0",
     "aws-cdk-lib": "^2.264.0",
     "constructs": "^10.8.1",
+    "cors": "^2.8.6",
     "express": "^4.18.2",
     "serverless-http": "^4.0.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/node": "^26.2.0",
     "aws-cdk": "^2.1135.1",
     "esbuild": "^0.28.2",
