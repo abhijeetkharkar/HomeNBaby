@@ -17,7 +17,7 @@ export const FERTILIZERS: Fertilizer[] = [
   },
   {
     id: 'agrothrive',
-    name: 'AgroThrive Liquid',
+    name: 'AgroThrive Organic Liquid Fertilizer',
     npk: '3-3-2 (GP) / 3-3-5 (F&F)',
     type: 'liquid',
     description: 'Organic liquid concentrate. General Purpose for foliage; Fruit & Flower formula for fruiting crops & ornamentals.',
