@@ -86,7 +86,7 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [7, 10],
     fertFreqDays: [14, 28],
-    fertRecommendation: 'AgroThrive Liquid (½ strength)',
+    fertRecommendation: 'AgroThrive Organic Liquid Fertilizer (½ strength)',
     notes: ['Loves humidity — mist or pebble tray in Austin summer', 'Provide moss pole for best growth', 'Toxic to pets'],
   },
   {
@@ -155,7 +155,7 @@ export const PLANTS: PlantDef[] = [
     emoji: '🥒',
     group: 'outdoor-garden',
     fertFreqDays: [14, 21],
-    fertRecommendation: 'AgroThrive Liquid (General early; Fruit & Flower at flowering)',
+    fertRecommendation: 'AgroThrive Organic Liquid Fertilizer (General early; Fruit & Flower at flowering)',
     notes: ['Heavy feeder — consistent nutrition throughout season', 'Switch to P+K focus at flowering', 'Uneven watering causes bitter cucumbers'],
   },
   {
@@ -164,7 +164,7 @@ export const PLANTS: PlantDef[] = [
     emoji: '🍶',
     group: 'outdoor-garden',
     fertFreqDays: [14, 21],
-    fertRecommendation: 'AgroThrive Fruit & Flower + Espoma Garden-tone (base)',
+    fertRecommendation: 'AgroThrive Organic Liquid Fertilizer (Fruit & Flower) + Espoma Garden-tone (base)',
     notes: ['Heavy feeder cucurbit', 'Mid-Aug: in fruiting — prioritize P+K over N', 'Excessive N = lush vines but poor fruit set'],
   },
   {
@@ -173,7 +173,7 @@ export const PLANTS: PlantDef[] = [
     emoji: '🧽',
     group: 'outdoor-garden',
     fertFreqDays: [14, 21],
-    fertRecommendation: 'AgroThrive Fruit & Flower + Espoma Garden-tone (base)',
+    fertRecommendation: 'AgroThrive Organic Liquid Fertilizer (Fruit & Flower) + Espoma Garden-tone (base)',
     notes: ['Heat-loving — thrives in Austin summer', 'Mid-Aug: switch to lower-N, higher P+K'],
   },
   {
@@ -182,7 +182,7 @@ export const PLANTS: PlantDef[] = [
     emoji: '🫛',
     group: 'outdoor-garden',
     fertFreqDays: [14, 21],
-    fertRecommendation: 'AgroThrive Fruit & Flower + Espoma Garden-tone (base)',
+    fertRecommendation: 'AgroThrive Organic Liquid Fertilizer (Fruit & Flower) + Espoma Garden-tone (base)',
     notes: ['Same care as other gourds', 'Harvest often to encourage continued fruiting'],
   },
   {
@@ -191,7 +191,7 @@ export const PLANTS: PlantDef[] = [
     emoji: '🍆',
     group: 'outdoor-garden',
     fertFreqDays: [14, 21],
-    fertRecommendation: 'AgroThrive Fruit & Flower; Espoma Garden-tone monthly',
+    fertRecommendation: 'AgroThrive Organic Liquid Fertilizer (Fruit & Flower); Espoma Garden-tone monthly',
     notes: ['Heavy feeder', 'Do NOT fertilize wilting plants — water first', 'Mid-Aug: P+K focus for active fruiting'],
   },
   {
@@ -200,7 +200,7 @@ export const PLANTS: PlantDef[] = [
     emoji: '🍅',
     group: 'outdoor-garden',
     fertFreqDays: [14, 14],
-    fertRecommendation: 'AgroThrive Fruit & Flower; Epsom salt 1 tbsp/gal monthly (Mg)',
+    fertRecommendation: 'AgroThrive Organic Liquid Fertilizer (Fruit & Flower); Epsom salt 1 tbsp/gal monthly (Mg)',
     notes: ['Aug: likely in summer slump — reduce feeding in 100°F+ heat', 'Resume heavy feeding in Sept when temps drop', 'Epsom salt prevents blossom end rot'],
   },
   {
@@ -209,7 +209,7 @@ export const PLANTS: PlantDef[] = [
     emoji: '🫑',
     group: 'outdoor-garden',
     fertFreqDays: [14, 21],
-    fertRecommendation: 'AgroThrive Fruit & Flower; Blood meal if pale/stunted (N deficiency)',
+    fertRecommendation: 'AgroThrive Organic Liquid Fertilizer (Fruit & Flower); Blood meal if pale/stunted (N deficiency)',
     notes: ['More heat-tolerant than tomatoes', 'Mid-Aug: in fruiting — P+K focus'],
   },
   {
@@ -218,7 +218,7 @@ export const PLANTS: PlantDef[] = [
     emoji: '🌶️',
     group: 'outdoor-garden',
     fertFreqDays: [14, 21],
-    fertRecommendation: 'AgroThrive Fruit & Flower; Blood meal if N deficient',
+    fertRecommendation: 'AgroThrive Organic Liquid Fertilizer (Fruit & Flower); Blood meal if N deficient',
     notes: ['Very heat tolerant — thriving in Austin summer', 'Lighter feeder than bell peppers'],
   },
   {
@@ -236,7 +236,7 @@ export const PLANTS: PlantDef[] = [
     emoji: '🍉',
     group: 'outdoor-garden',
     fertFreqDays: [21, 28],
-    fertRecommendation: 'AgroThrive Fruit & Flower at fruiting; Espoma Garden-tone (base)',
+    fertRecommendation: 'AgroThrive Organic Liquid Fertilizer (Fruit & Flower) at fruiting; Espoma Garden-tone (base)',
     notes: ['Reduce N, increase K as fruit swells for sweetness', 'Mid-Aug: spring plants likely nearing harvest'],
   },
 
@@ -247,7 +247,7 @@ export const PLANTS: PlantDef[] = [
     emoji: '🍠',
     group: 'outdoor-potted',
     fertFreqDays: [10, 14],
-    fertRecommendation: 'Bone meal (P for root dev); AgroThrive General (low-N)',
+    fertRecommendation: 'Bone meal (P for root dev); AgroThrive Organic Liquid Fertilizer (General Purpose) (low-N)',
     notes: ['High-N = beautiful vines, no tubers — AVOID', 'STOP fertilizing 3–4 weeks before harvest', 'Takes 100–120 days to mature'],
   },
   {
@@ -293,7 +293,7 @@ export const PLANTS: PlantDef[] = [
     emoji: '🌿',
     group: 'outdoor-potted',
     fertFreqDays: [28, 30],
-    fertRecommendation: 'AgroThrive Liquid General (½ strength)',
+    fertRecommendation: 'AgroThrive Organic Liquid Fertilizer General (½ strength)',
     notes: ['Keep in container to prevent spreading', 'Harvest frequently to prevent bolting', 'Mid-day wilting is normal — not fertilizer issue'],
   },
   {
@@ -311,7 +311,7 @@ export const PLANTS: PlantDef[] = [
     emoji: '🟡',
     group: 'outdoor-potted',
     fertFreqDays: [14, 21],
-    fertRecommendation: 'AgroThrive Liquid General; Espoma Garden-tone monthly',
+    fertRecommendation: 'AgroThrive Organic Liquid Fertilizer General; Espoma Garden-tone monthly',
     notes: ['Heavy feeder — consistent regular fertilization needed', 'Goes dormant in winter — foliage dies back naturally', 'Do not harvest until foliage dies back (8–10 months)'],
   },
   {
@@ -320,7 +320,7 @@ export const PLANTS: PlantDef[] = [
     emoji: '🫚',
     group: 'outdoor-potted',
     fertFreqDays: [14, 21],
-    fertRecommendation: 'AgroThrive Liquid General; Epsom salt 1 tbsp/gal monthly',
+    fertRecommendation: 'AgroThrive Organic Liquid Fertilizer General; Epsom salt 1 tbsp/gal monthly',
     notes: ['Heavy K and Mg user — Epsom salt very beneficial', 'Prefers filtered light / afternoon shade', 'Goes dormant in fall — harvest rhizomes then'],
   },
   {
@@ -338,7 +338,7 @@ export const PLANTS: PlantDef[] = [
     emoji: '🙏',
     group: 'outdoor-potted',
     fertFreqDays: [28, 30],
-    fertRecommendation: 'AgroThrive Liquid General (½ strength)',
+    fertRecommendation: 'AgroThrive Organic Liquid Fertilizer General (½ strength)',
     notes: ['Thriving in Austin summer heat 🌞', 'Pinch flowers to extend leaf production', 'Less is more — over-feeding reduces medicinal fragrance', 'Annual in Austin — will die at first frost'],
   },
   {
