@@ -28,7 +28,7 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [7, 14],
     fertFreqDays: [28, 30],
-    fertRecommendation: 'Schultz 10-15-10 (½ strength)',
+    fertRecommendation: 'Espoma Indoor (½ cap/qt) OR Schultz (7 drops/qt)',
     notes: ['Succulent-like leaves store water — err dry', 'Stop fertilizing Oct–Feb', 'Never let sit in standing water'],
   },
   {
@@ -39,7 +39,7 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [10, 14],
     fertFreqDays: [28, 30],
-    fertRecommendation: 'Schultz 10-15-10 (¼ strength — very dilute)',
+    fertRecommendation: 'Espoma Indoor (¼ cap/qt) OR Schultz (3 drops/qt)',
     notes: ['Full dormancy in winter — drastically reduce water & fertilizer', 'Never in winter', 'Over-fertilizing causes weak growth'],
   },
   {
@@ -50,7 +50,7 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [4, 7],
     fertFreqDays: [28, 30],
-    fertRecommendation: 'Schultz 10-15-10 (½ strength)',
+    fertRecommendation: 'Espoma Indoor (½ cap/qt) OR Schultz (7 drops/qt)',
     notes: ['Keep consistently moist — never soggy', 'Toxic to pets & humans', 'Brown tips = dry air; needs humidity'],
   },
   {
@@ -61,7 +61,7 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [7, 14],
     fertFreqDays: [28, 30],
-    fertRecommendation: 'Schultz 10-15-10 (½ strength)',
+    fertRecommendation: 'Espoma Indoor (½ cap/qt) OR Schultz (7 drops/qt)',
     notes: ['Toxic to cats & dogs', 'Very sensitive to fluoride/chlorine — use filtered water', 'Brown tips usually = water quality, not fertilizer'],
   },
   {
@@ -72,7 +72,7 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [7, 14],
     fertFreqDays: [28, 42],
-    fertRecommendation: 'Schultz 10-15-10 (½ strength)',
+    fertRecommendation: 'Espoma Indoor (½ cap/qt) OR Schultz (7 drops/qt)',
     notes: ['Do not move frequently — drops leaves when stressed', 'Deep color fades in low light', 'Milky sap is a skin irritant'],
   },
   {
@@ -83,7 +83,7 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [5, 10],
     fertFreqDays: [14, 28],
-    fertRecommendation: 'Schultz 10-15-10 (½ strength)',
+    fertRecommendation: 'Espoma Indoor (½ cap/qt) OR Schultz (7 drops/qt)',
     notes: ['Fast grower — benefits from more frequent feeding', 'Pinch tips for bushy growth', 'Mildly toxic to pets'],
   },
   {
@@ -94,7 +94,7 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [7, 10],
     fertFreqDays: [14, 28],
-    fertRecommendation: 'AgroThrive Organic Liquid Fertilizer (½ strength)',
+    fertRecommendation: 'Espoma Indoor (½ cap/qt) OR Schultz (7 drops/qt)',
     notes: ['Loves humidity — mist or pebble tray in Austin summer', 'Provide moss pole for best growth', 'Toxic to pets'],
   },
   {
@@ -105,7 +105,7 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [3, 5],
     fertFreqDays: [14, 28],
-    fertRecommendation: 'Schultz 10-15-10 (½ strength — roots burn easily)',
+    fertRecommendation: 'Espoma Indoor (½ cap/qt) OR Schultz (7 drops/qt — roots burn easily)',
     notes: ['Never let soil dry out completely', 'Will dramatically wilt when thirsty but recovers quickly', 'Bottom-watering recommended'],
   },
   {
@@ -116,7 +116,7 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [14, 21],
     fertFreqDays: [28, 30],
-    fertRecommendation: 'Schultz 10-15-10 (½ strength)',
+    fertRecommendation: 'Espoma Indoor (½ cap/qt) OR Schultz (7 drops/qt)',
     notes: ['Allow soil to dry COMPLETELY between waterings', 'Toxic to pets', 'Never water into the crown — pour at base only', 'Can get by with just 1–2 feedings per year'],
   },
   {
@@ -127,7 +127,7 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [5, 7],
     fertFreqDays: [14, 28],
-    fertRecommendation: 'Schultz 10-15-10 (½ strength)',
+    fertRecommendation: 'Espoma Indoor (½ cap/qt) OR Schultz (7 drops/qt)',
     notes: ['Pet safe 🐾', 'Sensitive to fluoride — use filtered water', 'Too much fertilizer causes more brown tips than too little'],
   },
   {
@@ -138,7 +138,7 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [14, 21],
     fertFreqDays: [28, 30],
-    fertRecommendation: 'Schultz 10-15-10 (½ strength)',
+    fertRecommendation: 'Espoma Indoor (½ cap/qt) OR Schultz (7 drops/qt)',
     notes: ['Toxic if ingested — wear gloves when handling', 'Stores water in rhizomes — drought is better than overwatering', 'Very slow grower — less is more'],
   },
 
@@ -286,7 +286,7 @@ export const PLANTS: PlantDef[] = [
     emoji: '🍊',
     group: 'outdoor-potted',
     fertFreqDays: [14, 21],
-    fertRecommendation: 'Schultz 10-15-10 (¼ strength — seedling is delicate!)',
+    fertRecommendation: 'Schultz 10-15-10 (3 drops/qt — seedling is delicate!)',
     notes: ['Only 9 inches tall — ¼ strength MAX, never full strength', 'Will not fruit for 5–10+ years from seed', 'Stop fertilizing Nov–Feb'],
     warning: 'Very young seedling — use ¼ strength only to avoid root burn',
   },
@@ -341,7 +341,7 @@ export const PLANTS: PlantDef[] = [
     emoji: '💚',
     group: 'outdoor-potted',
     fertFreqDays: [28, 30],
-    fertRecommendation: 'Schultz 10-15-10 (¼ strength, Apr–Aug only)',
+    fertRecommendation: 'Schultz 10-15-10 (3 drops/qt, Apr–Aug only)',
     notes: ['VERY light feeder — some growers fertilize only 1–2x per YEAR', 'Over-fertilizing causes more harm than under', 'Let soil dry completely between waterings'],
   },
   {
@@ -359,7 +359,7 @@ export const PLANTS: PlantDef[] = [
     emoji: '🌸',
     group: 'outdoor-potted',
     fertFreqDays: [14, 21],
-    fertRecommendation: 'Schultz 10-15-10 (½ strength, high-P promotes blooms)',
+    fertRecommendation: 'Schultz 10-15-10 (7 drops/qt, high-P promotes blooms)',
     notes: ['May semi-rest in extreme Austin heat — reduce/pause during 100°F+ weeks', 'Deadhead spent flowers for new blooms'],
   },
   {
@@ -368,7 +368,7 @@ export const PLANTS: PlantDef[] = [
     emoji: '⭐',
     group: 'outdoor-potted',
     fertFreqDays: [14, 21],
-    fertRecommendation: 'Schultz 10-15-10 (½ strength)',
+    fertRecommendation: 'Schultz 10-15-10 (7 drops/qt)',
     notes: ['Loves Austin summer heat — peak performance now 🌞', 'Excellent butterfly & hummingbird attractor', 'Deadhead to prolong blooming'],
   },
   {

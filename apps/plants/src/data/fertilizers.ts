@@ -51,12 +51,11 @@ export const FERTILIZERS: Fertilizer[] = [
     description: 'Magnesium & sulfur supplement. 1 tbsp per gallon of water. Great for tomatoes, peppers, hibiscus, ginger.',
   },
   {
-    id: 'bio-fertilizer',
-    name: 'Liquid Bio-fertilizer (2017)',
-    npk: 'Unknown',
+    id: 'espoma-indoor',
+    name: 'Espoma Indoor! Liquid Plant Food',
+    npk: '2-2-2',
     type: 'liquid',
-    description: 'Microbial liquid fertilizer purchased in 2017.',
-    warning: '⚠️ ~9 years old — liquid bio-fertilizers have a 2–3 year shelf life. Microbial activity likely degraded. Verify effectiveness before use.',
+    description: 'Natural & organic liquid for houseplants. Mix ½ cap (2 tsp) per quart of water.',
   },
 ];
 
