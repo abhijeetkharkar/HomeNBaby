@@ -12,7 +12,8 @@ const {
 
 const app = express();
 const port = 3000;
-const TABLE_NAME = 'tracker-baby-logs';
+const TRACKER_TABLE = process.env.TRACKER_TABLE_NAME || 'tracker-baby-logs';
+const PLANTS_TABLE = process.env.PLANTS_TABLE_NAME || 'plants-care-logs';
 const REGION = 'us-east-1';
 
 app.use(express.json());
@@ -55,7 +56,7 @@ app.get('/tracker/logs', async (req, res) => {
         const dates = getDatesInRange(from, to);
         const promises = dates.map(date => 
             ddb.send(new QueryCommand({
-                TableName: TABLE_NAME,
+                TableName: TRACKER_TABLE,
                 KeyConditionExpression: '#d = :date',
                 ExpressionAttributeNames: { '#d': 'date' },
                 ExpressionAttributeValues: { ':date': date }
@@ -83,7 +84,7 @@ app.get('/tracker/logs/:date', async (req, res) => {
     try {
         const { date } = req.params;
         const result = await ddb.send(new QueryCommand({
-            TableName: TABLE_NAME,
+            TableName: TRACKER_TABLE,
             KeyConditionExpression: '#d = :date',
             ExpressionAttributeNames: { '#d': 'date' },
             ExpressionAttributeValues: { ':date': date }
@@ -104,7 +105,7 @@ app.post('/tracker/logs', async (req, res) => {
         const logId = `${category}#${new Date().toISOString()}`;
         const item = { date, logId, category, ...rest };
 
-        await ddb.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
+        await ddb.send(new PutCommand({ TableName: TRACKER_TABLE, Item: item }));
         res.status(201).json(item);
     } catch (err) {
         console.error('POST /api/logs error:', err);
@@ -121,7 +122,7 @@ app.put('/tracker/logs/:date/:logId', async (req, res) => {
         // Construct the item based on the existing date and logId
         const item = { ...body, date, logId };
 
-        await ddb.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
+        await ddb.send(new PutCommand({ TableName: TRACKER_TABLE, Item: item }));
         res.status(200).json(item);
     } catch (err) {
         console.error('PUT /api/logs error:', err);
@@ -134,7 +135,7 @@ app.delete('/tracker/logs/:date/:logId', async (req, res) => {
     try {
         const { date, logId } = req.params;
         await ddb.send(new DeleteCommand({
-            TableName: TABLE_NAME,
+            TableName: TRACKER_TABLE,
             Key: { date, logId }
         }));
         res.json({ success: true });
@@ -164,7 +165,7 @@ app.post('/tracker/logs/bulk', async (req, res) => {
 
             await ddb.send(new BatchWriteCommand({
                 RequestItems: {
-                    [TABLE_NAME]: putRequests
+                    [TRACKER_TABLE]: putRequests
                 }
             }));
         }
@@ -191,7 +192,7 @@ app.get('/tracker/summary', async (req, res) => {
 
         const promises = queryDates.map(date => 
             ddb.send(new QueryCommand({
-                TableName: TABLE_NAME,
+                TableName: TRACKER_TABLE,
                 KeyConditionExpression: '#d = :date',
                 ExpressionAttributeNames: { '#d': 'date' },
                 ExpressionAttributeValues: { ':date': date }
@@ -297,6 +298,78 @@ app.get('/tracker/summary', async (req, res) => {
         res.json(Object.values(summaryByDate));
     } catch (err) {
         console.error('GET /api/summary error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ─── PLANTS API ─────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+
+// ─── GET /plants/logs ────────────────────────────────────────────────────────
+app.get('/plants/logs', async (req, res) => {
+    try {
+        const { plantId } = req.query;
+        if (plantId) {
+            const r = await ddb.send(new QueryCommand({
+                TableName: PLANTS_TABLE,
+                KeyConditionExpression: 'plantId = :pid',
+                ExpressionAttributeValues: { ':pid': plantId },
+                ScanIndexForward: false,
+                Limit: 100,
+            }));
+            return res.json(r.Items || []);
+        }
+        // Scan all -> latest per plant per type
+        const { ScanCommand } = require('@aws-sdk/lib-dynamodb');
+        const r = await ddb.send(new ScanCommand({ TableName: PLANTS_TABLE }));
+        const items = r.Items || [];
+        const latest = {};
+        for (const item of items) {
+            const key = `${item.plantId}__${item.type}`;
+            if (!latest[key] || item.timestamp > latest[key].timestamp) latest[key] = item;
+        }
+        res.json(Object.values(latest));
+    } catch (err) {
+        console.error('GET /plants/logs error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── POST /plants/logs ───────────────────────────────────────────────────────
+app.post('/plants/logs', async (req, res) => {
+    try {
+        const { plantId, type, fertilizer, notes } = req.body;
+        if (!plantId || !type) return res.status(400).json({ error: 'plantId and type are required' });
+        
+        const { randomUUID } = require('crypto');
+        const item = {
+            plantId,
+            timestamp: new Date().toISOString(),
+            logId: randomUUID(),
+            type,
+            ...(fertilizer ? { fertilizer } : {}),
+            ...(notes ? { notes } : {}),
+        };
+        await ddb.send(new PutCommand({ TableName: PLANTS_TABLE, Item: item }));
+        res.status(201).json(item);
+    } catch (err) {
+        console.error('POST /plants/logs error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── DELETE /plants/logs/:plantId/:timestamp ─────────────────────────────────
+app.delete('/plants/logs/:plantId/:timestamp', async (req, res) => {
+    try {
+        const { plantId, timestamp } = req.params;
+        await ddb.send(new DeleteCommand({
+            TableName: PLANTS_TABLE,
+            Key: { plantId, timestamp }
+        }));
+        res.json({ deleted: true });
+    } catch (err) {
+        console.error('DELETE /plants/logs error:', err);
         res.status(500).json({ error: err.message });
     }
 });

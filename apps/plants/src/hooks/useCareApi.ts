@@ -12,6 +12,7 @@ export interface CareLog {
 // In dev (no deployed Lambda), fall back to localStorage
 const IS_DEV = import.meta.env.DEV;
 const LS_KEY = 'plants-care-logs-dev';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://api.abhijeetkharkar.com';
 
 function lsGetAll(): CareLog[] {
   try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { return []; }
@@ -37,7 +38,7 @@ export function useCareApi() {
         }
         setLatestLogs(map);
       } else {
-        const res = await fetch('/api/logs');
+        const res = await fetch(`${API_BASE}/plants/logs`);
         if (res.ok) {
           const items: CareLog[] = await res.json();
           const map: Record<string, CareLog> = {};
@@ -76,7 +77,7 @@ export function useCareApi() {
       const all = lsGetAll();
       lsSave([...all, newLog]);
     } else {
-      await fetch('/api/logs', {
+      await fetch(`${API_BASE}/plants/logs`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ plantId, type, fertilizer, notes }),
@@ -90,7 +91,7 @@ export function useCareApi() {
       const all = lsGetAll().filter(l => !(l.plantId === plantId && l.timestamp === timestamp));
       lsSave(all);
     } else {
-      await fetch(`/api/logs/${encodeURIComponent(plantId)}/${encodeURIComponent(timestamp)}`, {
+      await fetch(`${API_BASE}/plants/logs/${encodeURIComponent(plantId)}/${encodeURIComponent(timestamp)}`, {
         method: 'DELETE',
       });
     }

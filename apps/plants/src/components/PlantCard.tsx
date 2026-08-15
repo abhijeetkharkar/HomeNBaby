@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { PlantDef } from '../data/plants';
 import type { CareLog } from '../hooks/useCareApi';
 import { computeUrgency } from '../hooks/useCareApi';

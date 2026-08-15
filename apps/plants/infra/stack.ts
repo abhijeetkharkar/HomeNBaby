@@ -52,7 +52,7 @@ export class PlantsFrontendStack extends cdk.Stack {
     });
 
     new s3deploy.BucketDeployment(this, 'DeployPlantsSite', {
-      sources: [s3deploy.Source.asset(path.join(__dirname, '../dist'))],
+      sources: [s3deploy.Source.asset(path.resolve('dist'))],
       destinationBucket: siteBucket,
       distribution,
       distributionPaths: ['/*'],
