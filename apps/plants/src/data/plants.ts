@@ -4,6 +4,7 @@ export interface PlantDef {
   id: string;
   name: string;
   emoji: string;
+  imageUrl?: string;
   group: PlantGroup;
   /** Indoor only — [min, max] days between watering */
   waterFreqDays?: [number, number];
@@ -23,6 +24,7 @@ export const PLANTS: PlantDef[] = [
     id: 'baby-rubber-plant',
     name: 'Baby Rubber Plant',
     emoji: '🌿',
+    imageUrl: '/plants/baby-rubber-plant.jpg',
     group: 'indoor',
     waterFreqDays: [7, 14],
     fertFreqDays: [28, 30],
@@ -33,6 +35,7 @@ export const PLANTS: PlantDef[] = [
     id: 'copper-king-cactus',
     name: 'Copper King Cactus',
     emoji: '🌵',
+    imageUrl: '/plants/copper-king-cactus.jpg',
     group: 'indoor',
     waterFreqDays: [10, 14],
     fertFreqDays: [28, 30],
@@ -43,6 +46,7 @@ export const PLANTS: PlantDef[] = [
     id: 'cream-allusion-arrowhead',
     name: 'Cream Allusion Arrowhead',
     emoji: '🍃',
+    imageUrl: '/plants/cream-allusion-arrowhead.jpg',
     group: 'indoor',
     waterFreqDays: [4, 7],
     fertFreqDays: [28, 30],
@@ -53,6 +57,7 @@ export const PLANTS: PlantDef[] = [
     id: 'dracaena-compacta',
     name: 'Dracaena compacta',
     emoji: '🌱',
+    imageUrl: '/plants/dracaena-compacta.jpg',
     group: 'indoor',
     waterFreqDays: [7, 14],
     fertFreqDays: [28, 30],
@@ -63,6 +68,7 @@ export const PLANTS: PlantDef[] = [
     id: 'ficus-burgundy',
     name: 'Ficus Burgundy',
     emoji: '🍂',
+    imageUrl: '/plants/ficus-burgundy.jpg',
     group: 'indoor',
     waterFreqDays: [7, 14],
     fertFreqDays: [28, 42],
@@ -73,6 +79,7 @@ export const PLANTS: PlantDef[] = [
     id: 'inchplant',
     name: 'Inchplant',
     emoji: '💜',
+    imageUrl: '/plants/inchplant.jpg',
     group: 'indoor',
     waterFreqDays: [5, 10],
     fertFreqDays: [14, 28],
@@ -83,6 +90,7 @@ export const PLANTS: PlantDef[] = [
     id: 'monstera-adansonii',
     name: 'Monstera adansonii',
     emoji: '🕳️',
+    imageUrl: '/plants/monstera-adansonii.jpg',
     group: 'indoor',
     waterFreqDays: [7, 10],
     fertFreqDays: [14, 28],
@@ -93,6 +101,7 @@ export const PLANTS: PlantDef[] = [
     id: 'nerve-plant',
     name: 'Nerve Plant',
     emoji: '🔴',
+    imageUrl: '/plants/nerve-plant.jpg',
     group: 'indoor',
     waterFreqDays: [3, 5],
     fertFreqDays: [14, 28],
@@ -103,6 +112,7 @@ export const PLANTS: PlantDef[] = [
     id: 'snake-plant',
     name: 'Snake Plant',
     emoji: '🐍',
+    imageUrl: '/plants/snake-plant.jpg',
     group: 'indoor',
     waterFreqDays: [14, 21],
     fertFreqDays: [28, 30],
@@ -113,6 +123,7 @@ export const PLANTS: PlantDef[] = [
     id: 'spider-plant',
     name: 'Spider Plant',
     emoji: '✨',
+    imageUrl: '/plants/spider-plant.jpg',
     group: 'indoor',
     waterFreqDays: [5, 7],
     fertFreqDays: [14, 28],
@@ -123,6 +134,7 @@ export const PLANTS: PlantDef[] = [
     id: 'zz-plant',
     name: 'ZZ Plant',
     emoji: '⚡',
+    imageUrl: '/plants/zz-plant.jpg',
     group: 'indoor',
     waterFreqDays: [14, 21],
     fertFreqDays: [28, 30],

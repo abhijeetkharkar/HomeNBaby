@@ -156,6 +156,16 @@ body {
   box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
 }
 
+.plant-image {
+  width: 60px;
+  height: 60px;
+  margin-right: 1.25rem;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: var(--shadow-sm);
+  border: 2px solid white;
+}
+
 .plant-name-block {
   flex: 1;
 }
@@ -357,6 +367,15 @@ body {
 }
 
 .modal-emoji { font-size: 2.5rem; margin-right: 1rem; }
+.modal-image {
+  width: 64px;
+  height: 64px;
+  margin-right: 1rem;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: var(--shadow-sm);
+  border: 2px solid white;
+}
 .modal-title { font-size: 0.875rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; }
 .modal-subtitle { font-size: 1.25rem; font-weight: 700; color: var(--text-main); }
 .modal-close {

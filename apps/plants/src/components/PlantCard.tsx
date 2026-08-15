@@ -58,7 +58,11 @@ export function PlantCard({ plant, lastWater, lastFert, onLog }: Props) {
       {plant.warning && <div className="plant-warning">⚠️ {plant.warning}</div>}
 
       <div className="plant-card-header" onClick={() => setExpanded(e => !e)}>
-        <span className="plant-emoji">{plant.emoji}</span>
+        {plant.imageUrl ? (
+          <img src={plant.imageUrl} alt={plant.name} className="plant-image" loading="lazy" />
+        ) : (
+          <span className="plant-emoji">{plant.emoji}</span>
+        )}
         <div className="plant-name-block">
           <span className="plant-name">{plant.name}</span>
           <div className="plant-pills">

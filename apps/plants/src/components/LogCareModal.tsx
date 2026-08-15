@@ -27,7 +27,11 @@ export function LogCareModal({ plant, defaultType, onConfirm, onClose }: Props) 
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-card" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <span className="modal-emoji">{plant.emoji}</span>
+          {plant.imageUrl ? (
+            <img src={plant.imageUrl} alt={plant.name} className="modal-image" loading="lazy" />
+          ) : (
+            <span className="modal-emoji">{plant.emoji}</span>
+          )}
           <div>
             <div className="modal-title">Log Care</div>
             <div className="modal-subtitle">{plant.name}</div>
