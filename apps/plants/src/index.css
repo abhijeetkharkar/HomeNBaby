@@ -143,6 +143,28 @@ body {
   user-select: none;
 }
 
+.plant-details {
+  border-top: 1px solid var(--border-color);
+  padding: 1.25rem 1.5rem;
+  background: var(--bg-color);
+  animation: slideDown 0.2s ease-out;
+}
+
+.plant-hero-image-container {
+  width: 100%;
+  margin-bottom: 1.25rem;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.plant-hero-image {
+  width: 100%;
+  height: 250px;
+  object-fit: cover;
+  display: block;
+}
+
 .plant-emoji {
   font-size: 2.5rem;
   margin-right: 1.25rem;

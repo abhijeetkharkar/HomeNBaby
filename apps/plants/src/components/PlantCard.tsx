@@ -76,6 +76,12 @@ export function PlantCard({ plant, lastWater, lastFert, onLog }: Props) {
       </div>
 
       <div className={`plant-card-body ${expanded ? 'expanded' : ''}`}>
+        {plant.imageUrl && (
+          <div className="plant-hero-image-container">
+            <img src={plant.imageUrl} alt={plant.name} className="plant-hero-image" loading="lazy" />
+          </div>
+        )}
+        
         <div className="care-row-grid">
           {plant.waterFreqDays && (
             <div className="care-stat">
