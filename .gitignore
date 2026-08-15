@@ -1,10 +1,27 @@
 node_modules/
 public/
-tasks.db
+dist/
+cdk.out/
+
+# Build artifacts
 lambda-build/
 lambda-deploy.zip
+*.zip
+
+# Old temp files
+tasks.db
 .cf-config.tmp.json
 lambda-out.json
 UsersabhijAgenticTasksHomeNBabylambda-out.json
 server_new.js
 server-sqlite.js
+
+# Temp AWS CLI operational files
+change-batch.json
+config.json
+dist-config-patch.json
+temp-policy.json
+
+# Misc
+*.log
+response.json

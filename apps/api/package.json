@@ -1,0 +1,25 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1029.0",
+    "@aws-sdk/credential-provider-ini": "^3.972.29",
+    "@aws-sdk/lib-dynamodb": "^3.1029.0",
+    "aws-cdk-lib": "^2.264.0",
+    "constructs": "^10.8.1",
+    "express": "^4.18.2",
+    "serverless-http": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "aws-cdk": "^2.1135.1",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  }
+}
