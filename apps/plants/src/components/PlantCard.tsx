@@ -10,110 +10,129 @@ interface Props {
   onLog: (plant: PlantDef, type: 'water' | 'fertilize') => void;
 }
 
-function formatDate(iso: string | null): string {
-  if (!iso) return 'Never';
-  const d = new Date(iso);
-  const today = new Date();
-  const diffDays = Math.floor((today.getTime() - d.getTime()) / 86400000);
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+function getShortFertName(rec: string): string {
+  const lower = rec.toLowerCase();
+  if (lower.includes('agrothrive')) return 'AgroThrive';
+  if (lower.includes('schultz')) return 'Schultz';
+  if (lower.includes('espoma')) return 'Espoma';
+  if (lower.includes('bone meal')) return 'Bone Meal';
+  if (lower.includes('blood meal')) return 'Blood Meal';
+  if (lower.includes('epsom salt')) return 'Epsom Salt';
+  return 'Fertilizer';
 }
 
-function UrgencyPill({ daysUntil, status, label }: { daysUntil: number; status: string; label: string }) {
-  const config: Record<string, { cls: string; text: string }> = {
-    overdue: { cls: 'pill-overdue', text: `${Math.abs(daysUntil)}d overdue` },
-    'due-today': { cls: 'pill-today', text: 'Due today' },
-    'due-soon': { cls: 'pill-soon', text: `${daysUntil}d left` },
-    ok: { cls: 'pill-ok', text: `${daysUntil}d left` },
-    never: { cls: 'pill-never', text: 'No record' },
-  };
-  const c = config[status] || config.never;
-  return (
-    <span className={`urgency-pill ${c.cls}`} title={label}>
-      {c.text}
-    </span>
-  );
+function getStatusColorClass(status: string): string {
+  switch (status) {
+    case 'overdue': return 'text-overdue';
+    case 'due-today': return 'text-today';
+    case 'due-soon': return 'text-soon';
+    case 'ok': return 'text-ok';
+    default: return 'text-never';
+  }
+}
+
+function getStatusText(daysUntil: number, status: string): string {
+  switch (status) {
+    case 'overdue': return `${Math.abs(daysUntil)}d overdue`;
+    case 'due-today': return `Due today`;
+    case 'due-soon': return `${daysUntil}d left`;
+    case 'ok': return `${daysUntil}d left`;
+    default: return `No record`;
+  }
 }
 
 export function PlantCard({ plant, lastWater, lastFert, onLog }: Props) {
-  const [expanded, setExpanded] = useState(false);
+  const [flipped, setFlipped] = useState(false);
 
   const waterUrgency = plant.waterFreqDays
     ? computeUrgency(lastWater?.timestamp || null, plant.waterFreqDays)
     : null;
   const fertUrgency = computeUrgency(lastFert?.timestamp || null, plant.fertFreqDays);
-
-  const worstStatus = [waterUrgency?.status, fertUrgency.status]
-    .filter(Boolean)
-    .includes('overdue') ? 'overdue'
-    : [waterUrgency?.status, fertUrgency.status].filter(Boolean).includes('never') ? 'never'
-    : [waterUrgency?.status, fertUrgency.status].filter(Boolean).includes('due-today') ? 'due-today'
-    : [waterUrgency?.status, fertUrgency.status].filter(Boolean).includes('due-soon') ? 'due-soon'
-    : 'ok';
+  
+  const shortFertName = getShortFertName(plant.fertRecommendation);
 
   return (
-    <div className={`plant-card card-${worstStatus}`}>
-      {plant.warning && <div className="plant-warning">⚠️ {plant.warning}</div>}
-
-      <div className="plant-card-header" onClick={() => setExpanded(e => !e)}>
-        {plant.imageUrl ? (
-          <img src={plant.imageUrl} alt={plant.name} className="plant-image" loading="lazy" />
-        ) : (
-          <span className="plant-emoji">{plant.emoji}</span>
-        )}
-        <div className="plant-name-block">
-          <span className="plant-name">{plant.name}</span>
-          <div className="plant-pills">
-            {waterUrgency && (
-              <UrgencyPill daysUntil={waterUrgency.daysUntil} status={waterUrgency.status} label="Watering" />
-            )}
-            <UrgencyPill daysUntil={fertUrgency.daysUntil} status={fertUrgency.status} label="Fertilizing" />
-          </div>
-        </div>
-        <span className={`chevron ${expanded ? 'open' : ''}`}>›</span>
-      </div>
-
-      <div className={`plant-card-body ${expanded ? 'expanded' : ''}`}>
-        {plant.imageUrl && (
-          <div className="plant-hero-image-container">
-            <img src={plant.imageUrl} alt={plant.name} className="plant-hero-image" loading="lazy" />
-          </div>
-        )}
+    <div className={`flip-card-container ${flipped ? 'flipped' : ''}`}>
+      <div className="flip-card-inner">
         
-        <div className="care-row-grid">
-          {plant.waterFreqDays && (
-            <div className="care-stat">
-              <span className="care-icon">💧</span>
-              <div>
-                <div className="care-label">Last Watered</div>
-                <div className="care-value">{formatDate(lastWater?.timestamp || null)}</div>
-                <div className="care-freq">Every {plant.waterFreqDays[0]}–{plant.waterFreqDays[1]}d</div>
-              </div>
-              <button className="log-btn water-btn" onClick={() => onLog(plant, 'water')}>Log 💧</button>
+        {/* FRONT OF CARD */}
+        <div 
+          className="flip-card-front" 
+          onClick={() => setFlipped(true)}
+          style={{ backgroundImage: plant.imageUrl ? `url(${plant.imageUrl})` : 'none' }}
+        >
+          {!plant.imageUrl && (
+            <div className="front-no-image-bg">
+              <span className="front-emoji-large">{plant.emoji}</span>
             </div>
           )}
-          <div className="care-stat">
-            <span className="care-icon">🌿</span>
-            <div>
-              <div className="care-label">Last Fertilized</div>
-              <div className="care-value">{formatDate(lastFert?.timestamp || null)}</div>
-              <div className="care-freq">Every {plant.fertFreqDays[0]}–{plant.fertFreqDays[1]}d</div>
+          
+          {plant.warning && (
+            <div className="front-warning-top">⚠️ Toxic to pets</div>
+          )}
+          
+          <div className="front-info-panel">
+            <div className="panel-header">
+              <h3 className="panel-title">{plant.name}</h3>
+              <button 
+                className="panel-btn-inline"
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  const defaultTab = waterUrgency?.status.includes('overdue') || waterUrgency?.status.includes('today') ? 'water' : 'fertilize';
+                  onLog(plant, defaultTab); 
+                }}
+              >
+                Log
+              </button>
             </div>
-            <button className="log-btn fert-btn" onClick={() => onLog(plant, 'fertilize')}>Log 🌿</button>
+            
+            <div className="panel-grid">
+              {plant.waterFreqDays ? (
+                <div className="panel-col">
+                  <div className="panel-label">
+                    <span>💧 Water</span>
+                    <span className="panel-freq">{plant.waterFreqDays[0]}-{plant.waterFreqDays[1]}d</span>
+                  </div>
+                  <div className={`panel-status ${getStatusColorClass(waterUrgency!.status)}`}>
+                    {getStatusText(waterUrgency!.daysUntil, waterUrgency!.status)}
+                  </div>
+                </div>
+              ) : (
+                <div className="panel-col" style={{ justifyContent: 'center' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem' }}>No water tracking</span>
+                </div>
+              )}
+
+              <div className="panel-col">
+                <div className="panel-label">
+                  <span>🌿 {shortFertName}</span>
+                  <span className="panel-freq">{plant.fertFreqDays[0]}-{plant.fertFreqDays[1]}d</span>
+                </div>
+                <div className={`panel-status ${getStatusColorClass(fertUrgency.status)}`}>
+                  {getStatusText(fertUrgency.daysUntil, fertUrgency.status)}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="fert-rec">
-          <span className="fert-label">Fertilizer:</span> {plant.fertRecommendation}
+        {/* BACK OF CARD */}
+        <div className="flip-card-back" onClick={() => setFlipped(false)}>
+          <div className="back-scroll-area">
+            <div className="fert-rec">
+              <span className="fert-label">Mix:</span> {plant.fertRecommendation}
+            </div>
+
+            {plant.notes.length > 0 ? (
+              <ul className="plant-notes back-notes">
+                {plant.notes.map((n, i) => <li key={i}>{n}</li>)}
+              </ul>
+            ) : (
+              <p style={{ color: 'var(--text-muted)' }}>No special notes for this plant.</p>
+            )}
+          </div>
         </div>
 
-        {plant.notes.length > 0 && (
-          <ul className="plant-notes">
-            {plant.notes.map((n, i) => <li key={i}>{n}</li>)}
-          </ul>
-        )}
       </div>
     </div>
   );

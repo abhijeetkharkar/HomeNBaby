@@ -1,14 +1,18 @@
 import { useState, useMemo } from 'react';
-import { useCareApi } from './hooks/useCareApi';
+import { useCareApi, computeUrgency } from './hooks/useCareApi';
 import { PLANTS, PLANT_GROUPS } from './data/plants';
 import { FERTILIZERS } from './data/fertilizers';
 import type { PlantGroup, PlantDef } from './data/plants';
 import { PlantCard } from './components/PlantCard';
 import { LogCareModal } from './components/LogCareModal';
 
+type ExtendedGroup = PlantGroup | 'all';
+type FilterType = 'all' | 'water-due' | 'fert-due' | 'agrothrive' | 'schultz' | 'espoma';
+
 function App() {
   const { latestLogs, logCare, loading } = useCareApi();
-  const [activeGroup, setActiveGroup] = useState<PlantGroup>('indoor');
+  const [activeGroup, setActiveGroup] = useState<ExtendedGroup>('all');
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -16,8 +20,39 @@ function App() {
   const [modalType, setModalType] = useState<'water' | 'fertilize'>('water');
 
   const visiblePlants = useMemo(() => {
-    return PLANTS.filter(p => p.group === activeGroup);
-  }, [activeGroup]);
+    let list = PLANTS;
+
+    // 1. Group Filtering
+    if (activeGroup !== 'all') {
+      list = list.filter(p => p.group === activeGroup);
+    }
+
+    // 2. Quick Filtering
+    if (activeFilter !== 'all') {
+      if (activeFilter === 'water-due') {
+        list = list.filter(p => {
+          if (!p.waterFreqDays) return false;
+          const last = latestLogs[`${p.id}__water`]?.timestamp;
+          const urgency = computeUrgency(last || null, p.waterFreqDays);
+          return urgency.status === 'overdue' || urgency.status === 'due-today' || urgency.status === 'due-soon' || urgency.status === 'never';
+        });
+      } else if (activeFilter === 'fert-due') {
+        list = list.filter(p => {
+          const last = latestLogs[`${p.id}__fertilize`]?.timestamp;
+          const urgency = computeUrgency(last || null, p.fertFreqDays);
+          return urgency.status === 'overdue' || urgency.status === 'due-today' || urgency.status === 'due-soon' || urgency.status === 'never';
+        });
+      } else if (activeFilter === 'agrothrive') {
+        list = list.filter(p => p.fertRecommendation.toLowerCase().includes('agrothrive'));
+      } else if (activeFilter === 'schultz') {
+        list = list.filter(p => p.fertRecommendation.toLowerCase().includes('schultz'));
+      } else if (activeFilter === 'espoma') {
+        list = list.filter(p => p.fertRecommendation.toLowerCase().includes('espoma'));
+      }
+    }
+
+    return list;
+  }, [activeGroup, activeFilter, latestLogs]);
 
   const handleOpenModal = (plant: PlantDef, type: 'water' | 'fertilize') => {
     setModalPlant(plant);
@@ -40,27 +75,58 @@ function App() {
   return (
     <div className="app-container">
       <header className="header">
-        <h1 className="title">Plants <span style={{ fontSize: '2rem' }}>🌱</span></h1>
+        <h1 className="title">Plants Tracker <span style={{ fontSize: '2rem' }}>🌱</span></h1>
       </header>
 
-      <div className="group-tabs">
-        {PLANT_GROUPS.map(g => (
-          <button
-            key={g.key}
-            className={`tab-btn ${activeGroup === g.key ? 'active' : ''}`}
-            onClick={() => setActiveGroup(g.key)}
-          >
-            {g.emoji} {g.label}
+      <div className="tracker-filters">
+        <div className="filter-row">
+          <span className="filter-label">Group:</span>
+          <button className={`filter-btn ${activeGroup === 'all' ? 'active' : ''}`} onClick={() => setActiveGroup('all')}>
+            🌎 All
           </button>
-        ))}
+          {PLANT_GROUPS.map(g => (
+            <button
+              key={g.key}
+              className={`filter-btn ${activeGroup === g.key ? 'active' : ''}`}
+              onClick={() => setActiveGroup(g.key)}
+            >
+              {g.emoji} {g.label}
+            </button>
+          ))}
+        </div>
+        
+        <div className="filter-row">
+          <span className="filter-label">Quick:</span>
+          <button className={`filter-btn ${activeFilter === 'all' ? 'active' : ''}`} onClick={() => setActiveFilter('all')}>
+            All Tasks
+          </button>
+          <button className={`filter-btn ${activeFilter === 'water-due' ? 'active' : ''}`} onClick={() => setActiveFilter('water-due')}>
+            💧 Water Due
+          </button>
+          <button className={`filter-btn ${activeFilter === 'fert-due' ? 'active' : ''}`} onClick={() => setActiveFilter('fert-due')}>
+            🌿 Fert Due
+          </button>
+          <button className={`filter-btn ${activeFilter === 'agrothrive' ? 'active' : ''}`} onClick={() => setActiveFilter('agrothrive')}>
+            🧪 AgroThrive
+          </button>
+          <button className={`filter-btn ${activeFilter === 'schultz' ? 'active' : ''}`} onClick={() => setActiveFilter('schultz')}>
+            🧪 Schultz
+          </button>
+          <button className={`filter-btn ${activeFilter === 'espoma' ? 'active' : ''}`} onClick={() => setActiveFilter('espoma')}>
+            🧪 Espoma
+          </button>
+        </div>
       </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-          Loading your garden... 🌿
+          Loading your tracker... 🌿
         </div>
       ) : (
         <div className="plant-list">
+          <div className="results-count">
+            {visiblePlants.length} plant{visiblePlants.length !== 1 ? 's' : ''} match your filters
+          </div>
           {visiblePlants.map(plant => (
             <PlantCard
               key={plant.id}
@@ -71,8 +137,8 @@ function App() {
             />
           ))}
           {visiblePlants.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-              No plants in this category yet.
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', gridColumn: '1 / -1' }}>
+              No plants need attention here! 🎉
             </div>
           )}
         </div>
