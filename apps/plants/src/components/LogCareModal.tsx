@@ -1,24 +1,26 @@
 import React, { useState } from 'react';
 import type { PlantDef } from '../data/plants';
-import { FERTILIZERS } from '../data/fertilizers';
+
 
 interface Props {
   plant: PlantDef;
-  defaultType: 'water' | 'fertilize';
-  onConfirm: (plantId: string, type: 'water' | 'fertilize', fertilizer?: string, notes?: string) => void;
+  defaultType: 'water' | 'fertilize' | 'fertilize-2';
+  onConfirm: (plantId: string, type: 'water' | 'fertilize' | 'fertilize-2', fertilizer?: string, notes?: string) => void;
   onClose: () => void;
 }
 
 export function LogCareModal({ plant, defaultType, onConfirm, onClose }: Props) {
-  const [type, setType] = useState<'water' | 'fertilize'>(defaultType);
-  const [fertilizer, setFertilizer] = useState('');
+  const [type, setType] = useState<'water' | 'fertilize' | 'fertilize-2'>(defaultType);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    await onConfirm(plant.id, type, type === 'fertilize' ? fertilizer || undefined : undefined, notes || undefined);
+    let fertStr = undefined;
+    if (type === 'fertilize') fertStr = plant.fertRecommendation;
+    if (type === 'fertilize-2') fertStr = plant.fertRecommendation2;
+    await onConfirm(plant.id, type, fertStr, notes || undefined);
     setSaving(false);
     onClose();
   };
@@ -56,35 +58,24 @@ export function LogCareModal({ plant, defaultType, onConfirm, onClose }: Props) 
                 type="button"
                 className={`toggle-btn ${type === 'fertilize' ? 'active' : ''}`}
                 onClick={() => setType('fertilize')}
+                title={plant.fertRecommendation}
+                style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
               >
-                🌿 Fertilized
+                🌿 {plant.fertRecommendation}
               </button>
-            </div>
-          </div>
-
-          {type === 'fertilize' && (
-            <div className="field-group">
-              <label className="field-label">Fertilizer Used</label>
-              <div className="fert-rec-hint">💡 Recommended: {plant.fertRecommendation}</div>
-              <select
-                className="field-select"
-                value={fertilizer}
-                onChange={e => setFertilizer(e.target.value)}
-              >
-                <option value="">— Select fertilizer —</option>
-                {FERTILIZERS.map(f => (
-                  <option key={f.id} value={f.id}>
-                    {f.name} {f.warning ? '⚠️' : ''}
-                  </option>
-                ))}
-              </select>
-              {fertilizer === 'bio-fertilizer' && (
-                <div className="field-warning">
-                  ⚠️ This fertilizer is ~9 years old and may have degraded. Verify before use.
-                </div>
+              {plant.fertFreqDays2 && plant.fertRecommendation2 && (
+                <button
+                  type="button"
+                  className={`toggle-btn ${type === 'fertilize-2' ? 'active' : ''}`}
+                  onClick={() => setType('fertilize-2')}
+                  title={plant.fertRecommendation2}
+                  style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                >
+                  🌿 {plant.fertRecommendation2}
+                </button>
               )}
             </div>
-          )}
+          </div>
 
           <div className="field-group">
             <label className="field-label">Notes (optional)</label>

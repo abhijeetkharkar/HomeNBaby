@@ -4,7 +4,7 @@ export interface CareLog {
   plantId: string;
   timestamp: string;
   logId: string;
-  type: 'water' | 'fertilize';
+  type: 'water' | 'fertilize' | 'fertilize-2';
   fertilizer?: string;
   notes?: string;
 }
@@ -60,7 +60,7 @@ export function useCareApi() {
 
   const logCare = useCallback(async (
     plantId: string,
-    type: 'water' | 'fertilize',
+    type: 'water' | 'fertilize' | 'fertilize-2',
     fertilizer?: string,
     notes?: string,
   ) => {

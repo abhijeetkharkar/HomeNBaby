@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useCareApi, computeUrgency } from './hooks/useCareApi';
 import { PLANTS, PLANT_GROUPS } from './data/plants';
-import { FERTILIZERS } from './data/fertilizers';
+
 import type { PlantGroup, PlantDef } from './data/plants';
 import { PlantCard } from './components/PlantCard';
 import { LogCareModal } from './components/LogCareModal';
@@ -17,7 +17,7 @@ function App() {
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
   const [modalPlant, setModalPlant] = useState<PlantDef | null>(null);
-  const [modalType, setModalType] = useState<'water' | 'fertilize'>('water');
+  const [modalType, setModalType] = useState<'water' | 'fertilize' | 'fertilize-2'>('water');
 
   const visiblePlants = useMemo(() => {
     let list = PLANTS;
@@ -54,23 +54,25 @@ function App() {
     return list;
   }, [activeGroup, activeFilter, latestLogs]);
 
-  const handleOpenModal = (plant: PlantDef, type: 'water' | 'fertilize') => {
+  const handleOpenModal = useCallback((plant: PlantDef, defaultType: 'water' | 'fertilize' | 'fertilize-2') => {
     setModalPlant(plant);
-    setModalType(type);
+    setModalType(defaultType);
     setModalOpen(true);
-  };
+  }, []);
 
-  const handleConfirmLog = async (plantId: string, type: 'water' | 'fertilize', fertilizer?: string, notes?: string) => {
+  const handleConfirmLog = useCallback(async (plantId: string, type: 'water' | 'fertilize' | 'fertilize-2', fertilizer?: string, notes?: string) => {
     await logCare(plantId, type, fertilizer, notes);
 
     // Auto-log watering if they fertilize with a liquid fertilizer (since it is water-based)
-    if (type === 'fertilize' && fertilizer) {
-      const fert = FERTILIZERS.find(f => f.id === fertilizer);
-      if (fert && fert.type === 'liquid') {
-        await logCare(plantId, 'water', undefined, `Auto-logged from fertilizing with ${fert.name}`);
+    if (type.includes('fertilize') && fertilizer) {
+      const liquidKeywords = ['schultz', 'agrothrive', 'liquid'];
+      const isLiquid = liquidKeywords.some(k => fertilizer.toLowerCase().includes(k));
+      if (isLiquid) {
+        await logCare(plantId, 'water', undefined, `Auto-logged from ${fertilizer}`);
       }
     }
-  };
+    setModalOpen(false);
+  }, [logCare]);
 
   return (
     <div className="app-container">
@@ -104,7 +106,7 @@ function App() {
             💧 Water Due
           </button>
           <button className={`filter-btn ${activeFilter === 'fert-due' ? 'active' : ''}`} onClick={() => setActiveFilter('fert-due')}>
-            🌿 Fert Due
+            🧪 Fertilizer Due
           </button>
           <button className={`filter-btn ${activeFilter === 'agrothrive' ? 'active' : ''}`} onClick={() => setActiveFilter('agrothrive')}>
             🧪 AgroThrive
@@ -133,6 +135,7 @@ function App() {
               plant={plant}
               lastWater={latestLogs[`${plant.id}__water`] || null}
               lastFert={latestLogs[`${plant.id}__fertilize`] || null}
+              lastFert2={latestLogs[`${plant.id}__fertilize-2`] || null}
               onLog={handleOpenModal}
             />
           ))}
