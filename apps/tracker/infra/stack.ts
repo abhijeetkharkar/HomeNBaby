@@ -9,6 +9,8 @@ import * as targets from 'aws-cdk-lib/aws-route53-targets';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import * as path from 'path';
+import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 
 export class TrackerFrontendStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -49,6 +51,78 @@ export class TrackerFrontendStack extends cdk.Stack {
     });
 
     // API is now hosted independently at api.abhijeetkharkar.com
+
+    // --- Authentication (Cognito) ---
+    const userPool = new cognito.UserPool(this, 'TrackerUserPool', {
+      userPoolName: 'tracker-user-pool',
+      selfSignUpEnabled: true,
+      autoVerify: { email: true },
+      signInAliases: { email: true },
+      passwordPolicy: {
+        minLength: 8,
+        requireLowercase: true,
+        requireUppercase: true,
+        requireDigits: true,
+        requireSymbols: true,
+      },
+      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // Adjust for production
+    });
+
+    const cognitoDomain = userPool.addDomain('CognitoDomain', {
+      cognitoDomain: {
+        domainPrefix: 'tracker-abhijeetkharkar',
+      },
+    });
+
+    const googleProvider = new cognito.UserPoolIdentityProviderGoogle(this, 'GoogleProvider', {
+      userPool: userPool,
+      clientId: '102477411233-ncb6svq2ft8t2926k642mud0d6pfhtlr.apps.googleusercontent.com',
+      // DO NOT hardcode this secret! We pull it from process.env to prevent committing it.
+      clientSecretValue: cdk.SecretValue.unsafePlainText(process.env.GOOGLE_CLIENT_SECRET || ''),
+      scopes: ['profile', 'email', 'openid'],
+      attributeMapping: {
+        email: cognito.ProviderAttribute.GOOGLE_EMAIL,
+        givenName: cognito.ProviderAttribute.GOOGLE_GIVEN_NAME,
+        familyName: cognito.ProviderAttribute.GOOGLE_FAMILY_NAME,
+        profilePicture: cognito.ProviderAttribute.GOOGLE_PICTURE,
+      },
+    });
+
+    const callbackUrls = [
+      'http://localhost:5173/', // Local dev
+      `https://${domainName}/` // Prod
+    ];
+
+    const logoutUrls = [
+      'http://localhost:5173/',
+      `https://${domainName}/`
+    ];
+
+    const userPoolClient = new cognito.UserPoolClient(this, 'TrackerUserPoolClient', {
+      userPool,
+      userPoolClientName: 'tracker-react-client',
+      generateSecret: false, // React is a public client, so no secret
+      supportedIdentityProviders: [
+        cognito.UserPoolClientIdentityProvider.COGNITO,
+        cognito.UserPoolClientIdentityProvider.GOOGLE,
+      ],
+      oAuth: {
+        flows: {
+          authorizationCodeGrant: true,
+        },
+        scopes: [cognito.OAuthScope.OPENID, cognito.OAuthScope.EMAIL, cognito.OAuthScope.PROFILE],
+        callbackUrls: callbackUrls,
+        logoutUrls: logoutUrls,
+      },
+    });
+
+    // Ensure the Google Provider is created before the User Pool Client
+    userPoolClient.node.addDependency(googleProvider);
+
+    new cdk.CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });
+    new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId });
+    new cdk.CfnOutput(this, 'CognitoDomainOutput', { value: cognitoDomain.baseUrl() });
 
     // Create a Route53 alias record for the custom domain
     new route53.ARecord(this, 'SiteAliasRecord', {
