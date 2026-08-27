@@ -1,19 +1,17 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { ThemeProvider, CssBaseline } from '@mui/material';
 import App from './App';
-import { theme } from './theme';
 import { Amplify } from 'aws-amplify';
 import awsExports from './aws-exports';
 import '@aws-amplify/ui-react/styles.css';
+import { BabyProfileProvider } from './hooks/useBabyProfile';
 
 Amplify.configure(awsExports);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <BabyProfileProvider>
       <App />
-    </ThemeProvider>
+    </BabyProfileProvider>
   </React.StrictMode>
 );

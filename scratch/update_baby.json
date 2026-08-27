@@ -1,0 +1,3 @@
+{
+  "UpdateExpression": "REMOVE parents[1]"
+}

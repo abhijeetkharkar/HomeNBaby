@@ -11,7 +11,7 @@ npx cdk deploy --require-approval never --profile admin
 cd ../..
 
 Write-Host "Deploying API..."
-cd apps/api
+cd packages/api
 npx cdk deploy --require-approval never --profile admin
 cd ../..
 

@@ -19,17 +19,18 @@ import {
   FormLabel,
   Chip,
   Checkbox,
+  alpha,
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import ChildCareIcon from '@mui/icons-material/ChildCare';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { format, differenceInDays } from 'date-fns';
 import { useBabyLogs } from '../../hooks/useBabyLogs';
+import { useBabyProfile } from '../../hooks/useBabyProfile';
 import { BabyLog } from '../../types/baby';
 
-const BIRTH_DATE = new Date('2026-07-09T04:19:00');
-
 export function DailyLogView() {
+  const { profile } = useBabyProfile();
   const { logs, fetchLogs, addLog, updateLog, deleteLog } = useBabyLogs();
   const [currentDate, setCurrentDate] = useState(new Date());
   
@@ -54,7 +55,8 @@ export function DailyLogView() {
   const [notes, setNotes] = useState('');
 
   const dateStr = format(currentDate, 'yyyy-MM-dd');
-  const dayNumber = differenceInDays(currentDate, BIRTH_DATE) + 1;
+  const birthDate = profile?.dob ? new Date(profile.dob) : new Date('2026-07-09T04:19:00');
+  const dayNumber = differenceInDays(currentDate, birthDate) + 1;
 
   useEffect(() => {
     fetchLogs(dateStr);
@@ -62,10 +64,17 @@ export function DailyLogView() {
     const prevDate = new Date(currentDate);
     prevDate.setDate(prevDate.getDate() - 1);
     const prevDateStr = format(prevDate, 'yyyy-MM-dd');
-    fetch(`${import.meta.env.VITE_API_URL || 'https://api.abhijeetkharkar.com'}/tracker/logs/${prevDateStr}`)
-      .then(res => res.ok ? res.json() : [])
-      .then(data => setPrevDayLogs(data))
-      .catch(console.error);
+    
+    import('aws-amplify/auth').then(({ fetchAuthSession }) => {
+      fetchAuthSession().then(session => {
+        const token = session.tokens?.idToken?.toString();
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        fetch(`${import.meta.env.VITE_API_URL || 'https://api.abhijeetkharkar.com'}/tracker/logs/${prevDateStr}`, { headers })
+          .then(res => res.ok ? res.json() : [])
+          .then(data => setPrevDayLogs(data))
+          .catch(console.error);
+      }).catch(console.error);
+    });
   }, [dateStr, fetchLogs, currentDate]);
 
   const handleAdd = (cat: any, data: any) => {
@@ -430,9 +439,9 @@ export function DailyLogView() {
               variant="contained"
               sx={{ 
                 py: 2, display: 'flex', flexDirection: 'column', gap: 0.5, 
-                bgcolor: '#f8e8ec', 
-                color: '#d4788c', 
-                '&:hover': { bgcolor: '#f0d8de' },
+                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1), 
+                color: 'primary.main', 
+                '&:hover': { bgcolor: (theme) => alpha(theme.palette.primary.main, 0.2) },
                 px: 1,
                 minWidth: 0,
                 boxShadow: 'none'

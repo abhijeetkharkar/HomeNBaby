@@ -1,15 +1,21 @@
 import { createTheme } from '@mui/material/styles';
 
-export const theme = createTheme({
+export const getHeaderGradient = (gender: 'girl' | 'boy' | 'mixed' | null) => {
+  if (gender === 'girl') return 'linear-gradient(135deg, #d4788c 0%, #e895a6 50%, #d4788c 100%)';
+  if (gender === 'boy') return 'linear-gradient(135deg, #5B8CB9 0%, #7CA8CC 50%, #5B8CB9 100%)';
+  return 'linear-gradient(135deg, #d4788c 0%, #5B8CB9 50%, #d4788c 100%)';
+};
+
+export const getTheme = (gender: 'girl' | 'boy' | 'mixed') => createTheme({
   palette: {
     primary: {
-      main: '#d4788c', // rose
+      main: gender === 'girl' ? '#d4788c' : gender === 'boy' ? '#5B8CB9' : '#a358c2',
     },
     secondary: {
-      main: '#7c6bc4', // soft purple
+      main: gender === 'girl' ? '#7c6bc4' : gender === 'boy' ? '#7CA8CC' : '#5B8CB9',
     },
     background: {
-      default: '#faf7f5', // warm off-white
+      default: '#faf7f5',
     },
   },
   typography: {
@@ -36,6 +42,10 @@ export const theme = createTheme({
           borderRadius: 8,
           textTransform: 'none',
         },
+        containedPrimary: gender === 'mixed' ? {
+          background: 'linear-gradient(135deg, #d4788c 0%, #5B8CB9 100%)',
+          color: 'white',
+        } : undefined,
       },
     },
   },

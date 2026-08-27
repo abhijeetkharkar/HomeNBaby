@@ -7,15 +7,40 @@ export class CoreInfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Reference the existing DynamoDB table for tracker
-    const babyLogsTable = dynamodb.Table.fromTableName(this, 'BabyLogsTable', 'tracker-baby-logs');
-
-    // Store the table ARN in SSM Parameter Store so other apps can look it up
-    new ssm.StringParameter(this, 'BabyLogsTableArnParam', {
-      parameterName: '/tracker/dynamodb/baby-logs-table-arn',
-      stringValue: babyLogsTable.tableArn,
+    // --- Multi-Tenancy Tables ---
+    const babyProfilesTable = new dynamodb.Table(this, 'BabyProfilesTable', {
+      tableName: 'baby-profiles',
+      partitionKey: { name: 'email', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
-    
+
+    const babiesTable = new dynamodb.Table(this, 'BabiesTable', {
+      tableName: 'babies',
+      partitionKey: { name: 'babyId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    const babyLogsTable = new dynamodb.Table(this, 'BabyTrackerLogsTable', {
+      tableName: 'baby-tracker-logs',
+      partitionKey: { name: 'babyId#date', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'logId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    // Store the table ARNs and names in SSM Parameter Store
+    new ssm.StringParameter(this, 'BabyProfilesTableNameParam', {
+      parameterName: '/tracker/dynamodb/baby-profiles-table-name',
+      stringValue: babyProfilesTable.tableName,
+    });
+
+    new ssm.StringParameter(this, 'BabiesTableNameParam', {
+      parameterName: '/tracker/dynamodb/babies-table-name',
+      stringValue: babiesTable.tableName,
+    });
+
     new ssm.StringParameter(this, 'BabyLogsTableNameParam', {
       parameterName: '/tracker/dynamodb/baby-logs-table-name',
       stringValue: babyLogsTable.tableName,

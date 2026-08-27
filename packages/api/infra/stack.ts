@@ -15,10 +15,14 @@ export class ApiStack extends cdk.Stack {
     super(scope, id, props);
 
     // Reference the DynamoDB tables from the Core Infra stack
-    const trackerTableName = 'tracker-baby-logs';
+    const babyProfilesTableName = 'baby-profiles';
+    const babiesTableName = 'babies';
+    const babyLogsTableName = 'baby-tracker-logs';
     const plantsTableName = 'plants-care-logs';
     
-    const trackerTableArn = `arn:aws:dynamodb:${this.region}:${this.account}:table/${trackerTableName}`;
+    const babyProfilesTableArn = `arn:aws:dynamodb:${this.region}:${this.account}:table/${babyProfilesTableName}`;
+    const babiesTableArn = `arn:aws:dynamodb:${this.region}:${this.account}:table/${babiesTableName}`;
+    const babyLogsTableArn = `arn:aws:dynamodb:${this.region}:${this.account}:table/${babyLogsTableName}`;
     const plantsTableArn = `arn:aws:dynamodb:${this.region}:${this.account}:table/${plantsTableName}`;
 
     // Create the Nodejs Lambda function (Express app)
@@ -26,8 +30,12 @@ export class ApiStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_20_X,
       entry: path.join(__dirname, '../lambda.js'),
       handler: 'handler',
+      memorySize: 512,
+      timeout: cdk.Duration.seconds(15),
       environment: {
-        TRACKER_TABLE_NAME: trackerTableName,
+        BABY_PROFILES_TABLE_NAME: babyProfilesTableName,
+        BABIES_TABLE_NAME: babiesTableName,
+        BABY_LOGS_TABLE_NAME: babyLogsTableName,
         PLANTS_TABLE_NAME: plantsTableName,
       },
     });
@@ -39,7 +47,17 @@ export class ApiStack extends cdk.Stack {
         'dynamodb:DeleteItem', 'dynamodb:Scan', 'dynamodb:Query',
         'dynamodb:BatchWriteItem', 'dynamodb:BatchGetItem'
       ],
-      resources: [trackerTableArn, plantsTableArn],
+      resources: [babyProfilesTableArn, babiesTableArn, babyLogsTableArn, plantsTableArn],
+    }));
+
+    // Grant Cognito and SES permissions
+    apiLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'cognito-idp:AdminGetUser',
+        'ses:SendEmail',
+        'ses:SendRawEmail'
+      ],
+      resources: ['*'],
     }));
 
     // Setup Custom Domain

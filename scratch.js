@@ -1,4 +1,11 @@
-const express = require('express');
+const fs = require('fs');
+const content = fs.readFileSync('packages/api/server.js', 'utf8');
+
+const plantsDividerIndex = content.indexOf('// ═════════════════════════════════════════════════════════════════════════════\n// ─── PLANTS API');
+
+const plantsApiStr = content.substring(plantsDividerIndex);
+
+const newTrackerApi = `const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
@@ -12,8 +19,6 @@ const {
 } = require('@aws-sdk/lib-dynamodb');
 const { JwtRsaVerifier } = require('aws-jwt-verify');
 const { randomUUID } = require('crypto');
-const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
-const { CognitoIdentityProviderClient, AdminGetUserCommand } = require('@aws-sdk/client-cognito-identity-provider');
 
 const app = express();
 const port = 3000;
@@ -27,7 +32,7 @@ const REGION = 'us-east-1';
 
 app.use(express.json());
 app.use(cors({
-    origin: [/abhijeetkharkar\.com$/, /localhost/]
+    origin: [/abhijeetkharkar\\.com$/, /localhost/]
 }));
 
 if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
@@ -44,43 +49,10 @@ const ddb = DynamoDBDocumentClient.from(client, {
     marshallOptions: { removeUndefinedValues: true },
 });
 
-const sesClient = new SESClient(clientConfig);
-const cognitoClient = new CognitoIdentityProviderClient(clientConfig);
-
-const USER_POOL_ID = process.env.USER_POOL_ID || 'us-east-1_HHJF1BnjC';
-
 const verifier = JwtRsaVerifier.create({
-  issuer: `https://cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}`,
+  issuer: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_HHJF1BnjC",
   audience: "73qne33k9mi7a1b0oum1d72l3e", // ID token
 });
-
-const sendEmail = async (to, subject, body) => {
-    try {
-        await sesClient.send(new SendEmailCommand({
-            Source: 'tracker@abhijeetkharkar.com',
-            Destination: { ToAddresses: [to] },
-            Message: {
-                Subject: { Data: subject },
-                Body: { Text: { Data: body } }
-            }
-        }));
-    } catch (e) {
-        console.error("Failed to send email to " + to, e);
-    }
-};
-
-const isUserInCognito = async (email) => {
-    try {
-        await cognitoClient.send(new AdminGetUserCommand({
-            UserPoolId: USER_POOL_ID,
-            Username: email
-        }));
-        return true;
-    } catch (err) {
-        if (err.name === 'UserNotFoundException') return false;
-        throw err;
-    }
-};
 
 // Middleware for authentication
 const authMiddleware = async (req, res, next) => {
@@ -105,8 +77,7 @@ app.use(authMiddleware);
 
 // Middleware to resolve babyId for a user
 const requireBaby = async (req, res, next) => {
-    // Only protect /tracker routes that need a baby profile
-    if (!req.path.startsWith('/tracker')) return next();
+    // Profile endpoints don't need this
     if (req.path === '/tracker/profile' || req.path.startsWith('/tracker/profile/')) return next();
     
     try {
@@ -161,7 +132,7 @@ app.get('/tracker/profile', async (req, res) => {
 app.post('/tracker/profile', async (req, res) => {
     try {
         const email = req.user.email;
-        const { name, gender, dob } = req.body;
+        const { name, gender } = req.body;
         
         const existing = await ddb.send(new GetCommand({
             TableName: BABY_PROFILES_TABLE,
@@ -170,7 +141,7 @@ app.post('/tracker/profile', async (req, res) => {
         if (existing.Item) return res.status(400).json({ error: "Profile already exists" });
 
         const babyId = randomUUID();
-        const babyItem = { babyId, name, gender, dob, parents: [email] };
+        const babyItem = { babyId, name, gender, parents: [email] };
         
         await ddb.send(new PutCommand({ TableName: BABIES_TABLE, Item: babyItem }));
         await ddb.send(new PutCommand({ TableName: BABY_PROFILES_TABLE, Item: { email, babyId } }));
@@ -187,49 +158,22 @@ app.post('/tracker/profile/invite', async (req, res) => {
         const { inviteEmail } = req.body;
         if (!inviteEmail) return res.status(400).json({ error: "inviteEmail required" });
         
-        // 1. Check if the invited email already has a baby profile linked
-        const invitedProfileRes = await ddb.send(new GetCommand({ TableName: BABY_PROFILES_TABLE, Key: { email: inviteEmail } }));
-        if (invitedProfileRes.Item) {
-            return res.status(400).json({ error: "This email address is already linked to a baby profile." });
-        }
-        
-        // 2. Ensure inviter actually has a profile
         const profileRes = await ddb.send(new GetCommand({ TableName: BABY_PROFILES_TABLE, Key: { email } }));
         if (!profileRes.Item) return res.status(404).json({ error: "Profile not found" });
         
         const babyId = profileRes.Item.babyId;
-        const babyRes = await ddb.send(new GetCommand({ TableName: BABIES_TABLE, Key: { babyId } }));
-        const babyName = babyRes.Item.name || 'your baby';
         
-        // 3. Link them to the baby profile
         await ddb.send(new PutCommand({ TableName: BABY_PROFILES_TABLE, Item: { email: inviteEmail, babyId } }));
         
+        const babyRes = await ddb.send(new GetCommand({ TableName: BABIES_TABLE, Key: { babyId } }));
         const parents = babyRes.Item.parents || [];
         if (!parents.includes(inviteEmail)) {
             parents.push(inviteEmail);
             await ddb.send(new PutCommand({ TableName: BABIES_TABLE, Item: { ...babyRes.Item, parents } }));
         }
         
-        // 4. Send the appropriate email
-        const userInSystem = await isUserInCognito(inviteEmail);
-        
-        if (userInSystem) {
-            await sendEmail(
-                inviteEmail, 
-                `You have been linked to ${babyName}'s Tracker!`, 
-                `Hello!\n\n${email} has successfully linked your account to ${babyName}'s profile.\n\nYou can now log in at https://tracker.abhijeetkharkar.com to view and add logs.`
-            );
-        } else {
-            await sendEmail(
-                inviteEmail, 
-                `Invitation to join ${babyName}'s Tracker!`, 
-                `Hello!\n\n${email} has invited you to join ${babyName}'s tracker.\n\nPlease go to https://tracker.abhijeetkharkar.com and create an account with this email address to automatically see the shared dashboard!`
-            );
-        }
-        
-        res.json({ success: true, userInSystem });
+        res.json({ success: true });
     } catch (err) {
-        console.error("Invite error:", err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -247,7 +191,7 @@ app.get('/tracker/logs', async (req, res) => {
                 TableName: TRACKER_TABLE,
                 KeyConditionExpression: '#pk = :pk',
                 ExpressionAttributeNames: { '#pk': 'babyId#date' },
-                ExpressionAttributeValues: { ':pk': `${req.babyId}#${date}` }
+                ExpressionAttributeValues: { ':pk': \`\${req.babyId}#\${date}\` }
             }))
         );
 
@@ -272,7 +216,7 @@ app.get('/tracker/logs/:date', async (req, res) => {
             TableName: TRACKER_TABLE,
             KeyConditionExpression: '#pk = :pk',
             ExpressionAttributeNames: { '#pk': 'babyId#date' },
-            ExpressionAttributeValues: { ':pk': `${req.babyId}#${date}` }
+            ExpressionAttributeValues: { ':pk': \`\${req.babyId}#\${date}\` }
         }));
         res.json(result.Items || []);
     } catch (err) {
@@ -285,9 +229,9 @@ app.post('/tracker/logs', async (req, res) => {
         const { date, category, ...rest } = req.body;
         if (!date || !category) return res.status(400).json({ error: 'date and category required' });
 
-        const logId = `${category}#${new Date().toISOString()}`;
+        const logId = \`\${category}#\${new Date().toISOString()}\`;
         const item = { 
-            'babyId#date': `${req.babyId}#${date}`,
+            'babyId#date': \`\${req.babyId}#\${date}\`,
             date, 
             logId, 
             category, 
@@ -306,7 +250,7 @@ app.put('/tracker/logs/:date/:logId', async (req, res) => {
         const { date, logId } = req.params;
         const item = { 
             ...req.body, 
-            'babyId#date': `${req.babyId}#${date}`,
+            'babyId#date': \`\${req.babyId}#\${date}\`,
             date, 
             logId 
         };
@@ -322,7 +266,7 @@ app.delete('/tracker/logs/:date/:logId', async (req, res) => {
         const { date, logId } = req.params;
         await ddb.send(new DeleteCommand({
             TableName: TRACKER_TABLE,
-            Key: { 'babyId#date': `${req.babyId}#${date}`, logId }
+            Key: { 'babyId#date': \`\${req.babyId}#\${date}\`, logId }
         }));
         res.json({ success: true });
     } catch (err) {
@@ -338,8 +282,8 @@ app.post('/tracker/logs/bulk', async (req, res) => {
         for (let i = 0; i < items.length; i += 25) {
             const batch = items.slice(i, i + 25);
             const putRequests = batch.map(item => {
-                if (!item.logId) item.logId = `${item.category}#${new Date().toISOString()}`;
-                item['babyId#date'] = `${req.babyId}#${item.date}`;
+                if (!item.logId) item.logId = \`\${item.category}#\${new Date().toISOString()}\`;
+                item['babyId#date'] = \`\${req.babyId}#\${item.date}\`;
                 return { PutRequest: { Item: item } };
             });
 
@@ -372,7 +316,7 @@ app.get('/tracker/summary', async (req, res) => {
                 TableName: TRACKER_TABLE,
                 KeyConditionExpression: '#pk = :pk',
                 ExpressionAttributeNames: { '#pk': 'babyId#date' },
-                ExpressionAttributeValues: { ':pk': `${req.babyId}#${date}` }
+                ExpressionAttributeValues: { ':pk': \`\${req.babyId}#\${date}\` }
             }))
         );
 
@@ -471,93 +415,6 @@ app.get('/tracker/summary', async (req, res) => {
     }
 });
 
+\n\n\n\n`;
 
-
-
-
-// ═════════════════════════════════════════════════════════════════════════════
-// ─── PLANTS API ─────────────────────────────────────────────────────────────
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ─── GET /plants/logs ────────────────────────────────────────────────────────
-app.get('/plants/logs', async (req, res) => {
-    try {
-        const { plantId } = req.query;
-        if (plantId) {
-            const r = await ddb.send(new QueryCommand({
-                TableName: PLANTS_TABLE,
-                KeyConditionExpression: 'plantId = :pid',
-                ExpressionAttributeValues: { ':pid': plantId },
-                ScanIndexForward: false,
-                Limit: 100,
-            }));
-            return res.json(r.Items || []);
-        }
-        // Scan all -> latest per plant per type
-        const { ScanCommand } = require('@aws-sdk/lib-dynamodb');
-        const r = await ddb.send(new ScanCommand({ TableName: PLANTS_TABLE }));
-        const items = r.Items || [];
-        const latest = {};
-        for (const item of items) {
-            const key = `${item.plantId}__${item.type}`;
-            if (!latest[key] || item.timestamp > latest[key].timestamp) latest[key] = item;
-        }
-        res.json(Object.values(latest));
-    } catch (err) {
-        console.error('GET /plants/logs error:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// ─── POST /plants/logs ───────────────────────────────────────────────────────
-app.post('/plants/logs', async (req, res) => {
-    try {
-        const { plantId, type, fertilizer, notes } = req.body;
-        if (!plantId || !type) return res.status(400).json({ error: 'plantId and type are required' });
-        
-        const { randomUUID } = require('crypto');
-        const item = {
-            plantId,
-            timestamp: new Date().toISOString(),
-            logId: randomUUID(),
-            type,
-            ...(fertilizer ? { fertilizer } : {}),
-            ...(notes ? { notes } : {}),
-        };
-        await ddb.send(new PutCommand({ TableName: PLANTS_TABLE, Item: item }));
-        res.status(201).json(item);
-    } catch (err) {
-        console.error('POST /plants/logs error:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// ─── DELETE /plants/logs/:plantId/:timestamp ─────────────────────────────────
-app.delete('/plants/logs/:plantId/:timestamp', async (req, res) => {
-    try {
-        const { plantId, timestamp } = req.params;
-        await ddb.send(new DeleteCommand({
-            TableName: PLANTS_TABLE,
-            Key: { plantId, timestamp }
-        }));
-        res.json({ deleted: true });
-    } catch (err) {
-        console.error('DELETE /plants/logs error:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-
-// SPA fallback — local only
-if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, 'public', 'index.html'));
-    });
-}
-
-// Start server locally; export app for Lambda
-if (require.main === module) {
-    app.listen(port, () => console.log(`Server at http://localhost:${port}`));
-}
-
-module.exports = app;
+fs.writeFileSync('packages/api/server.js', newTrackerApi + plantsApiStr);

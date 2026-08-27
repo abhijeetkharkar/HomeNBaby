@@ -2,8 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import { format } from 'date-fns';
 import { BabyLog } from '../types/baby';
+import { fetchAuthSession } from 'aws-amplify/auth';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.abhijeetkharkar.com';
+
+const getAuthHeaders = async () => {
+  try {
+    const session = await fetchAuthSession();
+    const token = session.tokens?.idToken?.toString();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch (err) {
+    return {};
+  }
+};
 
 export function HeaderStats() {
   const [logs, setLogs] = useState<BabyLog[]>([]);
@@ -18,9 +29,10 @@ export function HeaderStats() {
       const yesterdayStr = format(yesterday, 'yyyy-MM-dd');
 
       try {
+        const headers = await getAuthHeaders();
         const [resToday, resYesterday] = await Promise.all([
-          fetch(`${API_BASE}/tracker/logs/${todayStr}`),
-          fetch(`${API_BASE}/tracker/logs/${yesterdayStr}`)
+          fetch(`${API_BASE}/tracker/logs/${todayStr}`, { headers }),
+          fetch(`${API_BASE}/tracker/logs/${yesterdayStr}`, { headers })
         ]);
         
         const todayLogs = resToday.ok ? await resToday.json() : [];
@@ -70,7 +82,24 @@ export function HeaderStats() {
   }, [logs]);
 
   return (
-    <Box display="flex" gap={2} alignItems="center">
+    <Box 
+      sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: { xs: 1.5, sm: 2 }, 
+        bgcolor: 'rgba(255, 255, 255, 0.15)', 
+        px: 2, 
+        py: 0.75, 
+        borderRadius: 2,
+        backdropFilter: 'blur(4px)'
+      }}
+    >
+      <Typography variant="caption" sx={{ fontWeight: 600, opacity: 0.9, textTransform: 'uppercase', letterSpacing: 0.5, mr: 0.5, display: { xs: 'none', sm: 'block' } }}>
+        Last 24h
+      </Typography>
+      <Typography variant="caption" sx={{ fontWeight: 600, opacity: 0.9, display: { xs: 'block', sm: 'none' } }}>
+        24h:
+      </Typography>
       <Box display="flex" alignItems="center" gap={0.5}>
         <span style={{ fontSize: '1rem' }}>🤱</span>
         <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{stats.feeds}</Typography>
