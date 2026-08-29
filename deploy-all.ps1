@@ -30,4 +30,9 @@ cd apps/plants
 npx cdk deploy --require-approval never --profile admin
 cd ../..
 
+Write-Host "Deploying Portfolio..."
+cd apps/portfolio
+npx cdk deploy --require-approval never --profile admin
+cd ../..
+
 Write-Host "All deployments finished!"
