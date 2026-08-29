@@ -16,7 +16,7 @@ export class TrackerFrontendStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const domainName = 'tracker.abhijeetkharkar.com';
+    const domainName = 'babytracker.abhijeetkharkar.com';
     const zoneName = 'abhijeetkharkar.com';
 
     // Use the existing wildcard cert (*.abhijeetkharkar.com) — already validated

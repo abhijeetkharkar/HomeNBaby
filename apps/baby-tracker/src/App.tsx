@@ -28,7 +28,7 @@ import { DashboardView } from './components/views/DashboardView';
 import { OnboardingView } from './components/views/OnboardingView';
 import { HeaderStats } from './components/HeaderStats';
 import { Authenticator } from '@aws-amplify/ui-react';
-import { useBabyProfile } from './hooks/useBabyProfile';
+import { useBabyProfile, BabyProfileProvider } from './hooks/useBabyProfile';
 import { getTheme, getHeaderGradient } from './theme';
 
 type ViewTab = 'Daily' | 'Dashboard';
@@ -254,7 +254,11 @@ function MainApp({ signOut }: { signOut?: () => void }) {
 export default function App() {
   return (
     <Authenticator socialProviders={['google']}>
-      {({ signOut }) => <MainApp signOut={signOut} />}
+      {({ signOut }) => (
+        <BabyProfileProvider>
+          <MainApp signOut={signOut} />
+        </BabyProfileProvider>
+      )}
     </Authenticator>
   );
 }

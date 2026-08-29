@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev -w apps/api\" \"npm run dev -w apps/tracker\" \"npm run dev -w apps/plants\" \"npm run dev -w apps/portfolio\"",
+    "dev": "concurrently \"npm run dev -w apps/api\" \"npm run dev -w apps/baby-tracker\" \"npm run dev -w apps/plants\" \"npm run dev -w apps/portfolio\"",
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present"
   },

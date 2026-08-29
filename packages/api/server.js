@@ -57,7 +57,7 @@ const verifier = JwtRsaVerifier.create({
 const sendEmail = async (to, subject, body) => {
     try {
         await sesClient.send(new SendEmailCommand({
-            Source: 'tracker@abhijeetkharkar.com',
+            Source: 'babytracker@abhijeetkharkar.com',
             Destination: { ToAddresses: [to] },
             Message: {
                 Subject: { Data: subject },
@@ -217,13 +217,13 @@ app.post('/tracker/profile/invite', async (req, res) => {
             await sendEmail(
                 inviteEmail, 
                 `You have been linked to ${babyName}'s Tracker!`, 
-                `Hello!\n\n${email} has successfully linked your account to ${babyName}'s profile.\n\nYou can now log in at https://tracker.abhijeetkharkar.com to view and add logs.`
+                `Hello!\n\n${email} has successfully linked your account to ${babyName}'s profile.\n\nYou can now log in at https://babytracker.abhijeetkharkar.com to view and add logs.`
             );
         } else {
             await sendEmail(
                 inviteEmail, 
                 `Invitation to join ${babyName}'s Tracker!`, 
-                `Hello!\n\n${email} has invited you to join ${babyName}'s tracker.\n\nPlease go to https://tracker.abhijeetkharkar.com and create an account with this email address to automatically see the shared dashboard!`
+                `Hello!\n\n${email} has invited you to join ${babyName}'s tracker.\n\nPlease go to https://babytracker.abhijeetkharkar.com and create an account with this email address to automatically see the shared dashboard!`
             );
         }
         

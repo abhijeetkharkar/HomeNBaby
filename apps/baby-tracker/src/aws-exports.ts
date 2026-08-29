@@ -10,8 +10,8 @@ const awsmobile = {
             "openid",
             "profile"
         ],
-        "redirectSignIn": import.meta.env.PROD ? "https://tracker.abhijeetkharkar.com/" : "http://localhost:5173/",
-        "redirectSignOut": import.meta.env.PROD ? "https://tracker.abhijeetkharkar.com/" : "http://localhost:5173/",
+        "redirectSignIn": import.meta.env.PROD ? "https://babytracker.abhijeetkharkar.com/" : "http://localhost:5173/",
+        "redirectSignOut": import.meta.env.PROD ? "https://babytracker.abhijeetkharkar.com/" : "http://localhost:5173/",
         "responseType": "code"
     },
     "federationTarget": "COGNITO_USER_POOLS",

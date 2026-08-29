@@ -4,7 +4,7 @@
 
 A task-tracking app for two concurrent life events: moving to a 3BHK (June 1, 2026) and having a baby (due July 13, 2026) in Texas. Categories include Admin, Garden, Baby, Hospital, and Timeline.
 
-**Live URL:** https://tracker.abhijeetkharkar.com
+**Live URL:** https://babytracker.abhijeetkharkar.com
 
 ---
 
@@ -26,7 +26,7 @@ A task-tracking app for two concurrent life events: moving to a 3BHK (June 1, 20
 ```
                         ┌──────────────────────────────────┐
                         │         Route 53 (DNS)           │
-                        │  tracker.abhijeetkharkar.com     │
+                        │  babytracker.abhijeetkharkar.com     │
                         │  → Alias to CloudFront           │
                         └──────────────┬───────────────────┘
                                        │
@@ -78,14 +78,14 @@ A task-tracking app for two concurrent life events: moving to a 3BHK (June 1, 20
 
 ### Frontend (static assets)
 ```
-Browser → tracker.abhijeetkharkar.com/* → CloudFront → S3 bucket
+Browser → babytracker.abhijeetkharkar.com/* → CloudFront → S3 bucket
 ```
 - `index.html` served with `Cache-Control: no-cache` (always fresh)
 - All other assets (JS/CSS) served with `max-age=31536000,immutable` (Vite content-hashes filenames)
 
 ### API calls
 ```
-Browser → tracker.abhijeetkharkar.com/api/* → CloudFront → API Gateway HTTP API → Lambda → Express → SQLite
+Browser → babytracker.abhijeetkharkar.com/api/* → CloudFront → API Gateway HTTP API → Lambda → Express → SQLite
 ```
 - CloudFront `/api/*` behavior forwards to API Gateway origin
 - CachePolicy: `CachingDisabled` (4135ea2d-6df8-44a3-9df3-4b5a84be39ad)
@@ -166,7 +166,7 @@ All scripts are designed for **Git Bash on Windows**:
 | AWS Account                  | 797884421713                                 |
 | AWS CLI Profile              | `admin`                                      |
 | Region                       | us-east-1                                    |
-| S3 Bucket                    | tracker.abhijeetkharkar.com                  |
+| S3 Bucket                    | babytracker.abhijeetkharkar.com                  |
 | CloudFront Distribution      | E2C4ZYW75CTXZT                               |
 | ACM Certificate              | `*.abhijeetkharkar.com` (existing, ISSUED)   |
 | Route 53 Hosted Zone         | Z13Z70GHALBE08                               |

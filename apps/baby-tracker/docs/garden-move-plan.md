@@ -243,10 +243,10 @@ If you remove sod and loosen native soil but don't dig out, the native soil cont
 - [ ] Update task due dates in tracker once move date confirmed
 - [ ] Sow okra, cucumbers, all gourds today (May 3) in 2.2" pots → greenhouse
 
-*When move date confirmed → update tracker at https://tracker.abhijeetkharkar.com*
+*When move date confirmed → update tracker at https://babytracker.abhijeetkharkar.com*
 
 - [ ] Book bulk topsoil + compost delivery (schedule for day after move-in)
 
 ---
 
-*When move date is confirmed, update task due dates in the tracker app at https://tracker.abhijeetkharkar.com*
+*When move date is confirmed, update task due dates in the tracker app at https://babytracker.abhijeetkharkar.com*
