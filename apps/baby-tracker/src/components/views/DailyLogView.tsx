@@ -284,6 +284,67 @@ export function DailyLogView() {
     return { feeds, feedDuration: Math.round(feedDuration), wet, dirty, sleepHrs: (sleepMin / 60).toFixed(1), tummyTime };
   }, [virtuallySplitLogs]);
 
+  const [timeSince, setTimeSince] = useState({ feed: '', wake: '' });
+
+  useEffect(() => {
+    if (dateStr !== format(new Date(), 'yyyy-MM-dd')) {
+      setTimeSince({ feed: '', wake: '' });
+      return;
+    }
+
+    const computeTimeSince = () => {
+      const now = new Date();
+      let feedStr = '';
+      let wakeStr = '';
+
+      const getLastTime = (category: string) => {
+         const sortedLogs = [...logs].sort((a, b) => (a.startTime || a.time || '00:00').localeCompare(b.startTime || b.time || '00:00'));
+         let log = [...sortedLogs].reverse().find(l => l.category === category);
+         let logDate = dateStr;
+         if (!log) {
+            const sortedPrev = [...prevDayLogs].sort((a, b) => (a.startTime || a.time || '00:00').localeCompare(b.startTime || b.time || '00:00'));
+            log = [...sortedPrev].reverse().find(l => l.category === category);
+            if (!log) return null;
+            const prev = new Date(now);
+            prev.setDate(prev.getDate() - 1);
+            logDate = format(prev, 'yyyy-MM-dd');
+         }
+         
+         const timeStr = log.endTime || log.startTime || log.time;
+         if (!timeStr) return null;
+         
+         const d = new Date(`${logDate}T${timeStr}:00`);
+         const startStr = log.startTime || log.time;
+         if (startStr && log.endTime && log.endTime < startStr) {
+             if (timeStr === log.endTime) {
+                 d.setDate(d.getDate() + 1);
+             }
+         }
+         return d;
+      };
+
+      const lastFeedTime = getLastTime('feed');
+      const lastSleepTime = getLastTime('sleep');
+
+      const formatDiff = (d1: Date, d2: Date) => {
+          const diffMin = Math.floor((d1.getTime() - d2.getTime()) / 60000);
+          if (diffMin < 0) return 'Just now';
+          const h = Math.floor(diffMin / 60);
+          const m = diffMin % 60;
+          return h > 0 ? `${h}h ${m}m` : `${m}m`;
+      };
+
+      if (lastFeedTime) feedStr = formatDiff(now, lastFeedTime);
+      if (lastSleepTime) wakeStr = formatDiff(now, lastSleepTime);
+
+      setTimeSince({ feed: feedStr, wake: wakeStr });
+    };
+
+    computeTimeSince();
+    const interval = setInterval(computeTimeSince, 60000);
+    return () => clearInterval(interval);
+  }, [logs, prevDayLogs, dateStr]);
+
   const milestoneLog = React.useMemo(() => logs.find(l => l.category === 'milestone'), [logs]);
 
   const exportPDF = async () => {
@@ -489,12 +550,19 @@ export function DailyLogView() {
       <Typography variant="h6" mb={2} color="text.secondary">
         {dateStr === format(new Date(), 'yyyy-MM-dd') ? "Today's Stats" : "Day's Stats"}
       </Typography>
-      <Box display="flex" gap={1} flexWrap="wrap" mb={4}>
+      <Box display="flex" gap={1} flexWrap="wrap" mb={dateStr === format(new Date(), 'yyyy-MM-dd') ? 2 : 4}>
         <Chip size="medium" icon={<span style={{ fontSize: '1rem', marginLeft: '6px' }}>🤱</span>} label={`${dailyStats.feeds} feeds (${dailyStats.feedDuration}m)`} sx={{ bgcolor: '#fce4ec', color: '#c2185b', fontWeight: 600, '& .MuiChip-icon': { ml: 0 } }} />
         <Chip size="medium" icon={<span style={{ fontSize: '1rem', marginLeft: '6px' }}>🧷</span>} label={`${dailyStats.wet}W ${dailyStats.dirty}D`} sx={{ bgcolor: '#fff8e1', color: '#f57f17', fontWeight: 600 }} />
         <Chip size="medium" icon={<span style={{ fontSize: '1rem', marginLeft: '6px' }}>😴</span>} label={`${dailyStats.sleepHrs}h sleep`} sx={{ bgcolor: '#ede7f6', color: '#512da8', fontWeight: 600 }} />
         <Chip size="medium" icon={<span style={{ fontSize: '1rem', marginLeft: '6px' }}>🐢</span>} label={`${dailyStats.tummyTime} Tummy`} sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 600 }} />
       </Box>
+
+      {dateStr === format(new Date(), 'yyyy-MM-dd') && (timeSince.feed || timeSince.wake) && (
+        <Box display="flex" gap={1} flexWrap="wrap" mb={4}>
+          {timeSince.feed && <Chip size="medium" label={`Time since feed: ${timeSince.feed}`} sx={{ bgcolor: '#e3f2fd', color: '#1565c0', fontWeight: 600 }} />}
+          {timeSince.wake && <Chip size="medium" label={`Wake time: ${timeSince.wake}`} sx={{ bgcolor: '#fff3e0', color: '#e65100', fontWeight: 600 }} />}
+        </Box>
+      )}
 
       <Typography variant="h6" mb={2} color="text.secondary">Timeline</Typography>
       <Box display="flex" flexDirection="column" gap={2}>
