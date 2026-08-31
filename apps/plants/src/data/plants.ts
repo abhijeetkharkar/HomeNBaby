@@ -41,6 +41,7 @@ export const PLANTS: PlantDef[] = [
     waterFreqDays: [10, 14],
     fertFreqDays: [28, 30],
     fertRecommendation: 'Schultz (10-15-10)',
+    altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Allow top 2-3 inches of soil to dry out between waterings', 'Prone to root rot if overwatered', 'Turn frequently for even growth'],
   },
   {
@@ -55,8 +56,9 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [5, 10],
     fertFreqDays: [14, 28],
-    fertRecommendation: 'AgroThrive General',
-    notes: ['Highly sensitive to tap water salts — use distilled/filtered water', 'Needs high humidity — use humidifier or pebble tray in AC environments', 'Leaves fold up at night like praying hands'],
+    fertRecommendation: 'Espoma Indoor! Liquid Plant Food',
+    altFertilizers: ['AgroThrive General'],
+    notes: ['Highly sensitive to tap water salts and synthetic fertilizers — use distilled/filtered water', 'Needs high humidity — use humidifier or pebble tray in AC environments', 'Leaves fold up at night like praying hands'],
   },
   {
     id: 'baby-rubber-plant',
@@ -69,10 +71,10 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [7, 14],
     fertFreqDays: [28, 30],
-    fertRecommendation: 'Espoma Garden-tone',
+    fertRecommendation: 'Schultz (10-15-10)',
+    altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Succulent-like leaves store water — err dry', 'Stop fertilizing Oct–Feb', 'Never let sit in standing water'],
   },
-  
   {
     id: 'cream-allusion-arrowhead',
     name: 'Cream Allusion Arrowhead',
@@ -83,7 +85,8 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [4, 7],
     fertFreqDays: [28, 30],
-    fertRecommendation: 'Espoma Garden-tone',
+    fertRecommendation: 'Schultz (10-15-10)',
+    altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Keep consistently moist — never soggy', 'Toxic to pets & humans', 'Brown tips = dry air; needs humidity'],
   },
   {
@@ -96,7 +99,8 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [7, 14],
     fertFreqDays: [28, 30],
-    fertRecommendation: 'Espoma Garden-tone',
+    fertRecommendation: 'Schultz (10-15-10)',
+    altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Toxic to cats & dogs', 'Very sensitive to fluoride/chlorine — use filtered water', 'Brown tips usually = water quality, not fertilizer'],
   },
   {
@@ -109,7 +113,8 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [7, 14],
     fertFreqDays: [28, 42],
-    fertRecommendation: 'Espoma Garden-tone',
+    fertRecommendation: 'Schultz (10-15-10)',
+    altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Do not move frequently — drops leaves when stressed', 'Deep color fades in low light', 'Milky sap is a skin irritant'],
   },
   {
@@ -123,7 +128,8 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [5, 10],
     fertFreqDays: [14, 28],
-    fertRecommendation: 'Espoma Garden-tone',
+    fertRecommendation: 'Schultz (10-15-10)',
+    altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Fast grower — benefits from more frequent feeding', 'Pinch tips for bushy growth', 'Mildly toxic to pets'],
   },
   {
@@ -136,7 +142,8 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [7, 10],
     fertFreqDays: [14, 28],
-    fertRecommendation: 'Espoma Garden-tone',
+    fertRecommendation: 'Schultz (10-15-10)',
+    altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Loves humidity — mist or pebble tray in Austin summer', 'Provide moss pole for best growth', 'Toxic to pets'],
   },
   {
@@ -149,7 +156,8 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [3, 5],
     fertFreqDays: [14, 28],
-    fertRecommendation: 'Espoma Garden-tone',
+    fertRecommendation: 'Schultz (10-15-10)',
+    altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Never let soil dry out completely', 'Will dramatically wilt when thirsty but recovers quickly', 'Bottom-watering recommended'],
   },
   {
@@ -163,7 +171,8 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [14, 21],
     fertFreqDays: [28, 30],
-    fertRecommendation: 'Espoma Garden-tone',
+    fertRecommendation: 'Schultz (10-15-10)',
+    altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Allow soil to dry COMPLETELY between waterings', 'Toxic to pets', 'Never water into the crown — pour at base only', 'Can get by with just 1–2 feedings per year'],
   },
   {
@@ -177,7 +186,8 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [5, 7],
     fertFreqDays: [14, 28],
-    fertRecommendation: 'Espoma Garden-tone',
+    fertRecommendation: 'Schultz (10-15-10)',
+    altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Pet safe 🐾', 'Sensitive to fluoride — use filtered water', 'Too much fertilizer causes more brown tips than too little'],
   },
   {
@@ -190,7 +200,8 @@ export const PLANTS: PlantDef[] = [
     group: 'indoor',
     waterFreqDays: [14, 21],
     fertFreqDays: [28, 30],
-    fertRecommendation: 'Espoma Garden-tone',
+    fertRecommendation: 'Schultz (10-15-10)',
+    altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Toxic if ingested — wear gloves when handling', 'Stores water in rhizomes — drought is better than overwatering', 'Very slow grower — less is more'],
   },
 

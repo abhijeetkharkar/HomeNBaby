@@ -11,14 +11,17 @@ interface Props {
 
 export function LogCareModal({ plant, defaultType, onConfirm, onClose }: Props) {
   const [type, setType] = useState<'water' | 'fertilize' | 'fertilize-2'>(defaultType);
+  const [selectedFert, setSelectedFert] = useState<string>(plant.fertRecommendation);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const fertOptions = [plant.fertRecommendation, ...(plant.altFertilizers || [])];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     let fertStr = undefined;
-    if (type === 'fertilize') fertStr = plant.fertRecommendation;
+    if (type === 'fertilize') fertStr = selectedFert;
     if (type === 'fertilize-2') fertStr = plant.fertRecommendation2;
     await onConfirm(plant.id, type, fertStr, notes || undefined);
     setSaving(false);
@@ -76,6 +79,23 @@ export function LogCareModal({ plant, defaultType, onConfirm, onClose }: Props) 
               )}
             </div>
           </div>
+
+          {type === 'fertilize' && fertOptions.length > 1 && (
+            <div className="field-group">
+              <label className="field-label">Fertilizer</label>
+              <select
+                className="field-select"
+                value={selectedFert}
+                onChange={e => setSelectedFert(e.target.value)}
+              >
+                {fertOptions.map(opt => (
+                  <option key={opt} value={opt}>
+                    🧪 {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="field-group">
             <label className="field-label">Notes (optional)</label>

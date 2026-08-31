@@ -43,11 +43,23 @@ function App() {
           return urgency.status === 'overdue' || urgency.status === 'due-today' || urgency.status === 'due-soon' || urgency.status === 'never';
         });
       } else if (activeFilter === 'agrothrive') {
-        list = list.filter(p => p.fertRecommendation.toLowerCase().includes('agrothrive'));
+        list = list.filter(p =>
+          p.fertRecommendation.toLowerCase().includes('agrothrive') ||
+          p.fertRecommendation2?.toLowerCase().includes('agrothrive') ||
+          p.altFertilizers?.some(a => a.toLowerCase().includes('agrothrive'))
+        );
       } else if (activeFilter === 'schultz') {
-        list = list.filter(p => p.fertRecommendation.toLowerCase().includes('schultz'));
+        list = list.filter(p =>
+          p.fertRecommendation.toLowerCase().includes('schultz') ||
+          p.fertRecommendation2?.toLowerCase().includes('schultz') ||
+          p.altFertilizers?.some(a => a.toLowerCase().includes('schultz'))
+        );
       } else if (activeFilter === 'espoma') {
-        list = list.filter(p => p.fertRecommendation.toLowerCase().includes('espoma'));
+        list = list.filter(p =>
+          p.fertRecommendation.toLowerCase().includes('espoma') ||
+          p.fertRecommendation2?.toLowerCase().includes('espoma') ||
+          p.altFertilizers?.some(a => a.toLowerCase().includes('espoma'))
+        );
       }
     }
 
