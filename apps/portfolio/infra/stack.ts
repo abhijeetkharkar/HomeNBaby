@@ -16,21 +16,24 @@ export class PortfolioFrontendStack extends cdk.Stack {
     const domainName = 'portfolio.abhijeetkharkar.com';
     const zoneName = 'abhijeetkharkar.com';
 
-    // ── S3 Bucket ──────────────────────────────────────────────────────────
+    // ── S3 Bucket for Portfolio Site ───────────────────────────────────────
     const siteBucket = new s3.Bucket(this, 'PortfolioSiteBucket', {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
     });
 
-    // ── CloudFront ─────────────────────────────────────────────────────────
+    // ── Route 53 Hosted Zone ───────────────────────────────────────────────
     const zone = route53.HostedZone.fromLookup(this, 'Zone', { domainName: zoneName });
 
-    // Import existing wildcard cert — do NOT create a new one
-    const certificate = acm.Certificate.fromCertificateArn(this, 'SiteCertificate',
+    // ── Shared Wildcard Certificate ────────────────────────────────────────
+    const certificate = acm.Certificate.fromCertificateArn(
+      this,
+      'SiteCertificate',
       'arn:aws:acm:us-east-1:797884421713:certificate/15b73dd4-bcb8-4f54-b9a4-7dc728ed2727'
     );
 
+    // ── 1. Portfolio CloudFront Distribution (portfolio.abhijeetkharkar.com) ─
     const distribution = new cloudfront.Distribution(this, 'PortfolioDistribution', {
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket),
@@ -42,8 +45,6 @@ export class PortfolioFrontendStack extends cdk.Stack {
       certificate,
       errorResponses: [{ httpStatus: 404, responseHttpStatus: 200, responsePagePath: '/index.html' }],
     });
-
-    // API is now handled by shared API Gateway at api.abhijeetkharkar.com
 
     new route53.ARecord(this, 'SiteAliasRecord', {
       recordName: domainName,
@@ -59,5 +60,52 @@ export class PortfolioFrontendStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, 'SiteUrl', { value: `https://${domainName}` });
+
+    // ── 2. Apex & WWW 301 Redirect to portfolio.abhijeetkharkar.com ────────
+    const redirectFunction = new cloudfront.Function(this, 'RedirectToPortfolioFunction', {
+      code: cloudfront.FunctionCode.fromInline(`
+function handler(event) {
+  var request = event.request;
+  var uri = request.uri || '/';
+  return {
+    statusCode: 301,
+    statusDescription: 'Moved Permanently',
+    headers: {
+      'location': { value: 'https://portfolio.abhijeetkharkar.com' + uri }
+    }
+  };
+}
+      `),
+      runtime: cloudfront.FunctionRuntime.JS_2_0,
+    });
+
+    const redirectDistribution = new cloudfront.Distribution(this, 'ApexRedirectDistribution', {
+      defaultBehavior: {
+        origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        functionAssociations: [
+          {
+            function: redirectFunction,
+            eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+          },
+        ],
+      },
+      domainNames: ['abhijeetkharkar.com', 'www.abhijeetkharkar.com'],
+      certificate,
+    });
+
+    new route53.ARecord(this, 'ApexAliasRecord', {
+      recordName: zoneName,
+      target: route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(redirectDistribution)),
+      zone,
+    });
+
+    new route53.ARecord(this, 'WwwAliasRecord', {
+      recordName: `www.${zoneName}`,
+      target: route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(redirectDistribution)),
+      zone,
+    });
+
+    new cdk.CfnOutput(this, 'ApexRedirectUrl', { value: `https://${zoneName}` });
   }
 }
