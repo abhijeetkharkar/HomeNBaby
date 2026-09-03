@@ -1,8 +1,8 @@
 $ErrorActionPreference = "Stop"
 $env:AWS_REGION="us-east-1"
 
-Write-Host "Building frontend apps..."
-npm run build --workspaces --if-present
+Write-Host "Building frontend apps with Nx..."
+npx nx run-many -t build
 
 Write-Host "Bootstrapping and Deploying Core Infra..."
 cd packages/core-infra
@@ -11,7 +11,7 @@ npx cdk deploy --require-approval never --profile admin
 cd ../..
 
 Write-Host "Deploying API..."
-cd packages/api
+cd apps/api
 npx cdk deploy --require-approval never --profile admin
 cd ../..
 
@@ -20,8 +20,8 @@ cd apps/reminders
 npx cdk deploy --require-approval never --profile admin
 cd ../..
 
-Write-Host "Deploying Tracker..."
-cd apps/tracker
+Write-Host "Deploying Baby Tracker..."
+cd apps/baby-tracker
 npx cdk deploy --require-approval never --profile admin
 cd ../..
 
