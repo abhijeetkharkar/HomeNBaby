@@ -1,0 +1,78 @@
+.cinemas {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+
+  @media screen and (min-width: 600px) {
+    width: calc(100% - 4rem);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding: 1rem 0;
+  }
+
+  @media screen and (min-width: 1400px) {
+    width: calc(100% - 4rem);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    padding: 1rem 0;
+  }
+}
+
+.configuration {
+  flex-direction: column;
+  padding: 1rem;
+  width: 100%;
+  gap: 2rem;
+  margin: 1rem;
+
+  @media screen and (min-width: 600px) {
+    width: calc(100% - 4rem);
+    flex-direction: row;
+    justify-content: space-around;
+    gap: 0;
+    margin: 2rem 1rem 1rem;
+  }
+}
+
+.buttons {
+  display: flex;
+  flex-direction: column;
+  row-gap: 1rem;
+
+  @media screen and (min-width: 600px) {
+    width: 30%;
+  }
+}
+
+.buttons__finalize {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.lookupPathsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.lookupPathsContainer__title {
+  margin: 0;
+}
+
+.lookupPaths {
+  display: flex;
+  flex-direction: row;
+  align-content: center;
+  justify-content: space-between;
+}
+
+.lookupPaths__text {
+  margin: 0;
+  align-self: center;
+  background-color: rgb(29, 216, 145);
+  border-radius: 1rem;
+  padding: 0.25rem 0.5rem;
+}

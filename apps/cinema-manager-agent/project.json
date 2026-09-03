@@ -1,0 +1,69 @@
+{
+  "name": "cinema-manager-agent",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/cinema-manager-agent/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/webpack:webpack",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "target": "node",
+        "compiler": "tsc",
+        "outputPath": "dist/apps/cinema-manager-agent",
+        "main": "apps/cinema-manager-agent/src/main.ts",
+        "tsConfig": "apps/cinema-manager-agent/tsconfig.app.json",
+
+        "generatePackageJson": true,
+        "webpackConfig": "apps/cinema-manager-agent/webpack.config.js"
+      },
+      "configurations": {
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "inspect": false,
+          "fileReplacements": [
+            {
+              "replace": "apps/cinema-manager-agent/src/environments/environment.ts",
+              "with": "apps/cinema-manager-agent/src/environments/environment.development.ts"
+            }
+          ]
+        },
+        "production": {
+          "optimization": true,
+          "extractLicenses": true,
+          "inspect": false,
+          "fileReplacements": [
+            {
+              "replace": "apps/cinema-manager-agent/src/environments/environment.ts",
+              "with": "apps/cinema-manager-agent/src/environments/environment.prod.ts"
+            }
+          ]
+        }
+      }
+    },
+    "serve": {
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "cinema-manager-agent:build"
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "cinema-manager-agent:build:development"
+        },
+        "production": {
+          "buildTarget": "cinema-manager-agent:build:production"
+        }
+      }
+    },
+    "package": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pkg dist/apps/cinema-manager-agent/main.js --targets node18-win-x64 --output dist/cinema-manager-agent.exe"
+      }
+    }
+  }
+}

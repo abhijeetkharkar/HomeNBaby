@@ -1,0 +1,51 @@
+<mat-card class="cinema">
+  <img
+    class="cinema__poster"
+    [src]="cinema.poster"
+    alt="{{ cinema.title }} Poster"
+  />
+
+  <div class="cinema__information">
+    <h2 class="title">{{ cinema.title }}</h2>
+    <p class="subtitle">
+      {{ cinema.year }} &centerdot; {{ cinema.rated }} &centerdot;
+      {{ cinema.runtime }}
+    </p>
+    <mat-chip-listbox aria-label="Genres">
+      <mat-chip-option *ngFor="let genre of cinema.genres">{{
+        genre
+      }}</mat-chip-option>
+    </mat-chip-listbox>
+    <p class="mat-body-1 plot">{{ cinema.plot }}</p>
+    <div class="scores">
+      <div class="scores__overall">
+        <mat-icon
+          class="star"
+          aria-hidden="false"
+          aria-label="Star icon"
+          fontIcon="star"
+        ></mat-icon>
+        <p class="rating">
+          <span>{{ cinema.imdbRating }}</span
+          >/{{ 10 }} &centerdot;
+          <span>{{ cinema.imdbVotes | numberWithSuffix }}</span>
+        </p>
+      </div>
+      <div class="scores__popularity">
+        <mat-icon
+          class="trend"
+          aria-hidden="false"
+          aria-label="Trending-Up Icon"
+          fontIcon="trending_up"
+        ></mat-icon>
+        <p class="starMeter">
+          <span>{{ cinema.starMeter | number : "1.0-0" }}</span> &centerdot;
+          <span>{{ cinema.starMeterDifferential }}</span>
+        </p>
+      </div>
+    </div>
+    <button mat-flat-button color="primary" (click)="startCinema()">
+      Start Watching
+    </button>
+  </div>
+</mat-card>
