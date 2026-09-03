@@ -4,14 +4,24 @@
   "private": true,
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "libs/*"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev -w apps/api\" \"npm run dev -w apps/baby-tracker\" \"npm run dev -w apps/plants\" \"npm run dev -w apps/portfolio\"",
-    "build": "npm run build --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "dev": "nx run-many -t dev",
+    "build": "nx run-many -t build",
+    "test": "nx run-many -t test",
+    "lint": "nx run-many -t lint",
+    "affected:build": "nx affected -t build",
+    "graph": "nx graph"
   },
   "devDependencies": {
-    "concurrently": "^10.0.4"
+    "@nx/devkit": "^21.5.3",
+    "@nx/js": "^21.5.3",
+    "@nx/node": "^21.5.3",
+    "@nx/react": "^21.5.3",
+    "@nx/vite": "^21.5.3",
+    "@nx/workspace": "^21.5.3",
+    "concurrently": "^10.0.4",
+    "nx": "^21.5.3"
   }
 }

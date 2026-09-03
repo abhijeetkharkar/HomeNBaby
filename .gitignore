@@ -2,6 +2,10 @@ node_modules/
 public/
 dist/
 cdk.out/
+.nx/
+tmp/
+scratch/
+scratch.*
 
 # Build artifacts
 lambda-build/
