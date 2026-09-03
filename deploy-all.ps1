@@ -5,7 +5,7 @@ Write-Host "Building frontend apps with Nx..."
 npx nx run-many -t build
 
 Write-Host "Bootstrapping and Deploying Core Infra..."
-cd packages/core-infra
+cd libs/core-infra
 npx cdk bootstrap --profile admin
 npx cdk deploy --require-approval never --profile admin
 cd ../..
