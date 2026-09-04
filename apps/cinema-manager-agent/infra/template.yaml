@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Cinema Manager Agent - IAM Role & CloudWatch Log Group'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: 'prod'
+    Description: 'Deployment environment'
+
+  ProjectName:
+    Type: String
+    Default: 'cinema-manager'
+    Description: 'Project name prefix'
+
+Resources:
+  # ── IAM Role for Windows Agent Service ───────────────────────────────────
+  AgentServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-agent-service-role-${Environment}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AgentServicePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                Resource:
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ProjectName}-agents'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ProjectName}-movies'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ProjectName}-lookup-paths'
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/cinema-manager/agents/*'
+      Tags:
+        - Key: App
+          Value: cinema-manager-agent
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── CloudWatch Log Group for Agent ───────────────────────────────────────
+  AgentLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/cinema-manager/agents-${Environment}'
+      RetentionInDays: 30
+      Tags:
+        - Key: App
+          Value: cinema-manager-agent
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  AgentServiceRoleArn:
+    Description: 'Agent Service Role ARN'
+    Value: !GetAtt AgentServiceRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentServiceRoleArn'
+
+  AgentLogGroupName:
+    Description: 'Agent Log Group Name'
+    Value: !Ref AgentLogGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentLogGroupName'

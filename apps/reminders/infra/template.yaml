@@ -1,0 +1,165 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Reminders Service - Scheduled EventBridge Rules & Lambda Function'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: 'prod'
+    Description: 'Deployment environment'
+
+Resources:
+  # ── IAM Role for Reminders Lambda ────────────────────────────────────────
+  ReminderLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'tracker-reminders-role-${Environment}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: RemindersAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Scan
+                  - dynamodb:Query
+                Resource:
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/tracker-baby-logs'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/baby-tracker-logs'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/plants-care-logs'
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                Resource: '*'
+      Tags:
+        - Key: App
+          Value: reminders
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── Reminders Lambda Function ────────────────────────────────────────────
+  ReminderLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'tracker-reminders-handler-${Environment}'
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: !GetAtt ReminderLambdaExecutionRole.Arn
+      MemorySize: 256
+      Timeout: 30
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            console.log("Reminders handler triggered with event:", JSON.stringify(event));
+            return { statusCode: 200, body: "OK" };
+          };
+      Environment:
+        Variables:
+          TABLE_NAME: 'baby-tracker-logs'
+          PLANTS_TABLE_NAME: 'plants-care-logs'
+          NOTIFICATIONS_MODE: '{"baby":"email","plants":"email"}'
+      Tags:
+        - Key: App
+          Value: reminders
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── EventBridge Scheduled Rules ──────────────────────────────────────────
+  RulePlants:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub 'reminders-rule-plants-${Environment}'
+      ScheduleExpression: 'cron(0 13 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: ReminderLambdaTarget
+          Arn: !GetAtt ReminderLambda.Arn
+          Input: '{"task":"plants"}'
+
+  RuleTummyTime1:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub 'reminders-rule-tummy1-${Environment}'
+      ScheduleExpression: 'cron(0 17 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: ReminderLambdaTarget
+          Arn: !GetAtt ReminderLambda.Arn
+          Input: '{"task":"baby","check":"tummyTime1"}'
+
+  RuleMassage:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub 'reminders-rule-massage-${Environment}'
+      ScheduleExpression: 'cron(0 21 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: ReminderLambdaTarget
+          Arn: !GetAtt ReminderLambda.Arn
+          Input: '{"task":"baby","check":"massage"}'
+
+  RuleVitDAndTummy2:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub 'reminders-rule-vitd-tummy2-${Environment}'
+      ScheduleExpression: 'cron(0 23 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: ReminderLambdaTarget
+          Arn: !GetAtt ReminderLambda.Arn
+          Input: '{"task":"baby","check":"vitD_tummyTime2"}'
+
+  RuleBath:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub 'reminders-rule-bath-${Environment}'
+      ScheduleExpression: 'cron(0 0 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: ReminderLambdaTarget
+          Arn: !GetAtt ReminderLambda.Arn
+          Input: '{"task":"baby","check":"bath"}'
+
+  RuleNails:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub 'reminders-rule-nails-${Environment}'
+      ScheduleExpression: 'cron(0 15 ? * SUN *)'
+      State: ENABLED
+      Targets:
+        - Id: ReminderLambdaTarget
+          Arn: !GetAtt ReminderLambda.Arn
+          Input: '{"task":"baby","check":"nails"}'
+
+  # ── Lambda Permissions for EventBridge Rules ─────────────────────────────
+  ReminderLambdaPermissionEvents:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ReminderLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/reminders-rule-*'
+
+Outputs:
+  ReminderLambdaArn:
+    Description: 'Reminders Lambda ARN'
+    Value: !GetAtt ReminderLambda.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaArn'
+
+  ReminderLambdaName:
+    Description: 'Reminders Lambda Function Name'
+    Value: !Ref ReminderLambda
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaName'

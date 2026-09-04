@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "powershell -ExecutionPolicy Bypass -File ./infra/deploy.ps1"
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.15.5",

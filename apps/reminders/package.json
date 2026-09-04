@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "main": "reminder-lambda.js",
+  "scripts": {
+    "build": "esbuild reminder-lambda.js --bundle --platform=node --target=node20 --outfile=dist/index.js",
+    "deploy": "powershell -ExecutionPolicy Bypass -File ./infra/deploy.ps1"
+  },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1029.0",
     "@aws-sdk/client-sns": "^3.1104.0",

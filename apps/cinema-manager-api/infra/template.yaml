@@ -1,0 +1,316 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Cinema Manager API - DynamoDB Tables, Lambda Backend & HTTP API Gateway (api.cinema.abhijeetkharkar.com)'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: 'prod'
+    Description: 'Deployment environment'
+
+  ProjectName:
+    Type: String
+    Default: 'cinema-manager'
+    Description: 'Project name prefix'
+
+  DomainName:
+    Type: String
+    Default: 'api.cinema.abhijeetkharkar.com'
+    Description: 'Custom domain name for Cinema API'
+
+  HostedZoneId:
+    Type: String
+    Default: 'Z13Z70GHALBE08'
+    Description: 'Route 53 Hosted Zone ID for abhijeetkharkar.com'
+
+  CertificateArn:
+    Type: String
+    Default: 'arn:aws:acm:us-east-1:797884421713:certificate/15b73dd4-bcb8-4f54-b9a4-7dc728ed2727'
+    Description: 'ACM Certificate ARN in us-east-1'
+
+Resources:
+  # ── 1. DynamoDB Tables ───────────────────────────────────────────────────
+  MoviesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${ProjectName}-movies'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: N
+        - AttributeName: title
+          AttributeType: S
+        - AttributeName: year
+          AttributeType: N
+        - AttributeName: genre
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: TitleYearIndex
+          KeySchema:
+            - AttributeName: title
+              KeyType: HASH
+            - AttributeName: year
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: GenreIndex
+          KeySchema:
+            - AttributeName: genre
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: App
+          Value: cinema-manager-api
+        - Key: Environment
+          Value: !Ref Environment
+
+  AgentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${ProjectName}-agents'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: agentId
+          AttributeType: S
+        - AttributeName: agentName
+          AttributeType: S
+      KeySchema:
+        - AttributeName: agentId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: AgentNameIndex
+          KeySchema:
+            - AttributeName: agentName
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: App
+          Value: cinema-manager-api
+        - Key: Environment
+          Value: !Ref Environment
+
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${ProjectName}-users'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: EmailIndex
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: App
+          Value: cinema-manager-api
+        - Key: Environment
+          Value: !Ref Environment
+
+  LookupPathsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${ProjectName}-lookup-paths'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: N
+        - AttributeName: path
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: PathIndex
+          KeySchema:
+            - AttributeName: path
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: App
+          Value: cinema-manager-api
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── 2. IAM Role for Cinema API Lambda ────────────────────────────────────
+  CinemaApiLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-api-lambda-role-${Environment}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - dynamodb:BatchGetItem
+                  - dynamodb:BatchWriteItem
+                Resource:
+                  - !GetAtt MoviesTable.Arn
+                  - !Sub '${MoviesTable.Arn}/index/*'
+                  - !GetAtt AgentsTable.Arn
+                  - !Sub '${AgentsTable.Arn}/index/*'
+                  - !GetAtt UsersTable.Arn
+                  - !Sub '${UsersTable.Arn}/index/*'
+                  - !GetAtt LookupPathsTable.Arn
+                  - !Sub '${LookupPathsTable.Arn}/index/*'
+      Tags:
+        - Key: App
+          Value: cinema-manager-api
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── 3. Lambda Function for Cinema API ────────────────────────────────────
+  CinemaApiLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-api-${Environment}'
+      Runtime: nodejs20.x
+      Handler: main.handler
+      Role: !GetAtt CinemaApiLambdaRole.Arn
+      MemorySize: 512
+      Timeout: 15
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            return { statusCode: 200, body: JSON.stringify({ message: "Cinema API Online" }) };
+          };
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          MOVIES_TABLE: !Ref MoviesTable
+          AGENTS_TABLE: !Ref AgentsTable
+          USERS_TABLE: !Ref UsersTable
+          LOOKUP_PATHS_TABLE: !Ref LookupPathsTable
+      Tags:
+        - Key: App
+          Value: cinema-manager-api
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── 4. API Gateway Custom Domain & HTTP API ──────────────────────────────
+  CinemaApiCustomDomain:
+    Type: AWS::ApiGatewayV2::DomainName
+    Properties:
+      DomainName: !Ref DomainName
+      DomainNameConfigurations:
+        - CertificateArn: !Ref CertificateArn
+          EndpointType: REGIONAL
+      Tags:
+        App: cinema-manager-api
+        Environment: !Ref Environment
+
+  CinemaHttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub '${ProjectName}-http-api-${Environment}'
+      ProtocolType: HTTP
+      Tags:
+        App: cinema-manager-api
+        Environment: !Ref Environment
+
+  CinemaHttpApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref CinemaHttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt CinemaApiLambda.Arn
+      PayloadFormatVersion: '2.0'
+
+  CinemaHttpApiDefaultRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref CinemaHttpApi
+      RouteKey: '$default'
+      Target: !Sub 'integrations/${CinemaHttpApiIntegration}'
+
+  CinemaHttpApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref CinemaHttpApi
+      StageName: '$default'
+      AutoDeploy: true
+
+  CinemaApiMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    DependsOn:
+      - CinemaHttpApiStage
+      - CinemaApiCustomDomain
+    Properties:
+      ApiId: !Ref CinemaHttpApi
+      DomainName: !Ref DomainName
+      Stage: '$default'
+
+  CinemaApiLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CinemaApiLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CinemaHttpApi}/*/*'
+
+  CinemaApiDnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        HostedZoneId: !GetAtt CinemaApiCustomDomain.RegionalHostedZoneId
+        DNSName: !GetAtt CinemaApiCustomDomain.RegionalDomainName
+
+Outputs:
+  CinemaApiEndpoint:
+    Description: 'Cinema Manager API URL'
+    Value: !Sub 'https://${DomainName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-Endpoint'
+
+  CinemaApiLambdaName:
+    Description: 'Cinema API Lambda Function Name'
+    Value: !Ref CinemaApiLambda
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaName'
+
+  MoviesTableName:
+    Description: 'Movies Table Name'
+    Value: !Ref MoviesTable
+    Export:
+      Name: !Sub '${AWS::StackName}-MoviesTable'

@@ -1,0 +1,217 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Portfolio Application - S3, CloudFront & Apex Redirect Infrastructure'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: 'prod'
+    Description: 'Deployment environment'
+
+  DomainName:
+    Type: String
+    Default: 'portfolio.abhijeetkharkar.com'
+    Description: 'Primary domain for portfolio'
+
+  ApexDomainName:
+    Type: String
+    Default: 'abhijeetkharkar.com'
+    Description: 'Apex domain for redirect'
+
+  HostedZoneId:
+    Type: String
+    Default: 'Z08639722Q1C0F7Y22X7E'
+    Description: 'Route 53 Hosted Zone ID for abhijeetkharkar.com'
+
+  CertificateArn:
+    Type: String
+    Default: 'arn:aws:acm:us-east-1:797884421713:certificate/15b73dd4-bcb8-4f54-b9a4-7dc728ed2727'
+    Description: 'ACM Wildcard Certificate ARN in us-east-1'
+
+Resources:
+  # ── S3 Bucket for Portfolio Static Assets ────────────────────────────────
+  PortfolioBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'portfolio-frontend-${Environment}-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: App
+          Value: portfolio
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── Origin Access Control (OAC) ──────────────────────────────────────────
+  PortfolioOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub 'portfolio-oac-${Environment}'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # ── S3 Bucket Policy for CloudFront OAC Access ───────────────────────────
+  PortfolioBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref PortfolioBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontServicePrincipalReadOnly
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${PortfolioBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${PortfolioDistribution}'
+
+  # ── 1. Primary CloudFront Distribution (portfolio.abhijeetkharkar.com) ──
+  PortfolioDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Ref DomainName
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt PortfolioBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt PortfolioOAC.Id
+            S3OriginConfig: {}
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # Managed-CachingOptimized
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        ViewerCertificate:
+          AcmCertificateArn: !Ref CertificateArn
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+      Tags:
+        - Key: App
+          Value: portfolio
+        - Key: Environment
+          Value: !Ref Environment
+
+  PortfolioDnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2 # CloudFront standard hosted zone ID
+        DNSName: !GetAtt PortfolioDistribution.DomainName
+
+  # ── 2. Apex & WWW 301 Redirect Function & Distribution ───────────────────
+  RedirectFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub 'portfolio-apex-redirect-${Environment}'
+      AutoPublish: true
+      FunctionConfig:
+        Comment: 'Redirect apex and www to portfolio.abhijeetkharkar.com'
+        Runtime: cloudfront-js-2.0
+      FunctionCode: !Sub |
+        function handler(event) {
+          var request = event.request;
+          var uri = request.uri || '/';
+          return {
+            statusCode: 301,
+            statusDescription: 'Moved Permanently',
+            headers: {
+              'location': { value: 'https://${DomainName}' + uri }
+            }
+          };
+        }
+
+  ApexRedirectDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Ref ApexDomainName
+          - !Sub 'www.${ApexDomainName}'
+        DefaultRootObject: ''
+        Enabled: true
+        HttpVersion: http2
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: S3DummyOrigin
+            DomainName: !GetAtt PortfolioBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt PortfolioOAC.Id
+            S3OriginConfig: {}
+        DefaultCacheBehavior:
+          TargetOriginId: S3DummyOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD]
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt RedirectFunction.FunctionMetadata.FunctionARN
+        ViewerCertificate:
+          AcmCertificateArn: !Ref CertificateArn
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+      Tags:
+        - Key: App
+          Value: portfolio
+        - Key: Environment
+          Value: !Ref Environment
+
+  ApexDnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref ApexDomainName
+      Type: A
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2
+        DNSName: !GetAtt ApexRedirectDistribution.DomainName
+
+  WwwDnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Sub 'www.${ApexDomainName}'
+      Type: A
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2
+        DNSName: !GetAtt ApexRedirectDistribution.DomainName
+
+Outputs:
+  PortfolioBucketName:
+    Description: 'Portfolio S3 Bucket Name'
+    Value: !Ref PortfolioBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-Bucket'
+
+  PortfolioDistributionId:
+    Description: 'Portfolio CloudFront Distribution ID'
+    Value: !Ref PortfolioDistribution
+    Export:
+      Name: !Sub '${AWS::StackName}-DistributionId'
+
+  SiteUrl:
+    Description: 'Portfolio URL'
+    Value: !Sub 'https://${DomainName}'

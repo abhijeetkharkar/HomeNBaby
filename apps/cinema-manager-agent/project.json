@@ -64,6 +64,12 @@
       "options": {
         "command": "pkg dist/apps/cinema-manager-agent/main.js --targets node18-win-x64 --output dist/cinema-manager-agent.exe"
       }
+    },
+    "deploy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "powershell -ExecutionPolicy Bypass -File apps/cinema-manager-agent/infra/deploy.ps1"
+      }
     }
   }
 }
