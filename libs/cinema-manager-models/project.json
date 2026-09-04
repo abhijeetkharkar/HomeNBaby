@@ -1,0 +1,26 @@
+{
+  "name": "cinema-manager-models",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/cinema-manager-models/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/cinema-manager-models",
+        "main": "libs/cinema-manager-models/src/index.ts",
+        "tsConfig": "libs/cinema-manager-models/tsconfig.lib.json",
+        "assets": ["libs/cinema-manager-models/*.md"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "libs/cinema-manager-models/jest.config.ts"
+      }
+    }
+  }
+}

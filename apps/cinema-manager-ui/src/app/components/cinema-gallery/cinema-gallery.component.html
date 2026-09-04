@@ -1,0 +1,48 @@
+<ng-container *ngIf="!isFirstTime; else firstTime">
+  <div class="cinemas">
+    <app-cinema *ngFor="let cinema of cinemas" [cinema]="cinema"></app-cinema>
+  </div>
+</ng-container>
+
+<ng-template #firstTime>
+  <mat-card
+    *ngIf="isFirstTime || isManageLookupFoldersClicked"
+    class="configuration"
+  >
+    <div class="buttons">
+      <button mat-flat-button color="primary" (click)="browse()">
+        <mat-icon aria-hidden="false" aria-label="Settings Icon"
+          >settings</mat-icon
+        >
+        Add Lookup Paths
+      </button>
+      <div class="buttons__finalize">
+        <button
+          mat-flat-button
+          color="primary"
+          (click)="finishAddingLookupPaths()"
+        >
+          Finish
+        </button>
+      </div>
+    </div>
+    <div class="lookupPathsContainer" *ngIf="selectedLookupPaths.length > 0">
+      <h3 class="lookupPathsContainer__title">Your selected lookup paths:</h3>
+      <div
+        *ngFor="let lookupPath of selectedLookupPaths; let i = index"
+        class="lookupPaths"
+      >
+        <p class="mat-body-1 lookupPaths__text">{{ lookupPath }}</p>
+        <button
+          mat-button
+          class="lookupPaths__button"
+          color="warn"
+          aria-label="Example icon button with a filter list icon"
+          (click)="removeFromLookupPaths(i)"
+        >
+          <mat-icon>cancel</mat-icon>
+        </button>
+      </div>
+    </div>
+  </mat-card>
+</ng-template>
