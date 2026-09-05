@@ -23,68 +23,6 @@ Parameters:
     Description: 'ACM Wildcard Certificate ARN in us-east-1'
 
 Resources:
-  # ── DynamoDB Tables for Baby Tracker ─────────────────────────────────────
-  BabyProfilesTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: 'baby-profiles'
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: email
-          AttributeType: S
-      KeySchema:
-        - AttributeName: email
-          KeyType: HASH
-      PointInTimeRecoverySpecification:
-        PointInTimeRecoveryEnabled: true
-      Tags:
-        - Key: App
-          Value: baby-tracker
-        - Key: Environment
-          Value: !Ref Environment
-
-  BabiesTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: 'babies'
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: babyId
-          AttributeType: S
-      KeySchema:
-        - AttributeName: babyId
-          KeyType: HASH
-      PointInTimeRecoverySpecification:
-        PointInTimeRecoveryEnabled: true
-      Tags:
-        - Key: App
-          Value: baby-tracker
-        - Key: Environment
-          Value: !Ref Environment
-
-  BabyTrackerLogsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: 'baby-tracker-logs'
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: 'babyId#date'
-          AttributeType: S
-        - AttributeName: logId
-          AttributeType: S
-      KeySchema:
-        - AttributeName: 'babyId#date'
-          KeyType: HASH
-        - AttributeName: logId
-          KeyType: RANGE
-      PointInTimeRecoverySpecification:
-        PointInTimeRecoveryEnabled: true
-      Tags:
-        - Key: App
-          Value: baby-tracker
-        - Key: Environment
-          Value: !Ref Environment
-
   # ── Cognito Authentication ───────────────────────────────────────────────
   TrackerUserPool:
     Type: AWS::Cognito::UserPool

@@ -94,6 +94,8 @@ Resources:
           BABIES_TABLE_NAME: 'babies'
           BABY_LOGS_TABLE_NAME: 'baby-tracker-logs'
           PLANTS_TABLE_NAME: 'plants-care-logs'
+          USER_POOL_ID: 'us-east-1_SFrRMOVHi'
+          USER_POOL_CLIENT_ID: '6ci895vprgja3c4ts2kit1urvl'
       Tags:
         - Key: App
           Value: api
