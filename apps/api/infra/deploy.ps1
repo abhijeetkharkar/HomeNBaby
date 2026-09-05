@@ -19,21 +19,41 @@ if (-not (Test-Path $DistDir)) {
 
 Push-Location $AppRoot
 try {
-    npx esbuild lambda.js --bundle --platform=node --target=node20 --outfile=(Join-Path $DistDir "index.js")
-    Compress-Archive -Path (Join-Path $DistDir "index.js") -DestinationPath $ZipFile -Force
+    $OutJs = Join-Path $DistDir "index.js"
+    npx esbuild lambda.js --bundle --platform=node --target=node20 "--outfile=$OutJs"
+    Compress-Archive -Path $OutJs -DestinationPath $ZipFile -Force
 } finally {
     Pop-Location
 }
 
+Write-Host "Parsing parameters from $ParamFile..." -ForegroundColor Cyan
+$Params = @()
+if (Test-Path $ParamFile) {
+    $paramObj = Get-Content $ParamFile -Raw | ConvertFrom-Json
+    foreach ($prop in $paramObj.PSObject.Properties) {
+        $Params += "$($prop.Name)=$($prop.Value)"
+    }
+}
+
 Write-Host "Deploying CloudFormation stack: $StackName..." -ForegroundColor Cyan
-aws cloudformation deploy `
-    --stack-name $StackName `
-    --template-file $TemplateFile `
-    --parameter-overrides file://$ParamFile `
-    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM `
-    --region $Region `
-    --profile $Profile `
-    --no-fail-on-empty-changeset
+if ($Params.Count -gt 0) {
+    aws cloudformation deploy `
+        --stack-name $StackName `
+        --template-file $TemplateFile `
+        --parameter-overrides @Params `
+        --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM `
+        --region $Region `
+        --profile $Profile `
+        --no-fail-on-empty-changeset
+} else {
+    aws cloudformation deploy `
+        --stack-name $StackName `
+        --template-file $TemplateFile `
+        --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM `
+        --region $Region `
+        --profile $Profile `
+        --no-fail-on-empty-changeset
+}
 
 Write-Host "Fetching Lambda function name..." -ForegroundColor Cyan
 $FunctionName = aws cloudformation describe-stacks `

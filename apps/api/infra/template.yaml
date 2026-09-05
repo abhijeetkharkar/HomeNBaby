@@ -165,6 +165,37 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/*'
 
+  # ── Cinema Manager API Integration & Routes ──────────────────────────────
+  CinemaHttpApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cinema-manager-api-${Environment}'
+      PayloadFormatVersion: '2.0'
+
+  CinemaHttpApiProxyRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'ANY /cinema-manager/{proxy+}'
+      Target: !Sub 'integrations/${CinemaHttpApiIntegration}'
+
+  CinemaHttpApiRootRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'ANY /cinema-manager'
+      Target: !Sub 'integrations/${CinemaHttpApiIntegration}'
+
+  CinemaLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Sub 'cinema-manager-api-${Environment}'
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/*'
+
   # ── Route 53 DNS Alias Record ────────────────────────────────────────────
   ApiDnsRecord:
     Type: AWS::Route53::RecordSet

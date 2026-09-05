@@ -8,30 +8,52 @@ $ErrorActionPreference = "Stop"
 $StackName = "cinema-manager-api-stack-$Environment"
 $TemplateFile = Join-Path $PSScriptRoot "template.yaml"
 $ParamFile = Join-Path $PSScriptRoot "parameters\$Environment.json"
-$WorkspaceRoot = Resolve-Path (Join-Path $PSScriptRoot "../../..")
-$DistDir = Join-Path $WorkspaceRoot "dist\apps\cinema-manager-api"
+$AppRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+$DistDir = Join-Path $AppRoot "dist"
 $ZipFile = Join-Path $DistDir "lambda.zip"
 
-Write-Host "Building Cinema Manager API..." -ForegroundColor Cyan
-Push-Location $WorkspaceRoot
+Write-Host "Bundling Cinema Manager API (NestJS)..." -ForegroundColor Cyan
+if (-not (Test-Path $DistDir)) {
+    New-Item -ItemType Directory -Path $DistDir -Force | Out-Null
+}
+
+Push-Location $AppRoot
 try {
-    npx nx build cinema-manager-api
-    if (Test-Path (Join-Path $DistDir "main.js")) {
-        Compress-Archive -Path (Join-Path $DistDir "main.js") -DestinationPath $ZipFile -Force
-    }
+    $OutJs = Join-Path $DistDir "index.js"
+    npx esbuild src/main.ts --bundle --platform=node --target=node20 --external:@nestjs/microservices --external:@nestjs/websockets --external:class-transformer --external:class-validator "--outfile=$OutJs"
+    Compress-Archive -Path $OutJs -DestinationPath $ZipFile -Force
 } finally {
     Pop-Location
 }
 
+Write-Host "Parsing parameters from $ParamFile..." -ForegroundColor Cyan
+$Params = @()
+if (Test-Path $ParamFile) {
+    $paramObj = Get-Content $ParamFile -Raw | ConvertFrom-Json
+    foreach ($prop in $paramObj.PSObject.Properties) {
+        $Params += "$($prop.Name)=$($prop.Value)"
+    }
+}
+
 Write-Host "Deploying CloudFormation stack: $StackName..." -ForegroundColor Cyan
-aws cloudformation deploy `
-    --stack-name $StackName `
-    --template-file $TemplateFile `
-    --parameter-overrides file://$ParamFile `
-    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM `
-    --region $Region `
-    --profile $Profile `
-    --no-fail-on-empty-changeset
+if ($Params.Count -gt 0) {
+    aws cloudformation deploy `
+        --stack-name $StackName `
+        --template-file $TemplateFile `
+        --parameter-overrides @Params `
+        --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM `
+        --region $Region `
+        --profile $Profile `
+        --no-fail-on-empty-changeset
+} else {
+    aws cloudformation deploy `
+        --stack-name $StackName `
+        --template-file $TemplateFile `
+        --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM `
+        --region $Region `
+        --profile $Profile `
+        --no-fail-on-empty-changeset
+}
 
 Write-Host "Fetching Lambda function name..." -ForegroundColor Cyan
 $FunctionName = aws cloudformation describe-stacks `
@@ -50,4 +72,4 @@ if (Test-Path $ZipFile) {
         --profile $Profile | Out-Null
 }
 
-Write-Host "Cinema Manager API deployed successfully to https://api.cinema.abhijeetkharkar.com" -ForegroundColor Green
+Write-Host "Cinema Manager API deployed successfully" -ForegroundColor Green

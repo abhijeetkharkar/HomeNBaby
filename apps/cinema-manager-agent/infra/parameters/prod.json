@@ -1,10 +1,4 @@
-[
-  {
-    "ParameterKey": "Environment",
-    "ParameterValue": "prod"
-  },
-  {
-    "ParameterKey": "ProjectName",
-    "ParameterValue": "cinema-manager"
-  }
-]
+{
+  "Environment": "prod",
+  "ProjectName": "cinema-manager"
+}

@@ -19,15 +19,34 @@ try {
     Pop-Location
 }
 
+Write-Host "Parsing parameters from $ParamFile..." -ForegroundColor Cyan
+$Params = @()
+if (Test-Path $ParamFile) {
+    $paramObj = Get-Content $ParamFile -Raw | ConvertFrom-Json
+    foreach ($prop in $paramObj.PSObject.Properties) {
+        $Params += "$($prop.Name)=$($prop.Value)"
+    }
+}
+
 Write-Host "Deploying CloudFormation stack: $StackName..." -ForegroundColor Cyan
-aws cloudformation deploy `
-    --stack-name $StackName `
-    --template-file $TemplateFile `
-    --parameter-overrides file://$ParamFile `
-    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM `
-    --region $Region `
-    --profile $Profile `
-    --no-fail-on-empty-changeset
+if ($Params.Count -gt 0) {
+    aws cloudformation deploy `
+        --stack-name $StackName `
+        --template-file $TemplateFile `
+        --parameter-overrides @Params `
+        --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM `
+        --region $Region `
+        --profile $Profile `
+        --no-fail-on-empty-changeset
+} else {
+    aws cloudformation deploy `
+        --stack-name $StackName `
+        --template-file $TemplateFile `
+        --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM `
+        --region $Region `
+        --profile $Profile `
+        --no-fail-on-empty-changeset
+}
 
 Write-Host "Fetching stack outputs..." -ForegroundColor Cyan
 $BucketName = aws cloudformation describe-stacks `

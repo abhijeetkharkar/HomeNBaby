@@ -9,7 +9,7 @@ import { Cinema } from '@cinema-manager/models';
 })
 export class CinemaManagerApiService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = 'https://api.cinema.abhijeetkharkar.com';
+  private readonly apiUrl = 'https://api.abhijeetkharkar.com/cinema-manager';
 
   /**
    * Get all cinemas from the API

@@ -23,29 +23,7 @@ Parameters:
     Description: 'ACM Wildcard Certificate ARN in us-east-1'
 
 Resources:
-  # ── DynamoDB Table for Plants Care Logs ──────────────────────────────────
-  PlantsCareLogsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: 'plants-care-logs'
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: plantId
-          AttributeType: S
-        - AttributeName: date
-          AttributeType: S
-      KeySchema:
-        - AttributeName: plantId
-          KeyType: HASH
-        - AttributeName: date
-          KeyType: RANGE
-      PointInTimeRecoverySpecification:
-        PointInTimeRecoveryEnabled: true
-      Tags:
-        - Key: App
-          Value: plants
-        - Key: Environment
-          Value: !Ref Environment
+
 
   # ── S3 Bucket for Plants Static Assets ───────────────────────────────────
   PlantsBucket:
