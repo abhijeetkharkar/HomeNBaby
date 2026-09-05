@@ -83,7 +83,7 @@ export class ConfigService {
         },
         api: {
           ...configData.api,
-          baseUrl: process.env.API_BASE_URL || configData.api?.baseUrl || 'https://api.cinema.abhijeetkharkar.com',
+          baseUrl: process.env.API_BASE_URL || configData.api?.baseUrl || 'https://api.abhijeetkharkar.com/cinema-manager',
           timeout: parseInt(process.env.API_TIMEOUT || '30000', 10),
           retryCount: parseInt(process.env.API_RETRY_COUNT || '3', 10)
         },
@@ -105,10 +105,10 @@ export class ConfigService {
         domain: 'your-domain.auth0.com',
         clientId: 'your-m2m-client-id',
         clientSecret: 'your-m2m-client-secret',
-        audience: 'https://api.cinema.abhijeetkharkar.com'
+        audience: 'https://api.abhijeetkharkar.com/cinema-manager'
       },
       api: {
-        baseUrl: 'https://api.cinema.abhijeetkharkar.com',
+        baseUrl: 'https://api.abhijeetkharkar.com/cinema-manager',
         timeout: 30000,
         retryCount: 3
       },

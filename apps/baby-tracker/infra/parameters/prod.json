@@ -1,0 +1,6 @@
+{
+  "Environment": "prod",
+  "DomainName": "babytracker.abhijeetkharkar.com",
+  "HostedZoneId": "Z13Z70GHALBE08",
+  "CertificateArn": "arn:aws:acm:us-east-1:797884421713:certificate/15b73dd4-bcb8-4f54-b9a4-7dc728ed2727"
+}

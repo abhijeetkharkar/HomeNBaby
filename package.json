@@ -11,7 +11,9 @@
     "build": "nx run-many -t build",
     "test": "nx run-many -t test",
     "lint": "nx run-many -t lint",
+    "deploy": "nx run-many -t deploy",
     "affected:build": "nx affected -t build",
+    "affected:deploy": "nx affected -t deploy",
     "graph": "nx graph"
   },
   "dependencies": {

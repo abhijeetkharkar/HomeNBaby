@@ -68,6 +68,12 @@
         "jestConfig": "apps/cinema-manager-api/jest.config.ts",
         "passWithNoTests": true
       }
+    },
+    "deploy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "powershell -ExecutionPolicy Bypass -File apps/cinema-manager-api/infra/deploy.ps1"
+      }
     }
   }
 }

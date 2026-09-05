@@ -89,6 +89,12 @@
         "port": 4200,
         "spa": true
       }
+    },
+    "deploy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "powershell -ExecutionPolicy Bypass -File apps/cinema-manager-ui/infra/deploy.ps1"
+      }
     }
   }
 }

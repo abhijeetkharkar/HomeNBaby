@@ -3,10 +3,10 @@
     "domain": "your-domain.auth0.com",
     "clientId": "your-m2m-client-id",
     "clientSecret": "your-m2m-client-secret",
-    "audience": "https://api.cinema.abhijeetkharkar.com"
+    "audience": "https://api.abhijeetkharkar.com/cinema-manager"
   },
   "api": {
-    "baseUrl": "https://api.cinema.abhijeetkharkar.com",
+    "baseUrl": "https://api.abhijeetkharkar.com/cinema-manager",
     "timeout": 30000,
     "retryCount": 3
   },

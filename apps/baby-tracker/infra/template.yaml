@@ -1,0 +1,265 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Baby Tracker Application - S3, CloudFront, Cognito & DynamoDB Infrastructure'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: 'prod'
+    Description: 'Deployment environment'
+
+  DomainName:
+    Type: String
+    Default: 'babytracker.abhijeetkharkar.com'
+    Description: 'Domain name for baby tracker app'
+
+  HostedZoneId:
+    Type: String
+    Default: 'Z13Z70GHALBE08'
+    Description: 'Route 53 Hosted Zone ID for abhijeetkharkar.com'
+
+  CertificateArn:
+    Type: String
+    Default: 'arn:aws:acm:us-east-1:797884421713:certificate/15b73dd4-bcb8-4f54-b9a4-7dc728ed2727'
+    Description: 'ACM Wildcard Certificate ARN in us-east-1'
+
+Resources:
+  # ── DynamoDB Tables for Baby Tracker ─────────────────────────────────────
+  BabyProfilesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: 'baby-profiles'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: App
+          Value: baby-tracker
+        - Key: Environment
+          Value: !Ref Environment
+
+  BabiesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: 'babies'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: babyId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: babyId
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: App
+          Value: baby-tracker
+        - Key: Environment
+          Value: !Ref Environment
+
+  BabyTrackerLogsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: 'baby-tracker-logs'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: 'babyId#date'
+          AttributeType: S
+        - AttributeName: logId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: 'babyId#date'
+          KeyType: HASH
+        - AttributeName: logId
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: App
+          Value: baby-tracker
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── Cognito Authentication ───────────────────────────────────────────────
+  TrackerUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: 'tracker-user-pool'
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      UserPoolTags:
+        App: baby-tracker
+        Environment: !Ref Environment
+
+  TrackerCognitoDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: 'tracker-abhijeetkharkar'
+      UserPoolId: !Ref TrackerUserPool
+
+  TrackerUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: 'tracker-react-client'
+      UserPoolId: !Ref TrackerUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+      SupportedIdentityProviders:
+        - COGNITO
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+      CallbackURLs:
+        - 'http://localhost:5173/'
+        - !Sub 'https://${DomainName}/'
+      LogoutURLs:
+        - 'http://localhost:5173/'
+        - !Sub 'https://${DomainName}/'
+
+  # ── S3 Bucket for Baby Tracker Frontend ──────────────────────────────────
+  TrackerBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'baby-tracker-frontend-${Environment}-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: App
+          Value: baby-tracker
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── Origin Access Control (OAC) ──────────────────────────────────────────
+  TrackerOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub 'baby-tracker-oac-${Environment}'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # ── S3 Bucket Policy for CloudFront OAC Access ───────────────────────────
+  TrackerBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref TrackerBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontServicePrincipalReadOnly
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${TrackerBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${TrackerDistribution}'
+
+  # ── CloudFront Distribution (babytracker.abhijeetkharkar.com) ────────────
+  TrackerDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Ref DomainName
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt TrackerBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt TrackerOAC.Id
+            S3OriginConfig: {}
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # Managed-CachingOptimized
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        ViewerCertificate:
+          AcmCertificateArn: !Ref CertificateArn
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+      Tags:
+        - Key: App
+          Value: baby-tracker
+        - Key: Environment
+          Value: !Ref Environment
+
+  TrackerDnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2
+        DNSName: !GetAtt TrackerDistribution.DomainName
+
+Outputs:
+  TrackerBucketName:
+    Description: 'Baby Tracker S3 Bucket Name'
+    Value: !Ref TrackerBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-Bucket'
+
+  TrackerDistributionId:
+    Description: 'Baby Tracker CloudFront Distribution ID'
+    Value: !Ref TrackerDistribution
+    Export:
+      Name: !Sub '${AWS::StackName}-DistributionId'
+
+  UserPoolId:
+    Description: 'Cognito User Pool ID'
+    Value: !Ref TrackerUserPool
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolId'
+
+  UserPoolClientId:
+    Description: 'Cognito User Pool Client ID'
+    Value: !Ref TrackerUserPoolClient
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolClientId'
+
+  SiteUrl:
+    Description: 'Baby Tracker App URL'
+    Value: !Sub 'https://${DomainName}'

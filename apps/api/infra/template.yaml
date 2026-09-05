@@ -1,0 +1,227 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Shared Backend API - HTTP API Gateway, Lambda & Custom Domain (api.abhijeetkharkar.com)'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: 'prod'
+    Description: 'Deployment environment'
+
+  DomainName:
+    Type: String
+    Default: 'api.abhijeetkharkar.com'
+    Description: 'Custom domain name for API'
+
+  HostedZoneId:
+    Type: String
+    Default: 'Z13Z70GHALBE08'
+    Description: 'Route 53 Hosted Zone ID for abhijeetkharkar.com'
+
+  CertificateArn:
+    Type: String
+    Default: 'arn:aws:acm:us-east-1:797884421713:certificate/15b73dd4-bcb8-4f54-b9a4-7dc728ed2727'
+    Description: 'ACM Certificate ARN in us-east-1'
+
+Resources:
+  # ── IAM Role for API Lambda ──────────────────────────────────────────────
+  ApiLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'tracker-api-lambda-role-${Environment}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Scan
+                  - dynamodb:Query
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:BatchGetItem
+                Resource:
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/baby-profiles'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/babies'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/baby-tracker-logs'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/plants-care-logs'
+        - PolicyName: CognitoAndSESAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:AdminGetUser
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                Resource: '*'
+      Tags:
+        - Key: App
+          Value: api
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── API Handler Lambda Function ──────────────────────────────────────────
+  ApiHandlerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'tracker-api-handler-${Environment}'
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: !GetAtt ApiLambdaExecutionRole.Arn
+      MemorySize: 512
+      Timeout: 15
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            return { statusCode: 200, body: JSON.stringify({ message: "API Initializing" }) };
+          };
+      Environment:
+        Variables:
+          BABY_PROFILES_TABLE_NAME: 'baby-profiles'
+          BABIES_TABLE_NAME: 'babies'
+          BABY_LOGS_TABLE_NAME: 'baby-tracker-logs'
+          PLANTS_TABLE_NAME: 'plants-care-logs'
+      Tags:
+        - Key: App
+          Value: api
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── API Gateway Custom Domain ────────────────────────────────────────────
+  ApiCustomDomain:
+    Type: AWS::ApiGatewayV2::DomainName
+    Properties:
+      DomainName: !Ref DomainName
+      DomainNameConfigurations:
+        - CertificateArn: !Ref CertificateArn
+          EndpointType: REGIONAL
+      Tags:
+        App: api
+        Environment: !Ref Environment
+
+  # ── HTTP API ─────────────────────────────────────────────────────────────
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub 'tracker-http-api-${Environment}'
+      ProtocolType: HTTP
+      Tags:
+        App: api
+        Environment: !Ref Environment
+
+  # ── Lambda Integration & $default Route ───────────────────────────────────
+  HttpApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt ApiHandlerLambda.Arn
+      PayloadFormatVersion: '2.0'
+
+  HttpApiDefaultRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: '$default'
+      Target: !Sub 'integrations/${HttpApiIntegration}'
+
+  HttpApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: '$default'
+      AutoDeploy: true
+
+  # ── Custom Domain Mapping ────────────────────────────────────────────────
+  ApiMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    DependsOn:
+      - HttpApiStage
+      - ApiCustomDomain
+    Properties:
+      ApiId: !Ref HttpApi
+      DomainName: !Ref DomainName
+      Stage: '$default'
+
+  # ── Lambda Permission for API Gateway ────────────────────────────────────
+  ApiLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ApiHandlerLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/*'
+
+  # ── Cinema Manager API Integration & Routes ──────────────────────────────
+  CinemaHttpApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cinema-manager-api-${Environment}'
+      PayloadFormatVersion: '2.0'
+
+  CinemaHttpApiProxyRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'ANY /cinema-manager/{proxy+}'
+      Target: !Sub 'integrations/${CinemaHttpApiIntegration}'
+
+  CinemaHttpApiRootRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'ANY /cinema-manager'
+      Target: !Sub 'integrations/${CinemaHttpApiIntegration}'
+
+  CinemaLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Sub 'cinema-manager-api-${Environment}'
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/*'
+
+  # ── Route 53 DNS Alias Record ────────────────────────────────────────────
+  ApiDnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        HostedZoneId: !GetAtt ApiCustomDomain.RegionalHostedZoneId
+        DNSName: !GetAtt ApiCustomDomain.RegionalDomainName
+
+Outputs:
+  ApiEndpoint:
+    Description: 'Custom Domain API Endpoint'
+    Value: !Sub 'https://${DomainName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-Endpoint'
+
+  ApiLambdaArn:
+    Description: 'API Lambda ARN'
+    Value: !GetAtt ApiHandlerLambda.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaArn'
+
+  ApiLambdaName:
+    Description: 'API Lambda Function Name'
+    Value: !Ref ApiHandlerLambda
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaName'
