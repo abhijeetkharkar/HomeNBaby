@@ -328,7 +328,7 @@ export function DailyLogView() {
 
       const formatDiff = (d1: Date, d2: Date) => {
           const diffMin = Math.floor((d1.getTime() - d2.getTime()) / 60000);
-          if (diffMin < 0) return 'Just now';
+          if (diffMin <= 0) return '0m';
           const h = Math.floor(diffMin / 60);
           const m = diffMin % 60;
           return h > 0 ? `${h}h ${m}m` : `${m}m`;
@@ -550,19 +550,18 @@ export function DailyLogView() {
       <Typography variant="h6" mb={2} color="text.secondary">
         {dateStr === format(new Date(), 'yyyy-MM-dd') ? "Today's Stats" : "Day's Stats"}
       </Typography>
-      <Box display="flex" gap={1} flexWrap="wrap" mb={dateStr === format(new Date(), 'yyyy-MM-dd') ? 2 : 4}>
+      <Box display="flex" gap={1} flexWrap="wrap" mb={4}>
         <Chip size="medium" icon={<span style={{ fontSize: '1rem', marginLeft: '6px' }}>🤱</span>} label={`${dailyStats.feeds} feeds (${dailyStats.feedDuration}m)`} sx={{ bgcolor: '#fce4ec', color: '#c2185b', fontWeight: 600, '& .MuiChip-icon': { ml: 0 } }} />
         <Chip size="medium" icon={<span style={{ fontSize: '1rem', marginLeft: '6px' }}>🧷</span>} label={`${dailyStats.wet}W ${dailyStats.dirty}D`} sx={{ bgcolor: '#fff8e1', color: '#f57f17', fontWeight: 600 }} />
         <Chip size="medium" icon={<span style={{ fontSize: '1rem', marginLeft: '6px' }}>😴</span>} label={`${dailyStats.sleepHrs}h sleep`} sx={{ bgcolor: '#ede7f6', color: '#512da8', fontWeight: 600 }} />
         <Chip size="medium" icon={<span style={{ fontSize: '1rem', marginLeft: '6px' }}>🐢</span>} label={`${dailyStats.tummyTime} Tummy`} sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 600 }} />
+        {dateStr === format(new Date(), 'yyyy-MM-dd') && timeSince.feed && (
+          <Chip size="medium" label={`${timeSince.feed} since last feed`} sx={{ bgcolor: '#e3f2fd', color: '#1565c0', fontWeight: 600 }} />
+        )}
+        {dateStr === format(new Date(), 'yyyy-MM-dd') && timeSince.wake && (
+          <Chip size="medium" label={`Awake for ${timeSince.wake}`} sx={{ bgcolor: '#fff3e0', color: '#e65100', fontWeight: 600 }} />
+        )}
       </Box>
-
-      {dateStr === format(new Date(), 'yyyy-MM-dd') && (timeSince.feed || timeSince.wake) && (
-        <Box display="flex" gap={1} flexWrap="wrap" mb={4}>
-          {timeSince.feed && <Chip size="medium" label={`Time since feed: ${timeSince.feed}`} sx={{ bgcolor: '#e3f2fd', color: '#1565c0', fontWeight: 600 }} />}
-          {timeSince.wake && <Chip size="medium" label={`Wake time: ${timeSince.wake}`} sx={{ bgcolor: '#fff3e0', color: '#e65100', fontWeight: 600 }} />}
-        </Box>
-      )}
 
       <Typography variant="h6" mb={2} color="text.secondary">Timeline</Typography>
       <Box display="flex" flexDirection="column" gap={2}>
