@@ -43,6 +43,11 @@ Resources:
         RecoveryMechanisms:
           - Name: verified_email
             Priority: 1
+      EmailConfiguration:
+        EmailSendingAccount: DEVELOPER
+        SourceArn: !Sub 'arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/${DomainName}'
+        From: !Sub 'Baby Tracker <no-reply@${DomainName}>'
+        ReplyToEmailAddress: 'abhijeetkharkar@gmail.com'
       UserPoolTags:
         App: baby-tracker
         Environment: !Ref Environment
@@ -53,8 +58,26 @@ Resources:
       Domain: 'tracker-abhijeetkharkar'
       UserPoolId: !Ref TrackerUserPool
 
+  GoogleIdentityProvider:
+    Type: AWS::Cognito::UserPoolIdentityProvider
+    Properties:
+      UserPoolId: !Ref TrackerUserPool
+      ProviderName: Google
+      ProviderType: Google
+      ProviderDetails:
+        client_id: '{{resolve:secretsmanager:baby-tracker/google-oauth-secret:SecretString:clientId}}'
+        client_secret: '{{resolve:secretsmanager:baby-tracker/google-oauth-secret:SecretString:clientSecret}}'
+        authorize_scopes: 'profile email openid'
+      AttributeMapping:
+        email: email
+        given_name: given_name
+        family_name: family_name
+        picture: picture
+
   TrackerUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
+    DependsOn:
+      - GoogleIdentityProvider
     Properties:
       ClientName: 'tracker-react-client'
       UserPoolId: !Ref TrackerUserPool
@@ -65,6 +88,7 @@ Resources:
         - ALLOW_USER_PASSWORD_AUTH
       SupportedIdentityProviders:
         - COGNITO
+        - Google
       AllowedOAuthFlows:
         - code
       AllowedOAuthFlowsUserPoolClient: true
@@ -172,6 +196,66 @@ Resources:
       AliasTarget:
         HostedZoneId: Z2FDTNDATAQYW2
         DNSName: !GetAtt TrackerDistribution.DomainName
+
+  TrackerSesVerificationRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Sub '_amazonses.${DomainName}.'
+      Type: TXT
+      TTL: '1800'
+      ResourceRecords:
+        - '"CWKJ3v1cMS7yjMe3OGW+KRkM/IfrpUbk6vAKs63JF5k="'
+
+  TrackerSpfRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Sub '${DomainName}.'
+      Type: TXT
+      TTL: '1800'
+      ResourceRecords:
+        - '"v=spf1 include:amazonses.com ~all"'
+
+  TrackerDkimRecord1:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Sub 'ldrylaiphqxy6jj7iyx2dyfyo7mqtqvo._domainkey.${DomainName}.'
+      Type: CNAME
+      TTL: '1800'
+      ResourceRecords:
+        - 'ldrylaiphqxy6jj7iyx2dyfyo7mqtqvo.dkim.amazonses.com'
+
+  TrackerDkimRecord2:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Sub '36toiiaggkilhqflbipdlhsebqzpchvl._domainkey.${DomainName}.'
+      Type: CNAME
+      TTL: '1800'
+      ResourceRecords:
+        - '36toiiaggkilhqflbipdlhsebqzpchvl.dkim.amazonses.com'
+
+  TrackerDkimRecord3:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Sub 'gorhkgi3muodnpqdofkq3i4utaale3sx._domainkey.${DomainName}.'
+      Type: CNAME
+      TTL: '1800'
+      ResourceRecords:
+        - 'gorhkgi3muodnpqdofkq3i4utaale3sx.dkim.amazonses.com'
+
+  TrackerDmarcRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Sub '_dmarc.${DomainName}.'
+      Type: TXT
+      TTL: '1800'
+      ResourceRecords:
+        - '"v=DMARC1; p=none;"'
 
 Outputs:
   TrackerBucketName:
