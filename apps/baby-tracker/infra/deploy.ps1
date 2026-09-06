@@ -10,14 +10,6 @@ $TemplateFile = Join-Path $PSScriptRoot "template.yaml"
 $ParamFile = Join-Path $PSScriptRoot "parameters\$Environment.json"
 $AppRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 
-Write-Host "Building Baby Tracker frontend..." -ForegroundColor Cyan
-Push-Location $AppRoot
-try {
-    npm run build
-} finally {
-    Pop-Location
-}
-
 Write-Host "Parsing parameters from $ParamFile..." -ForegroundColor Cyan
 $Params = @()
 if (Test-Path $ParamFile) {
@@ -61,6 +53,35 @@ $DistId = aws cloudformation describe-stacks `
     --profile $Profile `
     --query "Stacks[0].Outputs[?OutputKey=='TrackerDistributionId'].OutputValue" `
     --output text
+
+$UserPoolId = aws cloudformation describe-stacks `
+    --stack-name $StackName `
+    --region $Region `
+    --profile $Profile `
+    --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" `
+    --output text
+
+$UserPoolClientId = aws cloudformation describe-stacks `
+    --stack-name $StackName `
+    --region $Region `
+    --profile $Profile `
+    --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" `
+    --output text
+
+Write-Host "UserPoolId: $UserPoolId" -ForegroundColor Yellow
+Write-Host "UserPoolClientId: $UserPoolClientId" -ForegroundColor Yellow
+
+Write-Host "Building Baby Tracker frontend with injected Cognito config..." -ForegroundColor Cyan
+$env:VITE_USER_POOL_ID = $UserPoolId
+$env:VITE_USER_POOL_CLIENT_ID = $UserPoolClientId
+$env:VITE_API_URL = "https://api.abhijeetkharkar.com"
+
+Push-Location $AppRoot
+try {
+    npm run build
+} finally {
+    Pop-Location
+}
 
 Write-Host "Syncing public/ to s3://$BucketName..." -ForegroundColor Cyan
 aws s3 sync (Join-Path $AppRoot "public") "s3://$BucketName" --delete --region $Region --profile $Profile

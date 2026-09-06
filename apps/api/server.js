@@ -47,11 +47,12 @@ const ddb = DynamoDBDocumentClient.from(client, {
 const sesClient = new SESClient(clientConfig);
 const cognitoClient = new CognitoIdentityProviderClient(clientConfig);
 
-const USER_POOL_ID = process.env.USER_POOL_ID || 'us-east-1_HHJF1BnjC';
+const USER_POOL_ID = process.env.USER_POOL_ID || 'us-east-1_SFrRMOVHi';
+const USER_POOL_CLIENT_ID = process.env.USER_POOL_CLIENT_ID || '6ci895vprgja3c4ts2kit1urvl';
 
 const verifier = JwtRsaVerifier.create({
   issuer: `https://cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}`,
-  audience: "73qne33k9mi7a1b0oum1d72l3e", // ID token
+  audience: USER_POOL_CLIENT_ID, // ID token
 });
 
 const sendEmail = async (to, subject, body) => {
