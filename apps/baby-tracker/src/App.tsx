@@ -27,7 +27,8 @@ import { DailyLogView } from './components/views/DailyLogView';
 import { DashboardView } from './components/views/DashboardView';
 import { OnboardingView } from './components/views/OnboardingView';
 import { HeaderStats } from './components/HeaderStats';
-import { Authenticator } from '@aws-amplify/ui-react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthContainer } from './components/auth/AuthContainer';
 import { useBabyProfile, BabyProfileProvider } from './hooks/useBabyProfile';
 import { getTheme, getHeaderGradient } from './theme';
 
@@ -251,14 +252,35 @@ function MainApp({ signOut }: { signOut?: () => void }) {
   );
 }
 
+function AuthenticatedApp() {
+  const { user, initialCheckLoading, handleSignOut } = useAuth();
+
+  if (initialCheckLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', bgcolor: '#faf7f5' }}>
+        <CircularProgress sx={{ color: '#d4788c' }} />
+      </Box>
+    );
+  }
+
+  if (!user) {
+    return <AuthContainer />;
+  }
+
+  return (
+    <BabyProfileProvider>
+      <MainApp signOut={handleSignOut} />
+    </BabyProfileProvider>
+  );
+}
+
 export default function App() {
   return (
-    <Authenticator socialProviders={['google']}>
-      {({ signOut }) => (
-        <BabyProfileProvider>
-          <MainApp signOut={signOut} />
-        </BabyProfileProvider>
-      )}
-    </Authenticator>
+    <ThemeProvider theme={getTheme('mixed')}>
+      <CssBaseline />
+      <AuthProvider>
+        <AuthenticatedApp />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
