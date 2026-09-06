@@ -8,10 +8,14 @@
   ],
   "scripts": {
     "dev": "nx run-many -t dev",
+    "dev:baby": "nx dev baby-tracker",
+    "dev:api": "nx dev api",
     "build": "nx run-many -t build",
+    "build:baby": "nx build baby-tracker",
     "test": "nx run-many -t test",
     "lint": "nx run-many -t lint",
     "deploy": "nx run-many -t deploy",
+    "deploy:baby": "nx deploy baby-tracker",
     "affected:build": "nx affected -t build",
     "affected:deploy": "nx affected -t deploy",
     "graph": "nx graph"
