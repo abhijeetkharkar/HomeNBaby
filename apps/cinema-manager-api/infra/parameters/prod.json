@@ -1,4 +1,7 @@
 {
   "Environment": "prod",
-  "ProjectName": "cinema-manager"
+  "ProjectName": "cinema-manager",
+  "TmdbApiKey": "ca5b07a7f5c2a2a3d37780b3c991b9cc",
+  "OmdbApiKey": "393d8ec1"
 }
+

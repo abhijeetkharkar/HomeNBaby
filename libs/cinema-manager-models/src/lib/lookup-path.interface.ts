@@ -1,6 +1,7 @@
 export interface LookupPath {
-  id: number;
+  id: number | string;
   path: string;
+  agentId?: string;
 }
 
 export const TableNames = {

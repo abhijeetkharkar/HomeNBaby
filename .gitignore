@@ -33,3 +33,4 @@ response.json
 
 # Env
 .env*
+!.env.example

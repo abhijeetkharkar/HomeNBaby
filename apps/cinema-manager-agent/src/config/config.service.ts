@@ -60,11 +60,20 @@ export class ConfigService {
   }
 
   private loadConfig(configPath?: string): void {
-    const defaultConfigPath = path.join(process.cwd(), 'config', 'service.json');
-    const finalConfigPath = configPath || defaultConfigPath;
-    
-    if (!fs.existsSync(finalConfigPath)) {
-      // Create default configuration if it doesn't exist
+    const candidatePaths = [
+      configPath,
+      path.join(process.cwd(), 'service.json'),
+      path.join(path.dirname(process.execPath), 'service.json'),
+      path.join(process.cwd(), 'config', 'service.json'),
+      path.join(path.dirname(process.execPath), 'config', 'service.json'),
+      path.join(__dirname, '..', 'config', 'service.json'),
+      path.join(__dirname, 'config', 'service.json'),
+    ].filter(Boolean) as string[];
+
+    let finalConfigPath = candidatePaths.find((p) => fs.existsSync(p));
+
+    if (!finalConfigPath) {
+      finalConfigPath = configPath || path.join(process.cwd(), 'service.json');
       this.createDefaultConfig(finalConfigPath);
     }
 

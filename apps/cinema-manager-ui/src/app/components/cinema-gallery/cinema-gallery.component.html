@@ -1,48 +1,110 @@
-<ng-container *ngIf="!isFirstTime; else firstTime">
-  <div class="cinemas">
-    <app-cinema *ngFor="let cinema of cinemas" [cinema]="cinema"></app-cinema>
-  </div>
-</ng-container>
-
-<ng-template #firstTime>
-  <mat-card
-    *ngIf="isFirstTime || isManageLookupFoldersClicked"
-    class="configuration"
-  >
-    <div class="buttons">
-      <button mat-flat-button color="primary" (click)="browse()">
-        <mat-icon aria-hidden="false" aria-label="Settings Icon"
-          >settings</mat-icon
-        >
-        Add Lookup Paths
-      </button>
-      <div class="buttons__finalize">
-        <button
-          mat-flat-button
-          color="primary"
-          (click)="finishAddingLookupPaths()"
-        >
-          Finish
-        </button>
-      </div>
-    </div>
-    <div class="lookupPathsContainer" *ngIf="selectedLookupPaths.length > 0">
-      <h3 class="lookupPathsContainer__title">Your selected lookup paths:</h3>
-      <div
-        *ngFor="let lookupPath of selectedLookupPaths; let i = index"
-        class="lookupPaths"
+<div class="gallery-container">
+  <!-- Top Action & Search Bar -->
+  <div class="gallery-controls">
+    <div class="search-box">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input
+        type="text"
+        [(ngModel)]="searchQuery"
+        (ngModelChange)="onSearchChange()"
+        placeholder="Search movies by title, director, actors, plot..."
+        class="search-input"
+      />
+      <button
+        *ngIf="searchQuery"
+        mat-icon-button
+        (click)="clearSearch()"
+        class="clear-btn"
+        aria-label="Clear search"
       >
-        <p class="mat-body-1 lookupPaths__text">{{ lookupPath }}</p>
-        <button
-          mat-button
-          class="lookupPaths__button"
-          color="warn"
-          aria-label="Example icon button with a filter list icon"
-          (click)="removeFromLookupPaths(i)"
-        >
-          <mat-icon>cancel</mat-icon>
-        </button>
-      </div>
+        <mat-icon>close</mat-icon>
+      </button>
     </div>
-  </mat-card>
-</ng-template>
+
+    <div class="control-actions">
+      <!-- Sort Select -->
+      <div class="sort-wrapper">
+        <label for="sortSelect">Sort:</label>
+        <select
+          id="sortSelect"
+          [ngModel]="selectedSort"
+          (ngModelChange)="setSort($event)"
+          class="custom-select"
+        >
+          <option value="rating">Top Rated</option>
+          <option value="year">Release Year</option>
+          <option value="title">Title (A-Z)</option>
+        </select>
+      </div>
+
+      <button mat-flat-button class="settings-btn" (click)="openSettings()">
+        <mat-icon>settings</mat-icon>
+        <span>Settings</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Genre Filter Pills -->
+  <div class="genres-filter-bar">
+    <button
+      *ngFor="let genre of genres"
+      class="genre-filter-btn"
+      [class.active]="selectedGenre === genre"
+      (click)="selectGenre(genre)"
+    >
+      {{ genre }}
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="state-container loading">
+    <mat-spinner diameter="48"></mat-spinner>
+    <p>Loading your movie library...</p>
+  </div>
+
+  <!-- Movie Cards Grid -->
+  <div *ngIf="!isLoading && displayedCinemas.length > 0" class="cinemas-grid">
+    <app-cinema
+      *ngFor="let cinema of displayedCinemas"
+      [cinema]="cinema"
+      (delete)="deleteCinema($event)"
+    ></app-cinema>
+  </div>
+
+  <!-- Empty State -->
+  <div
+    *ngIf="!isLoading && displayedCinemas.length === 0"
+    class="state-container empty"
+  >
+    <div class="empty-icon-wrapper">
+      <mat-icon class="empty-icon">local_movies</mat-icon>
+    </div>
+    <h2>No Movies Found</h2>
+    <p *ngIf="searchQuery || selectedGenre !== 'All'">
+      No titles matched your search query or genre filter. Try clearing your filters.
+    </p>
+    <p *ngIf="!searchQuery && selectedGenre === 'All'">
+      Your library is currently empty. Run the Cinema Manager Agent on your computer or configure folder paths in settings to scan movie files.
+    </p>
+
+    <div class="empty-actions">
+      <button
+        *ngIf="searchQuery || selectedGenre !== 'All'"
+        mat-flat-button
+        color="primary"
+        (click)="clearSearch(); selectGenre('All')"
+      >
+        Clear Filters
+      </button>
+
+      <button
+        mat-flat-button
+        class="configure-btn"
+        (click)="openSettings()"
+      >
+        <mat-icon>folder_open</mat-icon>
+        Configure Watched Folders
+      </button>
+    </div>
+  </div>
+</div>

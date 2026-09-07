@@ -38,6 +38,15 @@ export class Auth0M2MService {
    * @returns Promise resolving to access token
    */
   async getAccessToken(): Promise<string> {
+    if (
+      !this.domain ||
+      !this.clientId ||
+      this.domain.includes('your-domain') ||
+      this.clientId.includes('your-m2m')
+    ) {
+      return '';
+    }
+
     // Return cached token if still valid (with 5 minute buffer)
     if (this.accessToken && Date.now() < (this.tokenExpiry - 300000)) {
       return this.accessToken;
@@ -52,8 +61,8 @@ export class Auth0M2MService {
       console.log('Auth0 M2M token refreshed successfully');
       return this.accessToken;
     } catch (error) {
-      console.error('Failed to get Auth0 M2M token:', error);
-      throw new Error('Authentication failed');
+      console.warn('Failed to get Auth0 M2M token (operating in open mode):', error);
+      return '';
     }
   }
 
