@@ -83,8 +83,8 @@ try {
     Pop-Location
 }
 
-Write-Host "Syncing public/ to s3://$BucketName..." -ForegroundColor Cyan
-aws s3 sync (Join-Path $AppRoot "public") "s3://$BucketName" --delete --region $Region --profile $Profile
+Write-Host "Syncing dist/ to s3://$BucketName..." -ForegroundColor Cyan
+aws s3 sync (Join-Path $AppRoot "dist") "s3://$BucketName" --delete --region $Region --profile $Profile
 
 Write-Host "Invalidating CloudFront cache for $DistId..." -ForegroundColor Cyan
 aws cloudfront create-invalidation --distribution-id $DistId --paths "/*" --region $Region --profile $Profile | Out-Null
