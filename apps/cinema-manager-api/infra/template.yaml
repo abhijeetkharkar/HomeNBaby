@@ -12,6 +12,19 @@ Parameters:
     Default: 'cinema-manager'
     Description: 'Project name prefix'
 
+  TmdbApiKey:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: 'The Movie Database (TMDB) API Key'
+
+  OmdbApiKey:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: 'Open Movie Database (OMDB) API Key'
+
+
 Resources:
   # ── 1. DynamoDB Tables ───────────────────────────────────────────────────
   MoviesTable:
@@ -204,6 +217,8 @@ Resources:
           AGENTS_TABLE: !Ref AgentsTable
           USERS_TABLE: !Ref UsersTable
           LOOKUP_PATHS_TABLE: !Ref LookupPathsTable
+          TMDB_API_KEY: !Ref TmdbApiKey
+          OMDB_API_KEY: !Ref OmdbApiKey
       Tags:
         - Key: App
           Value: cinema-manager-api

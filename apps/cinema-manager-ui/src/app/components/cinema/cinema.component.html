@@ -1,51 +1,98 @@
-<mat-card class="cinema">
-  <img
-    class="cinema__poster"
-    [src]="cinema.poster"
-    alt="{{ cinema.title }} Poster"
-  />
-
-  <div class="cinema__information">
-    <h2 class="title">{{ cinema.title }}</h2>
-    <p class="subtitle">
-      {{ cinema.year }} &centerdot; {{ cinema.rated }} &centerdot;
-      {{ cinema.runtime }}
-    </p>
-    <mat-chip-listbox aria-label="Genres">
-      <mat-chip-option *ngFor="let genre of cinema.genres">{{
-        genre
-      }}</mat-chip-option>
-    </mat-chip-listbox>
-    <p class="mat-body-1 plot">{{ cinema.plot }}</p>
-    <div class="scores">
-      <div class="scores__overall">
-        <mat-icon
-          class="star"
-          aria-hidden="false"
-          aria-label="Star icon"
-          fontIcon="star"
-        ></mat-icon>
-        <p class="rating">
-          <span>{{ cinema.imdbRating }}</span
-          >/{{ 10 }} &centerdot;
-          <span>{{ cinema.imdbVotes | numberWithSuffix }}</span>
-        </p>
+<mat-card class="cinema-card">
+  <!-- Movie Poster Section -->
+  <div class="poster-wrapper">
+    <img
+      *ngIf="cinema.poster && !imageError; else placeholderPoster"
+      class="cinema-poster"
+      [src]="cinema.poster"
+      [alt]="cinema.title + ' Poster'"
+      loading="lazy"
+      (error)="onImageError()"
+    />
+    <ng-template #placeholderPoster>
+      <div class="poster-placeholder">
+        <mat-icon class="placeholder-icon">movie</mat-icon>
+        <span class="placeholder-title">{{ cinema.title }}</span>
       </div>
-      <div class="scores__popularity">
-        <mat-icon
-          class="trend"
-          aria-hidden="false"
-          aria-label="Trending-Up Icon"
-          fontIcon="trending_up"
-        ></mat-icon>
-        <p class="starMeter">
-          <span>{{ cinema.starMeter | number : "1.0-0" }}</span> &centerdot;
-          <span>{{ cinema.starMeterDifferential }}</span>
-        </p>
+    </ng-template>
+
+    <div class="quality-badge" *ngIf="cinema.quality">
+      {{ cinema.quality }}
+    </div>
+  </div>
+
+  <!-- Movie Details Section -->
+  <div class="cinema-details">
+    <div class="details-top">
+      <div class="title-row">
+        <h3 class="movie-title">{{ cinema.title }}</h3>
+        <button
+          mat-icon-button
+          class="delete-btn"
+          (click)="onDelete($event)"
+          title="Remove from library"
+        >
+          <mat-icon>delete_outline</mat-icon>
+        </button>
+      </div>
+
+      <div class="meta-row">
+        <span class="meta-item year" *ngIf="cinema.year">{{ cinema.year }}</span>
+        <span class="meta-dot" *ngIf="cinema.year && cinema.rated">&bull;</span>
+        <span class="meta-badge rated" *ngIf="cinema.rated">{{ cinema.rated }}</span>
+        <span class="meta-dot" *ngIf="cinema.runtime">&bull;</span>
+        <span class="meta-item runtime" *ngIf="cinema.runtime">{{ cinema.runtime }} min</span>
+      </div>
+
+      <!-- Genres -->
+      <div class="genres-row" *ngIf="cinema.genres && cinema.genres.length > 0">
+        <span class="genre-pill" *ngFor="let g of cinema.genres">{{ g }}</span>
+      </div>
+
+      <!-- Ratings and Scores -->
+      <div class="ratings-row">
+        <div class="rating-badge imdb" *ngIf="cinema.imdbRating">
+          <mat-icon class="star-icon">star</mat-icon>
+          <span class="score">{{ cinema.imdbRating | number:'1.1-1' }}</span>
+          <span class="scale">/10</span>
+          <span class="votes" *ngIf="cinema.imdbVotes">({{ cinema.imdbVotes | numberWithSuffix }})</span>
+        </div>
+
+        <div class="rating-badge metascore" *ngIf="cinema.metascore">
+          <span class="meta-label">Metascore</span>
+          <span class="score">{{ cinema.metascore }}</span>
+        </div>
+      </div>
+
+      <!-- Plot -->
+      <p class="movie-plot" *ngIf="cinema.plot">
+        {{ cinema.plot }}
+      </p>
+
+      <!-- Cast & Crew -->
+      <div class="crew-info">
+        <div class="crew-line" *ngIf="cinema.director">
+          <span class="crew-label">Director:</span>
+          <span class="crew-value">{{ cinema.director }}</span>
+        </div>
+        <div class="crew-line" *ngIf="cinema.actors">
+          <span class="crew-label">Starring:</span>
+          <span class="crew-value">{{ cinema.actors }}</span>
+        </div>
       </div>
     </div>
-    <button mat-flat-button color="primary" (click)="startCinema()">
-      Start Watching
-    </button>
+
+    <!-- Actions -->
+    <div class="details-bottom">
+      <button mat-flat-button class="watch-btn" (click)="startCinema()">
+        <mat-icon>play_arrow</mat-icon>
+        <span>Watch Video</span>
+      </button>
+
+      <span class="file-path-hint" [title]="cinema.path" *ngIf="cinema.path">
+        <mat-icon class="file-icon">folder</mat-icon>
+        <span class="path-text">{{ cinema.path }}</span>
+      </span>
+    </div>
   </div>
 </mat-card>

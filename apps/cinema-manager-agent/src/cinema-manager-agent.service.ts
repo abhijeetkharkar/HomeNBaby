@@ -6,7 +6,7 @@ import { ConfigService } from './config/config.service';
 
 /**
  * Main Windows service for Cinema Manager Agent
- * Monitors file system changes and synchronizes with BFF API
+ * Monitors file system changes and synchronizes with API
  */
 export class CinemaManagerAgentService {
   private fileWatcher?: FileWatcher;
@@ -14,6 +14,7 @@ export class CinemaManagerAgentService {
   private apiClient?: CinemaManagerApiService;
   private auth0Service?: Auth0M2MService;
   private config?: ConfigService;
+  private heartbeatInterval?: NodeJS.Timeout;
 
   /**
    * Initialize and start the cinema manager agent service
@@ -44,9 +45,15 @@ export class CinemaManagerAgentService {
       
       console.log('Cinema Manager Agent Service started successfully');
       
-      // Test API connectivity
+      // Test API connectivity and send initial heartbeat
       await this.testApiConnection();
-      
+      await this.sendHeartbeat();
+
+      // Schedule periodic heartbeat every 60 seconds
+      this.heartbeatInterval = setInterval(() => {
+        this.sendHeartbeat().catch((err) => console.warn('Heartbeat error:', err));
+      }, 60000);
+
     } catch (error) {
       console.error('Failed to start Cinema Manager Agent Service:', error);
       await this.stop();
@@ -60,6 +67,11 @@ export class CinemaManagerAgentService {
   async stop(): Promise<void> {
     console.log('Stopping Cinema Manager Agent Service...');
     
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = undefined;
+    }
+
     try {
       if (this.fileWatcher) {
         await this.fileWatcher.stop();
@@ -73,6 +85,16 @@ export class CinemaManagerAgentService {
   }
 
   /**
+   * Send heartbeat to backend API
+   */
+  private async sendHeartbeat(): Promise<void> {
+    if (this.apiClient && this.fileWatcher) {
+      const paths = this.fileWatcher.getWatchedPaths();
+      await this.apiClient.sendHeartbeat(paths);
+    }
+  }
+
+  /**
    * Test API connection to ensure service is properly configured
    */
   private async testApiConnection(): Promise<void> {
@@ -81,19 +103,19 @@ export class CinemaManagerAgentService {
         throw new Error('API client not initialized');
       }
       
-      // Test authentication and API connectivity
-      await this.apiClient.testConnection();
-      console.log('API connection test successful');
-      
+      const isConnected = await this.apiClient.testConnection();
+      if (isConnected) {
+        console.log('API connection test successful');
+      } else {
+        console.log('API connection test pending / unverified (agent running locally)');
+      }
     } catch (error) {
-      console.error('API connection test failed:', error);
-      throw new Error(`Cannot connect to Cinema Manager BFF API: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.warn('API connection test notice:', error);
     }
   }
 
   /**
    * Get service health status
-   * @returns Service health information
    */
   getHealthStatus(): { 
     status: 'healthy' | 'unhealthy';
@@ -115,7 +137,6 @@ export class CinemaManagerAgentService {
 
   /**
    * Check if all service components are healthy
-   * @returns True if service is healthy
    */
   private isHealthy(): boolean {
     return !!(
@@ -132,7 +153,6 @@ export class CinemaManagerAgentService {
 if (require.main === module) {
   const service = new CinemaManagerAgentService();
   
-  // Handle process signals for graceful shutdown
   process.on('SIGINT', async () => {
     console.log('Received SIGINT, shutting down gracefully...');
     await service.stop();
@@ -145,7 +165,6 @@ if (require.main === module) {
     process.exit(0);
   });
   
-  // Start the service
   service.start().catch((error) => {
     console.error('Service startup failed:', error);
     process.exit(1);

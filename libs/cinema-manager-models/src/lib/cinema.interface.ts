@@ -1,5 +1,5 @@
 export interface Cinema {
-  id: number;
+  id: number | string;
   path: string;
   imdbId: string;
   tmdbId: number;

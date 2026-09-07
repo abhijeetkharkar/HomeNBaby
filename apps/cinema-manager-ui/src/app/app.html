@@ -1,3 +1,37 @@
-<h1>{{ title }}</h1>
-<app-cinema-gallery></app-cinema-gallery>
-<router-outlet></router-outlet>
+<div class="app-layout">
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-section">
+        <div class="brand-icon">
+          <mat-icon>local_movies</mat-icon>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title">Cinema<span>Manager</span></h1>
+          <span class="brand-subtitle">Home Theater & Media Library</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <a href="https://abhijeetkharkar.com" target="_blank" rel="noopener" class="portfolio-link">
+          <mat-icon>arrow_back</mat-icon>
+          <span>Portfolio</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="main-content">
+    <div class="content-container">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <div class="footer-container">
+      <p>&copy; {{ currentYear }} Cinema Manager &bull; Powered by NestJS, DynamoDB & Angular</p>
+    </div>
+  </footer>
+</div>

@@ -1,6 +1,107 @@
-<h1 mat-dialog-title>Delete file</h1>
-<div mat-dialog-content>Would you like to delete cat.jpeg?</div>
-<div mat-dialog-actions>
-  <button mat-button mat-dialog-close>No</button>
-  <button mat-button mat-dialog-close cdkFocusInitial>Ok</button>
+<div class="config-dialog">
+  <div class="dialog-header">
+    <div class="header-title">
+      <mat-icon class="header-icon">tune</mat-icon>
+      <h2>Cinema Settings & Management</h2>
+    </div>
+    <button mat-icon-button (click)="close()" class="close-btn" aria-label="Close dialog">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <div class="dialog-content">
+    <div *ngIf="successMessage" class="alert alert-success">
+      <mat-icon>check_circle</mat-icon>
+      <span>{{ successMessage }}</span>
+    </div>
+
+    <div *ngIf="errorMessage" class="alert alert-error">
+      <mat-icon>error</mat-icon>
+      <span>{{ errorMessage }}</span>
+    </div>
+
+    <mat-tab-group animationDuration="200ms">
+      <!-- Tab 1: Watched Lookup Folders -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon class="tab-icon">folder_special</mat-icon>
+          <span>Watched Folders</span>
+        </ng-template>
+
+        <div class="tab-body">
+          <p class="section-description">
+            Watched folders monitored by the local Windows Cinema Agent for automatic movie detection.
+          </p>
+
+          <div class="add-path-row">
+            <input
+              type="text"
+              class="custom-input"
+              [(ngModel)]="newPath"
+              placeholder="e.g. C:\Users\Public\Videos or D:\Movies"
+              (keyup.enter)="addPath()"
+            />
+            <button mat-flat-button color="primary" class="add-btn" (click)="addPath()" [disabled]="!newPath.trim()">
+              <mat-icon>add</mat-icon> Add Path
+            </button>
+          </div>
+
+          <div class="paths-list" *ngIf="lookupPaths.length > 0; else noPaths">
+            <div class="path-item" *ngFor="let path of lookupPaths">
+              <div class="path-info">
+                <mat-icon class="folder-icon">folder</mat-icon>
+                <span class="path-text">{{ path.path }}</span>
+              </div>
+              <button mat-icon-button color="warn" (click)="deletePath(path.id)" title="Remove Path">
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <ng-template #noPaths>
+            <div class="empty-tab">
+              <mat-icon>folder_open</mat-icon>
+              <p>No watched folders added yet.</p>
+            </div>
+          </ng-template>
+        </div>
+      </mat-tab>
+
+      <!-- Tab 2: Connected Agents -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon class="tab-icon">computer</mat-icon>
+          <span>Agent Status</span>
+        </ng-template>
+
+        <div class="tab-body">
+          <p class="section-description">
+            Status of Windows Agents reporting from local machines.
+          </p>
+
+          <div class="agents-list" *ngIf="agents.length > 0; else noAgents">
+            <div class="agent-card" *ngFor="let agent of agents">
+              <div class="agent-status-indicator" [class.online]="agent.status === 'online'"></div>
+              <div class="agent-details">
+                <div class="agent-name">{{ agent.agentName }}</div>
+                <div class="agent-meta">
+                  <span>Host: {{ agent.hostname || 'Local Machine' }}</span> &bull;
+                  <span>Version: {{ agent.version || '1.0.0' }}</span> &bull;
+                  <span>Last Heartbeat: {{ agent.lastHeartbeat | date:'short' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <ng-template #noAgents>
+            <div class="empty-tab">
+              <mat-icon>desktop_windows</mat-icon>
+              <p>No active agents detected yet.</p>
+              <small>Run the Cinema Manager Agent on your Windows machine to sync local movies.</small>
+            </div>
+          </ng-template>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </div>
 </div>

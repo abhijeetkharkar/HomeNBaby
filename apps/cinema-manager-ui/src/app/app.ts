@@ -1,13 +1,15 @@
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { CinemaGalleryComponent } from './components/cinema-gallery/cinema-gallery.component';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
 
 @Component({
-  imports: [RouterModule, CinemaGalleryComponent],
+  imports: [RouterModule, MatIconModule, MatButtonModule],
   selector: 'app-root',
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
 export class App {
   protected title = 'Cinema Manager';
+  currentYear = new Date().getFullYear();
 }

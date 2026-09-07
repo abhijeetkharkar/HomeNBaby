@@ -1,41 +1,47 @@
-import { Component, Input, OnInit, inject } from "@angular/core";
-import { CommonModule, DecimalPipe } from "@angular/common";
-import { MatCardModule } from "@angular/material/card";
-import { MatIconModule } from "@angular/material/icon";
-import { MatChipsModule } from "@angular/material/chips";
-import { Cinema } from "@cinema-manager/models";
-import { NumberWithSuffixPipe } from "../../pipes/number-with-suffix.pipe";
-import { CinemaManagerApiService } from "../../services/cinema-manager-api.service";
+import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
+import { CommonModule, DecimalPipe } from '@angular/common';
+import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatChipsModule } from '@angular/material/chips';
+import { Cinema } from '@cinema-manager/models';
+import { NumberWithSuffixPipe } from '../../pipes/number-with-suffix.pipe';
+import { CinemaManagerApiService } from '../../services/cinema-manager-api.service';
 
 @Component({
-    selector: 'app-cinema',
-    templateUrl: './cinema.component.html',
-    styleUrls: ['./cinema.component.scss'],
-    standalone: true,
-    imports: [CommonModule, MatCardModule, MatIconModule, MatChipsModule, NumberWithSuffixPipe, DecimalPipe]
-  })
-  export class CinemaComponent implements OnInit {
-    @Input() cinema!: Cinema;
-    
-    private readonly cinemaApiService = inject(CinemaManagerApiService);
-  
-    constructor() {
-        // Web version - no Electron dependencies
-    }
-  
-    ngOnInit(): void {
-      console.log('Cinema initialized:', this.cinema);
-    }
+  selector: 'app-cinema',
+  templateUrl: './cinema.component.html',
+  styleUrls: ['./cinema.component.scss'],
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatCardModule,
+    MatIconModule,
+    MatButtonModule,
+    MatChipsModule,
+    NumberWithSuffixPipe,
+    DecimalPipe,
+  ],
+})
+export class CinemaComponent {
+  @Input() cinema!: Cinema;
+  @Output() delete = new EventEmitter<Cinema>();
 
-    startCinema() {
-        console.log('Playing video for cinema:', this.cinema.title);
-        // Use the API service to play video
-        try {
-            this.cinemaApiService.playVideo(this.cinema.path || '');
-            console.log('Video playback started');
-        } catch (error) {
-            console.error('Error starting video:', error);
-            alert('Failed to start video playback');
-        }
+  private readonly cinemaApiService = inject(CinemaManagerApiService);
+  imageError = false;
+
+  onImageError(): void {
+    this.imageError = true;
+  }
+
+  startCinema(): void {
+    if (this.cinema.path) {
+      this.cinemaApiService.playVideo(this.cinema.path);
     }
+  }
+
+  onDelete(event: Event): void {
+    event.stopPropagation();
+    this.delete.emit(this.cinema);
+  }
 }

@@ -15,6 +15,9 @@ Write-Host "Building Cinema Manager UI (Angular)..." -ForegroundColor Cyan
 Push-Location $WorkspaceRoot
 try {
     npx nx build cinema-manager-ui
+    if (Test-Path (Join-Path $DistDir "browser")) {
+        $DistDir = Join-Path $DistDir "browser"
+    }
 } finally {
     Pop-Location
 }
