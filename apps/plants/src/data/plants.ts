@@ -32,7 +32,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'money-tree',
     name: 'Money Tree',
-    lightRequirements: 'Bright Indirect',
+    lightRequirements: 'Bright Indirect (2,500–10,000 Lux)',
     bestTimeToTransplant: 'Mar-May',
     bloomingSeason: 'Rare',
     emoji: '🌳',
@@ -47,7 +47,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'prayer-plant',
     name: 'Marisela Prayer Plant',
-    lightRequirements: 'Bright Indirect',
+    lightRequirements: 'Bright Indirect (2,500–10,000 Lux)',
     bestTimeToPlantSeed: 'Spring',
     bestTimeToTransplant: 'Mar-May',
     bloomingSeason: 'Spring-Summer',
@@ -63,7 +63,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'baby-rubber-plant',
     name: 'Baby Rubber Plant',
-    lightRequirements: 'Bright Indirect',
+    lightRequirements: 'Bright Indirect (2,500–10,000 Lux)',
     bestTimeToTransplant: 'Mar-May',
     bloomingSeason: 'Spring-Summer',
     emoji: '🌿',
@@ -78,7 +78,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'cream-allusion-arrowhead',
     name: 'Cream Allusion Arrowhead',
-    lightRequirements: 'Medium to Bright Indirect',
+    lightRequirements: 'Medium to Bright Indirect (1,000–10,000 Lux)',
     bestTimeToTransplant: 'Mar-May',
     emoji: '🍃',
     imageUrl: '/plants/cream-allusion-arrowhead.jpg',
@@ -92,7 +92,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'dracaena-compacta',
     name: 'Dracaena compacta',
-    lightRequirements: 'Medium to Bright Indirect',
+    lightRequirements: 'Medium to Bright Indirect (1,000–10,000 Lux)',
     bestTimeToTransplant: 'Mar-May',
     emoji: '🌱',
     imageUrl: '/plants/dracaena-compacta.jpg',
@@ -106,7 +106,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'ficus-burgundy',
     name: 'Ficus Burgundy',
-    lightRequirements: 'Bright Indirect',
+    lightRequirements: 'Bright Indirect (2,500–10,000 Lux)',
     bestTimeToTransplant: 'Mar-May',
     emoji: '🍂',
     imageUrl: '/plants/ficus-burgundy.jpg',
@@ -120,7 +120,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'inchplant',
     name: 'Inchplant',
-    lightRequirements: 'Bright Indirect',
+    lightRequirements: 'Bright Indirect (2,500–10,000 Lux)',
     bestTimeToTransplant: 'Mar-May',
     bloomingSeason: 'Spring-Summer',
     emoji: '💜',
@@ -135,7 +135,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'monstera-adansonii',
     name: 'Monstera adansonii',
-    lightRequirements: 'Bright Indirect',
+    lightRequirements: 'Bright Indirect (2,500–10,000 Lux)',
     bestTimeToTransplant: 'Mar-May',
     emoji: '🕳️',
     imageUrl: '/plants/monstera-adansonii.jpg',
@@ -149,7 +149,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'nerve-plant',
     name: 'Nerve Plant',
-    lightRequirements: 'Medium to Bright Indirect',
+    lightRequirements: 'Medium to Bright Indirect (1,000–5,000 Lux)',
     bestTimeToTransplant: 'Mar-May',
     emoji: '🔴',
     imageUrl: '/plants/nerve-plant.jpg',
@@ -163,7 +163,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'snake-plant',
     name: 'Snake Plant',
-    lightRequirements: 'Low to Bright Indirect',
+    lightRequirements: 'Low to Bright Indirect (250–10,000 Lux)',
     bestTimeToTransplant: 'Mar-May',
     bloomingSeason: 'Spring-Summer',
     emoji: '🐍',
@@ -178,7 +178,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'spider-plant',
     name: 'Spider Plant',
-    lightRequirements: 'Bright Indirect',
+    lightRequirements: 'Bright Indirect (2,500–10,000 Lux)',
     bestTimeToTransplant: 'Mar-May',
     bloomingSeason: 'Spring-Summer',
     emoji: '✨',
@@ -193,7 +193,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'zz-plant',
     name: 'ZZ Plant',
-    lightRequirements: 'Low to Bright Indirect',
+    lightRequirements: 'Low to Bright Indirect (250–10,000 Lux)',
     bestTimeToTransplant: 'Mar-May',
     emoji: '⚡',
     imageUrl: '/plants/zz-plant.jpg',
@@ -207,7 +207,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'heartleaf-philodendron',
     name: 'Heartleaf Philodendron',
-    lightRequirements: 'Medium to Bright Indirect',
+    lightRequirements: 'Medium to Bright Indirect (1,000–10,000 Lux)',
     bestTimeToTransplant: 'Mar-May',
     emoji: '💚',
     imageUrl: '/plants/heartleaf-philodendron.jpg',
@@ -226,7 +226,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'fatsia-fusion',
     name: 'Fatsia Fusion',
-    lightRequirements: 'Partial Shade to Bright Indirect',
+    lightRequirements: 'Partial Shade to Bright Indirect (2,500–10,000 Lux)',
     bestTimeToTransplant: 'Mar-May',
     emoji: '🍃',
     imageUrl: '/plants/fatsia-fusion.jpg',
@@ -244,7 +244,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'kings-choice-ivy',
     name: "King's Choice Ivy",
-    lightRequirements: 'Medium to Bright Indirect',
+    lightRequirements: 'Medium to Bright Indirect (1,000–10,000 Lux)',
     bestTimeToTransplant: 'Mar-May',
     emoji: '🌱',
     imageUrl: '/plants/kings-choice-ivy.jpg',
@@ -260,12 +260,31 @@ export const PLANTS: PlantDef[] = [
       'Pinch growing tips to encourage bushy growth',
     ],
   },
+  {
+    id: 'frankie-fittonia',
+    name: 'Frankie (Fittonia argyroneura)',
+    lightRequirements: 'Low to Medium Indirect (250–2,500 Lux)',
+    bestTimeToTransplant: 'Mar-May',
+    emoji: '💜',
+    imageUrl: '/plants/frankie-fittonia.jpg',
+    group: 'indoor',
+    waterFreqDays: [4, 7],
+    fertFreqDays: [14, 28],
+    fertRecommendation: 'Schultz (10-15-10)',
+    altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
+    notes: [
+      'Exotic Angel "Frankie" variety — dark metallic pewter/purple crinkled leaves with purple undersides',
+      'Thrives in low to medium indirect light (protect from harsh direct sun)',
+      'Keep soil consistently moist (never waterlogged); loves humidity',
+      'Pet safe 🐾 (non-toxic to cats & dogs)',
+    ],
+  },
 
   // ── OUTDOOR GARDEN (no watering) ─────────────────────────────────────────
   {
     id: 'radishes',
     name: 'Radishes',
-    lightRequirements: 'Full Sun to Partial Shade',
+    lightRequirements: 'Full Sun to Partial Shade (15,000–50,000+ Lux)',
     bestTimeToPlantSeed: 'Jan-Mar, Sep-Nov',
     seedToFruitTime: '21-30 days',
     fruitingSeason: 'Spring, Fall-Winter',
@@ -280,7 +299,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'carrots',
     name: 'Carrots',
-    lightRequirements: 'Full Sun',
+    lightRequirements: 'Full Sun (30,000–100,000+ Lux)',
     bestTimeToPlantSeed: 'Jan-Feb, Aug-Oct',
     seedToFruitTime: '70-80 days',
     fruitingSeason: 'Spring, Late Fall-Winter',
@@ -295,7 +314,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'cucumbers',
     name: 'Cucumbers',
-    lightRequirements: 'Full Sun',
+    lightRequirements: 'Full Sun (30,000–100,000+ Lux)',
     bestTimeToPlantSeed: 'Mar-Apr, Jul-Aug',
     bestTimeToTransplant: 'Mar-Apr, Aug',
     seedToFruitTime: '50-70 days',
@@ -312,7 +331,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'bottle-gourd',
     name: 'Bottle Gourd',
-    lightRequirements: 'Full Sun',
+    lightRequirements: 'Full Sun (30,000–100,000+ Lux)',
     bestTimeToPlantSeed: 'Mar-May',
     bestTimeToTransplant: 'Apr-May',
     seedToFruitTime: '75-100 days',
@@ -329,6 +348,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'sponge-gourd',
     name: 'Sponge Gourd (Luffa)',
+    lightRequirements: 'Full Sun (30,000–100,000+ Lux)',
     emoji: '🧽',
     imageUrl: '/plants/sponge-gourd.jpg',
     group: 'outdoor-garden',
@@ -339,7 +359,8 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'ridge-gourd',
     name: 'Ridge Gourd (Turai)',
-    emoji: '🫛',
+    lightRequirements: 'Full Sun (30,000–100,000+ Lux)',
+    emoji: '𫛛',
     imageUrl: '/plants/ridge-gourd.jpg',
     group: 'outdoor-garden',
     fertFreqDays: [14, 21],
@@ -349,7 +370,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'eggplant',
     name: 'Eggplant',
-    lightRequirements: 'Full Sun',
+    lightRequirements: 'Full Sun (30,000–100,000+ Lux)',
     bestTimeToPlantSeed: 'Jan-Feb, Jun-Jul',
     bestTimeToTransplant: 'Mar-Apr, Jul-Aug',
     seedToFruitTime: '70-90 days',
@@ -366,7 +387,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'tomatoes',
     name: 'Tomatoes',
-    lightRequirements: 'Full Sun',
+    lightRequirements: 'Full Sun (30,000–100,000+ Lux)',
     bestTimeToPlantSeed: 'Jan, Jun-Jul',
     bestTimeToTransplant: 'Feb-Mar, Jul-Aug',
     seedToFruitTime: '70-85 days',
@@ -383,7 +404,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'bell-peppers',
     name: 'Bell Peppers',
-    lightRequirements: 'Full Sun',
+    lightRequirements: 'Full Sun (30,000–100,000+ Lux)',
     bestTimeToPlantSeed: 'Jan-Feb, Jun-Jul',
     bestTimeToTransplant: 'Mar-Apr, Jul-Aug',
     seedToFruitTime: '70-90 days',
@@ -400,7 +421,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'thai-chillies',
     name: 'Thai Chillies',
-    lightRequirements: 'Full Sun',
+    lightRequirements: 'Full Sun (30,000–100,000+ Lux)',
     bestTimeToPlantSeed: 'Jan-Feb',
     bestTimeToTransplant: 'Mar-May',
     seedToFruitTime: '75-90 days',
@@ -417,6 +438,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'okra',
     name: 'Okra (Bhindi)',
+    lightRequirements: 'Full Sun (30,000–100,000+ Lux)',
     emoji: '🌿',
     imageUrl: '/plants/okra.jpg',
     group: 'outdoor-garden',
@@ -427,7 +449,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'watermelon',
     name: 'Watermelon',
-    lightRequirements: 'Full Sun',
+    lightRequirements: 'Full Sun (30,000–100,000+ Lux)',
     bestTimeToPlantSeed: 'Mar-Apr, Jun-Jul',
     bestTimeToTransplant: 'Apr-May',
     seedToFruitTime: '75-90 days',
@@ -446,7 +468,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'murasaki-sweet-potato',
     name: 'Murasaki Sweet Potato',
-    lightRequirements: 'Full Sun',
+    lightRequirements: 'Full Sun (30,000–100,000+ Lux)',
     bestTimeToTransplant: 'Apr-Jun',
     seedToFruitTime: '100-120 days',
     bloomingSeason: 'Late Summer',
@@ -461,7 +483,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'potatoes',
     name: 'Potatoes',
-    lightRequirements: 'Full Sun',
+    lightRequirements: 'Full Sun (30,000–100,000+ Lux)',
     bestTimeToTransplant: 'Jan-Feb, Aug',
     seedToFruitTime: '70-100 days',
     bloomingSeason: 'Spring',
@@ -476,6 +498,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'moringa',
     name: 'Moringa (2yr)',
+    lightRequirements: 'Full Sun (30,000–100,000+ Lux)',
     emoji: '🌳',
     imageUrl: '/plants/moringa.jpg',
     group: 'outdoor-potted',
@@ -486,6 +509,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'orange-seedling',
     name: 'Orange Seedling (9in)',
+    lightRequirements: 'Full Sun to Partial Shade (15,000–50,000+ Lux)',
     emoji: '🍊',
     imageUrl: '/plants/orange-seedling.jpg',
     group: 'outdoor-potted',
@@ -497,7 +521,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'sage',
     name: 'Sage',
-    lightRequirements: 'Full Sun to Partial Shade',
+    lightRequirements: 'Full Sun to Partial Shade (15,000–50,000+ Lux)',
     bestTimeToPlantSeed: 'Feb-Mar, Sep-Oct',
     bestTimeToTransplant: 'Mar-Apr, Oct-Nov',
     seedToFruitTime: '75-90 days',
@@ -512,6 +536,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'mint',
     name: 'Mint (Pudina)',
+    lightRequirements: 'Full Sun to Partial Shade (15,000–50,000+ Lux)',
     emoji: '🌿',
     imageUrl: '/plants/mint.jpg',
     group: 'outdoor-potted',
@@ -522,6 +547,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'curry-leaf',
     name: 'Curry Leaf (Kadhipatta)',
+    lightRequirements: 'Full Sun (30,000–100,000+ Lux)',
     emoji: '🍃',
     imageUrl: '/plants/curry-leaf.jpg',
     group: 'outdoor-potted',
@@ -532,6 +558,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'turmeric',
     name: 'Turmeric (Haldi)',
+    lightRequirements: 'Partial Shade to Bright Indirect (5,000–15,000 Lux)',
     emoji: '🟡',
     imageUrl: '/plants/turmeric.jpg',
     group: 'outdoor-potted',
@@ -542,7 +569,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'ginger',
     name: 'Ginger',
-    lightRequirements: 'Partial Shade',
+    lightRequirements: 'Partial Shade (5,000–15,000 Lux)',
     bestTimeToTransplant: 'Mar-Apr',
     seedToFruitTime: '8-10 months',
     bloomingSeason: 'Late Summer-Fall',
@@ -559,7 +586,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'aloe-vera',
     name: 'Aloe Vera',
-    lightRequirements: 'Bright Indirect to Full Sun',
+    lightRequirements: 'Bright Indirect to Full Sun (2,500–50,000+ Lux)',
     bestTimeToPlantSeed: 'Spring',
     bestTimeToTransplant: 'Mar-May',
     bloomingSeason: 'Late Winter-Spring',
@@ -573,6 +600,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'tulsi',
     name: 'Tulsi (Holy Basil)',
+    lightRequirements: 'Full Sun (30,000–100,000+ Lux)',
     emoji: '🙏',
     imageUrl: '/plants/tulsi.jpg',
     group: 'outdoor-potted',
@@ -583,7 +611,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'geranium',
     name: 'Geranium',
-    lightRequirements: 'Full Sun to Partial Shade',
+    lightRequirements: 'Full Sun to Partial Shade (15,000–50,000+ Lux)',
     bestTimeToPlantSeed: 'Jan-Feb',
     bestTimeToTransplant: 'Mar-Apr, Sep-Oct',
     bloomingSeason: 'Spring-Fall',
@@ -597,7 +625,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'pentas',
     name: 'Pentas',
-    lightRequirements: 'Full Sun to Partial Shade',
+    lightRequirements: 'Full Sun to Partial Shade (15,000–50,000+ Lux)',
     bestTimeToPlantSeed: 'Feb-Mar',
     bestTimeToTransplant: 'Apr-May',
     bloomingSeason: 'Late Spring-Fall',
@@ -611,7 +639,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'mexican-heather',
     name: 'Mexican Heather',
-    lightRequirements: 'Full Sun to Partial Shade',
+    lightRequirements: 'Full Sun to Partial Shade (15,000–50,000+ Lux)',
     bestTimeToPlantSeed: 'Feb-Mar',
     bestTimeToTransplant: 'Mar-May',
     bloomingSeason: 'Spring-Fall',
@@ -625,7 +653,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'queen-of-the-night',
     name: 'Queen of the Night',
-    lightRequirements: 'Bright Indirect to Partial Shade',
+    lightRequirements: 'Bright Indirect to Partial Shade (2,500–15,000 Lux)',
     bestTimeToTransplant: 'Apr-May',
     bloomingSeason: 'Summer-Early Fall',
     emoji: '🌵',
@@ -638,6 +666,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'snake-plant-porch',
     name: 'Snake Plant (Porch)',
+    lightRequirements: 'Bright Indirect to Partial Shade (2,500–15,000 Lux)',
     emoji: '🐍',
     imageUrl: '/plants/snake-plant-porch.jpg',
     group: 'outdoor-potted',
@@ -648,7 +677,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'gold-dust-dracaena',
     name: 'Gold Dust Dracaena',
-    lightRequirements: 'Bright Indirect to Partial Shade',
+    lightRequirements: 'Bright Indirect to Partial Shade (2,500–15,000 Lux)',
     bestTimeToTransplant: 'Mar-May',
     bloomingSeason: 'Spring-Summer',
     fruitingSeason: 'Late Summer-Fall',
@@ -662,7 +691,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'lantana',
     name: 'Lantana',
-    lightRequirements: 'Full Sun',
+    lightRequirements: 'Full Sun (30,000–100,000+ Lux)',
     bestTimeToPlantSeed: 'Feb-Mar',
     bestTimeToTransplant: 'Mar-May',
     bloomingSeason: 'Spring-Fall',
@@ -678,7 +707,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'hibiscus',
     name: 'Hibiscus',
-    lightRequirements: 'Full Sun to Partial Shade',
+    lightRequirements: 'Full Sun to Partial Shade (15,000–50,000+ Lux)',
     bestTimeToPlantSeed: 'Feb-Mar',
     bestTimeToTransplant: 'Apr-May',
     bloomingSeason: 'Spring-Fall',
@@ -694,7 +723,7 @@ export const PLANTS: PlantDef[] = [
   {
     id: 'rosemary',
     name: 'Rosemary',
-    lightRequirements: 'Full Sun',
+    lightRequirements: 'Full Sun (30,000–100,000+ Lux)',
     bestTimeToPlantSeed: 'Feb-Apr',
     bestTimeToTransplant: 'Mar-Apr, Sep-Oct',
     bloomingSeason: 'Spring-Summer',
