@@ -3,6 +3,7 @@ import { MovieProcessor } from './processors/movie-processor';
 import { CinemaManagerApiService } from './services/cinema-manager-api.service';
 import { Auth0M2MService } from './auth/auth0-m2m.service';
 import { ConfigService } from './config/config.service';
+import { LocalServer } from './server/local-server';
 
 /**
  * Main Windows service for Cinema Manager Agent
@@ -14,6 +15,7 @@ export class CinemaManagerAgentService {
   private apiClient?: CinemaManagerApiService;
   private auth0Service?: Auth0M2MService;
   private config?: ConfigService;
+  private localServer?: LocalServer;
   private heartbeatInterval?: NodeJS.Timeout;
 
   /**
@@ -39,8 +41,12 @@ export class CinemaManagerAgentService {
       this.movieProcessor = new MovieProcessor(this.apiClient, this.config);
       console.log('Movie processor initialized');
 
+      // Start local HTTP server for native video launching from web UI
+      this.localServer = new LocalServer();
+      this.localServer.start();
+
       // Initialize and start file watcher
-      this.fileWatcher = new FileWatcher(this.movieProcessor, this.config);
+      this.fileWatcher = new FileWatcher(this.movieProcessor, this.config, this.apiClient);
       await this.fileWatcher.start();
       
       console.log('Cinema Manager Agent Service started successfully');
@@ -49,7 +55,7 @@ export class CinemaManagerAgentService {
       await this.testApiConnection();
       await this.sendHeartbeat();
 
-      // Schedule periodic heartbeat every 60 seconds
+      // Schedule periodic heartbeat and lookup path sync every 60 seconds
       this.heartbeatInterval = setInterval(() => {
         this.sendHeartbeat().catch((err) => console.warn('Heartbeat error:', err));
       }, 60000);
@@ -72,6 +78,11 @@ export class CinemaManagerAgentService {
       this.heartbeatInterval = undefined;
     }
 
+    if (this.localServer) {
+      this.localServer.stop();
+      this.localServer = undefined;
+    }
+
     try {
       if (this.fileWatcher) {
         await this.fileWatcher.stop();
@@ -85,10 +96,19 @@ export class CinemaManagerAgentService {
   }
 
   /**
-   * Send heartbeat to backend API
+   * Send heartbeat to backend API and sync lookup paths
    */
   private async sendHeartbeat(): Promise<void> {
     if (this.apiClient && this.fileWatcher) {
+      try {
+        const remoteLookupPaths = await this.apiClient.getLookupPaths();
+        if (remoteLookupPaths && remoteLookupPaths.length > 0) {
+          await this.fileWatcher.syncPaths(remoteLookupPaths.map((lp) => lp.path));
+        }
+      } catch (e) {
+        // ignore sync error
+      }
+
       const paths = this.fileWatcher.getWatchedPaths();
       await this.apiClient.sendHeartbeat(paths);
     }
@@ -147,26 +167,4 @@ export class CinemaManagerAgentService {
       this.fileWatcher?.isWatching()
     );
   }
-}
-
-// Service entry point for Windows service
-if (require.main === module) {
-  const service = new CinemaManagerAgentService();
-  
-  process.on('SIGINT', async () => {
-    console.log('Received SIGINT, shutting down gracefully...');
-    await service.stop();
-    process.exit(0);
-  });
-  
-  process.on('SIGTERM', async () => {
-    console.log('Received SIGTERM, shutting down gracefully...');
-    await service.stop();
-    process.exit(0);
-  });
-  
-  service.start().catch((error) => {
-    console.error('Service startup failed:', error);
-    process.exit(1);
-  });
-}
+}

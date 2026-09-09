@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Observable, throwError } from 'rxjs';
 import { catchError, retry } from 'rxjs/operators';
 import { Cinema, LookupPath, CinemaAgent } from '@cinema-manager/models';
@@ -9,6 +10,7 @@ import { Cinema, LookupPath, CinemaAgent } from '@cinema-manager/models';
 })
 export class CinemaManagerApiService {
   private readonly http = inject(HttpClient);
+  private readonly snackBar = inject(MatSnackBar, { optional: true });
   // Default to production API Gateway or local port if in dev mode
   private readonly apiUrl =
     window.location.hostname === 'localhost'
@@ -101,18 +103,32 @@ export class CinemaManagerApiService {
   /**
    * Play or open video file path
    */
-  playVideo(filePath: string): void {
+  async playVideo(filePath: string): Promise<void> {
     if (!filePath) return;
     try {
-      // In modern browsers, trigger custom protocol or copy to clipboard
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(filePath).catch(() => {});
+      // 1. Try launching through local Cinema Agent HTTP server
+      const localAgentUrl = `http://127.0.0.1:3334/open?path=${encodeURIComponent(filePath)}`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+      try {
+        const response = await fetch(localAgentUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (response.ok) {
+          this.snackBar?.open('🎬 Opening movie in media player...', 'OK', { duration: 3000 });
+          return;
+        }
+      } catch (localErr) {
+        clearTimeout(timeoutId);
       }
-      // Attempt file URI open
-      const formatted = filePath.replace(/\\/g, '/');
-      window.open(`file:///${formatted}`, '_blank');
+
+      // 2. Fallback: Copy to clipboard if agent is not running on this machine
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(filePath);
+        this.snackBar?.open('📋 File path copied to clipboard! (Start Cinema Agent for 1-click launch)', 'OK', { duration: 4000 });
+      }
     } catch (e) {
-      console.warn('Cannot open local file directly from browser:', e);
+      console.warn('Playback handler error:', e);
     }
   }
 

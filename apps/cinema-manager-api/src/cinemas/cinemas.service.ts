@@ -90,57 +90,130 @@ export class CinemasService {
   }
 
   /**
-   * Ingest and enrich a movie file from the Agent
+   * Ingest and enrich a movie file from the Agent with intelligent deduplication and quality upgrade
    */
   async createCinema(dto: CreateCinemaDto): Promise<Cinema> {
     this.logger.log(`Ingesting cinema file: "${dto.fileName}" (${dto.filePath})`);
 
-    // Check if already exists
+    // 1. Check if exact path already exists
     const existing = await this.getByPath(dto.filePath, dto.agentId);
     if (existing) {
       this.logger.log(`Movie already exists for path: ${dto.filePath}`);
       return existing;
     }
 
-    // Extract year from filename if present (e.g., Movie.Title.2023.1080p.mkv)
+    // 2. Extract year from filename if present (e.g., Movie.Title.2023.1080p.mkv)
     const yearMatch = dto.fileName.match(/\b(19\d\d|20\d\d)\b/);
     const parsedYear = yearMatch ? parseInt(yearMatch[1], 10) : undefined;
 
-    // Fetch TMDB/OMDB enrichment
-    const enriched = await this.metadataService.enrichMovie(
-      dto.title || dto.fileName,
-      parsedYear
+    // 3. Fetch TMDB/OMDB enrichment with fallback
+    let enriched: any = null;
+    try {
+      enriched = await this.metadataService.enrichMovie(
+        dto.title || dto.fileName,
+        parsedYear
+      );
+    } catch (e) {
+      this.logger.warn(`Metadata enrichment failed for "${dto.fileName}", using basic metadata:`, e);
+      enriched = {
+        title: dto.title || dto.fileName,
+        year: parsedYear || new Date().getFullYear(),
+        type: 'movie',
+        quality: '1080p',
+      };
+    }
+
+    const parseSafeInt = (val: any, fallback = 0): number => {
+      if (val === null || val === undefined || val === '') return fallback;
+      const parsed = parseInt(String(val), 10);
+      return isNaN(parsed) ? fallback : parsed;
+    };
+
+    const parseSafeFloat = (val: any, fallback = 0): number => {
+      if (val === null || val === undefined || val === '') return fallback;
+      const parsed = parseFloat(String(val));
+      return isNaN(parsed) ? fallback : parsed;
+    };
+
+    const movieTitle = enriched.title || dto.title || dto.fileName;
+    const movieYear = parseSafeInt(enriched.year, parseSafeInt(parsedYear, new Date().getFullYear()));
+    const effectiveQuality = this.extractResolution(dto, enriched);
+    const newQualityRank = this.getQualityRank(effectiveQuality, dto.fileName);
+    const newFileSize = parseSafeInt(dto.fileSize, 0);
+    const now = new Date().toISOString();
+
+    // 4. Check for duplicate movie by IMDb ID, TMDb ID, or Title + Release Year
+    const duplicateMovie = await this.findDuplicateMovie(
+      enriched.imdbId,
+      enriched.tmdbId,
+      movieTitle,
+      movieYear
     );
 
-    const id = Date.now();
-    const now = new Date().toISOString();
+    if (duplicateMovie) {
+      const existingQualityRank = this.getQualityRank(duplicateMovie.quality, duplicateMovie.fileName);
+      const existingFileSize = duplicateMovie.fileSize || 0;
+
+      // Upgrade existing movie record if incoming file is higher resolution or larger rip
+      if (newQualityRank > existingQualityRank || (newQualityRank === existingQualityRank && newFileSize > existingFileSize)) {
+        this.logger.log(
+          `Upgrading existing movie "${duplicateMovie.title}" (ID: ${duplicateMovie.id}) from ${duplicateMovie.quality || 'Unknown'} to ${effectiveQuality} with file: ${dto.fileName}`
+        );
+
+        const updatedItem: any = {
+          ...duplicateMovie,
+          path: dto.filePath,
+          fileName: dto.fileName,
+          fileSize: newFileSize,
+          quality: effectiveQuality,
+          format: dto.format || duplicateMovie.format || '',
+          lastUpdatedDate: now,
+        };
+
+        delete updatedItem.genres;
+        delete updatedItem.languages;
+        delete updatedItem.directors;
+        delete updatedItem.actorsList;
+
+        await this.dynamoDbService.putItem(this.dynamoDbService.moviesTable, updatedItem);
+        return this.transformToCinema(updatedItem);
+      } else {
+        this.logger.log(
+          `Skipping duplicate file for "${duplicateMovie.title}" (${effectiveQuality} <= existing ${duplicateMovie.quality}): ${dto.fileName}`
+        );
+        return duplicateMovie;
+      }
+    }
+
+    const id = Date.now() + Math.floor(Math.random() * 10000);
+    const genreVal = (enriched.genre && String(enriched.genre).trim()) ? String(enriched.genre).trim() : 'Unknown';
 
     const cinemaItem: any = {
       id: id,
       path: dto.filePath,
       fileName: dto.fileName,
-      fileSize: dto.fileSize,
-      agentId: dto.agentId,
+      fileSize: newFileSize,
+      agentId: dto.agentId || 'default',
       imdbId: enriched.imdbId || '',
-      tmdbId: enriched.tmdbId || 0,
+      tmdbId: parseSafeInt(enriched.tmdbId, 0),
       type: enriched.type || 'movie',
-      title: enriched.title || dto.title || dto.fileName,
-      year: enriched.year || parsedYear || new Date().getFullYear(),
+      title: movieTitle,
+      year: movieYear,
       releaseDate: enriched.releaseDate || '',
       rated: enriched.rated || '',
-      runtime: enriched.runtime || dto.duration || 0,
-      genre: enriched.genre || '',
+      runtime: parseSafeInt(enriched.runtime, parseSafeInt(dto.duration, 0)),
+      genre: genreVal,
       plot: enriched.plot || '',
-      imdbRating: enriched.imdbRating || 0,
+      imdbRating: parseSafeFloat(enriched.imdbRating, 0),
       imdbVotes: enriched.imdbVotes || '',
-      metascore: enriched.metascore || 0,
+      metascore: parseSafeInt(enriched.metascore, 0),
       awards: enriched.awards || '',
       language: enriched.language || '',
       director: enriched.director || '',
       actors: enriched.actors || '',
-      revenue: enriched.revenue || 0,
+      revenue: parseSafeInt(enriched.revenue, 0),
       poster: enriched.poster || '',
-      quality: dto.resolution || enriched.quality || '1080p',
+      quality: effectiveQuality,
       showCinema: 1,
       lastUpdatedDate: now,
       dateAdded: now,
@@ -152,8 +225,55 @@ export class CinemasService {
       cinemaItem
     );
 
-    this.logger.log(`Saved cinema record "${cinemaItem.title}" with ID ${id}`);
+    this.logger.log(`Saved cinema record "${cinemaItem.title}" with ID ${id} (${effectiveQuality})`);
     return this.transformToCinema(cinemaItem);
+  }
+
+  private async findDuplicateMovie(
+    imdbId?: string,
+    tmdbId?: number,
+    title?: string,
+    year?: number
+  ): Promise<Cinema | null> {
+    const allMovies = await this.getAll();
+    for (const m of allMovies) {
+      if (imdbId && m.imdbId && m.imdbId === imdbId) {
+        return m;
+      }
+      if (tmdbId && m.tmdbId && m.tmdbId === tmdbId && tmdbId > 0) {
+        return m;
+      }
+      if (
+        title &&
+        m.title &&
+        m.title.toLowerCase().trim() === title.toLowerCase().trim() &&
+        year &&
+        m.year &&
+        m.year === year
+      ) {
+        return m;
+      }
+    }
+    return null;
+  }
+
+  private getQualityRank(quality?: string, fileName?: string): number {
+    const q = (quality || fileName || '').toLowerCase();
+    if (q.includes('4k') || q.includes('2160p') || q.includes('uhd')) return 4;
+    if (q.includes('1080p') || q.includes('fhd')) return 3;
+    if (q.includes('720p') || q.includes('hd')) return 2;
+    if (q.includes('480p') || q.includes('sd') || q.includes('dvdrip')) return 1;
+    return 2;
+  }
+
+  private extractResolution(dto: CreateCinemaDto, enriched: any): string {
+    if (dto.resolution && dto.resolution !== '1080p') return dto.resolution;
+    const fromFile = dto.fileName.toLowerCase();
+    if (/\b(4k|2160p|uhd)\b/i.test(fromFile)) return '4K';
+    if (/\b(1080p|fhd)\b/i.test(fromFile)) return '1080p';
+    if (/\b(720p|hd)\b/i.test(fromFile)) return '720p';
+    if (/\b(480p|sd|dvdrip)\b/i.test(fromFile)) return '480p';
+    return dto.resolution || enriched.quality || '1080p';
   }
 
   /**
