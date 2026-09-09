@@ -29,9 +29,17 @@ export class CinemaComponent {
 
   private readonly cinemaApiService = inject(CinemaManagerApiService);
   imageError = false;
+  isPlotExpanded = false;
 
   onImageError(): void {
     this.imageError = true;
+  }
+
+  togglePlot(event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.isPlotExpanded = !this.isPlotExpanded;
   }
 
   startCinema(): void {

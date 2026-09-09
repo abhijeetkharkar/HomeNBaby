@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -8,7 +8,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { Cinema } from '@cinema-manager/models';
-import { CinemaManagerApiService } from '../../services/cinema-manager-api.service';
+import { CinemaManagerApiService, DeviceInfo } from '../../services/cinema-manager-api.service';
 import { CinemaComponent } from '../cinema/cinema.component';
 import { ConfigurationDialog } from '../configuration-dialog/configuration-dialog.component';
 
@@ -29,13 +29,18 @@ import { ConfigurationDialog } from '../configuration-dialog/configuration-dialo
     CinemaComponent,
   ],
 })
-export class CinemaGalleryComponent implements OnInit {
+export class CinemaGalleryComponent implements OnInit, OnDestroy {
   private readonly cinemaApiService = inject(CinemaManagerApiService);
   private readonly dialog = inject(MatDialog);
 
   allCinemas: Cinema[] = [];
   displayedCinemas: Cinema[] = [];
-  isLoading = true;
+  isLoading = false;
+  isCheckingDevice = true;
+  isAgentConnected = false;
+  currentDevice: DeviceInfo | null = null;
+  private devicePollInterval?: any;
+
   searchQuery = '';
   selectedGenre = 'All';
   selectedSort = 'rating';
@@ -56,15 +61,71 @@ export class CinemaGalleryComponent implements OnInit {
     'Thriller',
   ];
 
-  ngOnInit(): void {
-    this.loadCinemas();
+  async ngOnInit(): Promise<void> {
+    await this.verifyDeviceAndLoad();
+
+    // Check device status every 5s in background if offline
+    this.devicePollInterval = setInterval(async () => {
+      if (!this.isAgentConnected) {
+        await this.verifyDeviceAndLoad(true);
+      }
+    }, 5000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.devicePollInterval) {
+      clearInterval(this.devicePollInterval);
+      this.devicePollInterval = undefined;
+    }
+  }
+
+  async verifyDeviceAndLoad(isSilent = false): Promise<void> {
+    if (!isSilent) {
+      this.isCheckingDevice = true;
+    }
+
+    const device = await this.cinemaApiService.checkLocalDevice();
+
+    if (device) {
+      const wasConnected = this.isAgentConnected;
+      this.isAgentConnected = true;
+      this.currentDevice = device;
+      this.isCheckingDevice = false;
+
+      if (!wasConnected || this.allCinemas.length === 0) {
+        this.loadCinemas();
+      }
+    } else {
+      this.isAgentConnected = false;
+      this.currentDevice = null;
+      this.isCheckingDevice = false;
+      this.allCinemas = [];
+      this.displayedCinemas = [];
+    }
   }
 
   loadCinemas(): void {
+    if (!this.isAgentConnected || !this.currentDevice) {
+      return;
+    }
+
     this.isLoading = true;
-    this.cinemaApiService.getCinemas().subscribe({
+    this.cinemaApiService.getCinemas(this.currentDevice.agentId).subscribe({
       next: (cinemas) => {
-        this.allCinemas = cinemas;
+        // Enforce path applicability: ONLY show movies whose paths reside within this device's watched directories
+        const verifiedPaths = this.currentDevice?.watchPaths || [];
+        if (verifiedPaths.length > 0) {
+          this.allCinemas = cinemas.filter((c) => {
+            if (!c.path) return false;
+            const normPath = c.path.toLowerCase().replace(/\//g, '\\');
+            return verifiedPaths.some((wp) =>
+              normPath.startsWith(wp.toLowerCase().replace(/\//g, '\\'))
+            );
+          });
+        } else {
+          this.allCinemas = cinemas;
+        }
+
         this.applyFilterAndSort();
         this.isLoading = false;
       },

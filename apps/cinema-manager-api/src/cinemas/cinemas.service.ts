@@ -13,14 +13,17 @@ export class CinemasService {
   ) {}
 
   /**
-   * Get all movies from DynamoDB
+   * Get movies from DynamoDB, optionally filtered by agentId
    */
-  async getAll(): Promise<Cinema[]> {
-    this.logger.log('Fetching all movies from DynamoDB');
+  async getAll(agentId?: string): Promise<Cinema[]> {
+    this.logger.log(`Fetching movies from DynamoDB${agentId ? ` for agent: ${agentId}` : ''}`);
     const items = await this.dynamoDbService.scan<any>(
       this.dynamoDbService.moviesTable
     );
-    return items.map((item) => this.transformToCinema(item));
+    const filtered = agentId && agentId.trim()
+      ? items.filter((item) => !item.agentId || item.agentId === 'default' || item.agentId === agentId)
+      : items;
+    return filtered.map((item) => this.transformToCinema(item));
   }
 
   /**

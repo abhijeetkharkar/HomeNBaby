@@ -21,7 +21,7 @@ export class CinemasController {
 
   @Get()
   async getAll(@Query('agentId') agentId?: string) {
-    return this.cinemasService.getAll();
+    return this.cinemasService.getAll(agentId);
   }
 
   @Get('search')
@@ -69,7 +69,7 @@ export class ApiCinemasController {
 
   @Get()
   async getAll(@Query('agentId') agentId?: string) {
-    return this.cinemasService.getAll();
+    return this.cinemasService.getAll(agentId);
   }
 
   @Get('search')

@@ -5,6 +5,17 @@ import { Observable, throwError } from 'rxjs';
 import { catchError, retry } from 'rxjs/operators';
 import { Cinema, LookupPath, CinemaAgent } from '@cinema-manager/models';
 
+export interface DeviceInfo {
+  status: string;
+  agent: string;
+  agentId: string;
+  agentName: string;
+  machineName?: string;
+  hostname: string;
+  platform?: string;
+  watchPaths: string[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -18,11 +29,37 @@ export class CinemaManagerApiService {
       : 'https://api.abhijeetkharkar.com/cinema-manager';
 
   /**
-   * Get all cinemas from the API
+   * Check if local Cinema Manager Agent is active on this device
    */
-  getCinemas(): Observable<Cinema[]> {
+  async checkLocalDevice(): Promise<DeviceInfo | null> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1500);
+
+      const response = await fetch('http://127.0.0.1:3334/device-info', {
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        return (await response.json()) as DeviceInfo;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Get all cinemas from the API, optionally scoped to an agentId
+   */
+  getCinemas(agentId?: string): Observable<Cinema[]> {
+    const params: Record<string, string> = {};
+    if (agentId) {
+      params['agentId'] = agentId;
+    }
     return this.http
-      .get<Cinema[]>(`${this.apiUrl}/cinemas`)
+      .get<Cinema[]>(`${this.apiUrl}/cinemas`, { params })
       .pipe(retry(2), catchError(this.handleError));
   }
 

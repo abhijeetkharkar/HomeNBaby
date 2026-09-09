@@ -1,110 +1,195 @@
 <div class="gallery-container">
-  <!-- Top Action & Search Bar -->
-  <div class="gallery-controls">
-    <div class="search-box">
-      <mat-icon class="search-icon">search</mat-icon>
-      <input
-        type="text"
-        [(ngModel)]="searchQuery"
-        (ngModelChange)="onSearchChange()"
-        placeholder="Search movies by title, director, actors, plot..."
-        class="search-input"
-      />
-      <button
-        *ngIf="searchQuery"
-        mat-icon-button
-        (click)="clearSearch()"
-        class="clear-btn"
-        aria-label="Clear search"
-      >
-        <mat-icon>close</mat-icon>
+  <!-- Device Checking State -->
+  <div *ngIf="isCheckingDevice" class="state-container loading device-checking">
+    <mat-spinner diameter="44"></mat-spinner>
+    <p>Connecting to local Cinema Agent...</p>
+  </div>
+
+  <!-- Agent Required / Desktop Companion Screen (when agent not running or on mobile) -->
+  <div *ngIf="!isCheckingDevice && !isAgentConnected" class="state-container agent-required">
+    <div class="agent-icon-wrapper">
+      <mat-icon class="agent-icon">desktop_windows</mat-icon>
+      <span class="pulse-indicator"></span>
+    </div>
+
+    <div class="agent-badge offline">
+      <span class="badge-dot"></span>
+      <span>Media PC Agent Disconnected</span>
+    </div>
+
+    <h2>Desktop Home Theater Companion</h2>
+    <p class="agent-description">
+      Cinema Manager manages and launches media stored locally on your desktop Home Theater PC. 
+      To protect your privacy and library, movies and file paths are only accessible when the Cinema Manager Agent is running on this device.
+    </p>
+
+    <div class="agent-steps-card">
+      <div class="step-item">
+        <span class="step-num">1</span>
+        <div class="step-text">
+          <strong>Run on your Media PC</strong>
+          <span>Open Cinema Manager in a browser on the computer holding your media drives.</span>
+        </div>
+      </div>
+      <div class="step-item">
+        <span class="step-num">2</span>
+        <div class="step-text">
+          <strong>Start Cinema Agent</strong>
+          <span>Run <code>run.bat</code> or start the Windows Service from <code>dist/cinema-agent-win-x64/</code>.</span>
+        </div>
+      </div>
+      <div class="step-item">
+        <span class="step-num">3</span>
+        <div class="step-text">
+          <strong>Instant Local Playback</strong>
+          <span>This page will automatically unlock and connect to your local VLC / native media player.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="agent-actions">
+      <button mat-flat-button class="retry-btn" (click)="verifyDeviceAndLoad()">
+        <mat-icon>refresh</mat-icon>
+        <span>Check Connection Now</span>
+      </button>
+
+      <button mat-flat-button class="settings-link-btn" (click)="openSettings()">
+        <mat-icon>folder_open</mat-icon>
+        <span>Folder Settings</span>
       </button>
     </div>
 
-    <div class="control-actions">
-      <!-- Sort Select -->
-      <div class="sort-wrapper">
-        <label for="sortSelect">Sort:</label>
-        <select
-          id="sortSelect"
-          [ngModel]="selectedSort"
-          (ngModelChange)="setSort($event)"
-          class="custom-select"
+    <span class="polling-hint">
+      <mat-icon class="spin-icon">sync</mat-icon>
+      Auto-polling local agent on 127.0.0.1:3334 every 5 seconds...
+    </span>
+  </div>
+
+  <!-- Main Library (Only rendered when agent is verified on this device) -->
+  <ng-container *ngIf="!isCheckingDevice && isAgentConnected">
+    <!-- Active Device Banner -->
+    <div class="device-banner">
+      <div class="device-info-left">
+        <span class="status-dot online"></span>
+        <span class="device-label">Active Host:</span>
+        <strong class="device-name">{{ currentDevice?.agentName || currentDevice?.hostname || 'Local PC' }}</strong>
+        <span class="path-badge" *ngIf="currentDevice?.watchPaths?.length">
+          {{ currentDevice?.watchPaths?.length }} Watched Folder(s)
+        </span>
+      </div>
+      <button mat-button class="recheck-btn" (click)="verifyDeviceAndLoad()" title="Recheck agent status">
+        <mat-icon>sync</mat-icon>
+        <span>Sync</span>
+      </button>
+    </div>
+
+    <!-- Top Action & Search Bar -->
+    <div class="gallery-controls">
+      <div class="search-box">
+        <mat-icon class="search-icon">search</mat-icon>
+        <input
+          type="text"
+          [(ngModel)]="searchQuery"
+          (ngModelChange)="onSearchChange()"
+          placeholder="Search movies by title, director, actors, plot..."
+          class="search-input"
+        />
+        <button
+          *ngIf="searchQuery"
+          mat-icon-button
+          (click)="clearSearch()"
+          class="clear-btn"
+          aria-label="Clear search"
         >
-          <option value="rating">Top Rated</option>
-          <option value="year">Release Year</option>
-          <option value="title">Title (A-Z)</option>
-        </select>
+          <mat-icon>close</mat-icon>
+        </button>
       </div>
 
-      <button mat-flat-button class="settings-btn" (click)="openSettings()">
-        <mat-icon>settings</mat-icon>
-        <span>Settings</span>
+      <div class="control-actions">
+        <!-- Sort Select -->
+        <div class="sort-wrapper">
+          <label for="sortSelect">Sort:</label>
+          <select
+            id="sortSelect"
+            [ngModel]="selectedSort"
+            (ngModelChange)="setSort($event)"
+            class="custom-select"
+          >
+            <option value="rating">Top Rated</option>
+            <option value="year">Release Year</option>
+            <option value="title">Title (A-Z)</option>
+          </select>
+        </div>
+
+        <button mat-flat-button class="settings-btn" (click)="openSettings()">
+          <mat-icon>settings</mat-icon>
+          <span>Settings</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Genre Filter Pills -->
+    <div class="genres-filter-bar">
+      <button
+        *ngFor="let genre of genres"
+        class="genre-filter-btn"
+        [class.active]="selectedGenre === genre"
+        (click)="selectGenre(genre)"
+      >
+        {{ genre }}
       </button>
     </div>
-  </div>
 
-  <!-- Genre Filter Pills -->
-  <div class="genres-filter-bar">
-    <button
-      *ngFor="let genre of genres"
-      class="genre-filter-btn"
-      [class.active]="selectedGenre === genre"
-      (click)="selectGenre(genre)"
+    <!-- Loading State -->
+    <div *ngIf="isLoading" class="state-container loading">
+      <mat-spinner diameter="48"></mat-spinner>
+      <p>Loading your movie library...</p>
+    </div>
+
+    <!-- Movie Cards Grid -->
+    <div *ngIf="!isLoading && displayedCinemas.length > 0" class="cinemas-grid">
+      <app-cinema
+        *ngFor="let cinema of displayedCinemas"
+        [cinema]="cinema"
+        (delete)="deleteCinema($event)"
+      ></app-cinema>
+    </div>
+
+    <!-- Empty State -->
+    <div
+      *ngIf="!isLoading && displayedCinemas.length === 0"
+      class="state-container empty"
     >
-      {{ genre }}
-    </button>
-  </div>
+      <div class="empty-icon-wrapper">
+        <mat-icon class="empty-icon">local_movies</mat-icon>
+      </div>
+      <h2>No Movies Found</h2>
+      <p *ngIf="searchQuery || selectedGenre !== 'All'">
+        No titles matched your search query or genre filter. Try clearing your filters.
+      </p>
+      <p *ngIf="!searchQuery && selectedGenre === 'All'">
+        No movies found matching the watched folder paths configured for this device ({{ currentDevice?.agentName || currentDevice?.hostname }}).
+      </p>
 
-  <!-- Loading State -->
-  <div *ngIf="isLoading" class="state-container loading">
-    <mat-spinner diameter="48"></mat-spinner>
-    <p>Loading your movie library...</p>
-  </div>
+      <div class="empty-actions">
+        <button
+          *ngIf="searchQuery || selectedGenre !== 'All'"
+          mat-flat-button
+          color="primary"
+          (click)="clearSearch(); selectGenre('All')"
+        >
+          Clear Filters
+        </button>
 
-  <!-- Movie Cards Grid -->
-  <div *ngIf="!isLoading && displayedCinemas.length > 0" class="cinemas-grid">
-    <app-cinema
-      *ngFor="let cinema of displayedCinemas"
-      [cinema]="cinema"
-      (delete)="deleteCinema($event)"
-    ></app-cinema>
-  </div>
-
-  <!-- Empty State -->
-  <div
-    *ngIf="!isLoading && displayedCinemas.length === 0"
-    class="state-container empty"
-  >
-    <div class="empty-icon-wrapper">
-      <mat-icon class="empty-icon">local_movies</mat-icon>
+        <button
+          mat-flat-button
+          class="configure-btn"
+          (click)="openSettings()"
+        >
+          <mat-icon>folder_open</mat-icon>
+          Configure Watched Folders
+        </button>
+      </div>
     </div>
-    <h2>No Movies Found</h2>
-    <p *ngIf="searchQuery || selectedGenre !== 'All'">
-      No titles matched your search query or genre filter. Try clearing your filters.
-    </p>
-    <p *ngIf="!searchQuery && selectedGenre === 'All'">
-      Your library is currently empty. Run the Cinema Manager Agent on your computer or configure folder paths in settings to scan movie files.
-    </p>
-
-    <div class="empty-actions">
-      <button
-        *ngIf="searchQuery || selectedGenre !== 'All'"
-        mat-flat-button
-        color="primary"
-        (click)="clearSearch(); selectGenre('All')"
-      >
-        Clear Filters
-      </button>
-
-      <button
-        mat-flat-button
-        class="configure-btn"
-        (click)="openSettings()"
-      >
-        <mat-icon>folder_open</mat-icon>
-        Configure Watched Folders
-      </button>
-    </div>
-  </div>
+  </ng-container>
 </div>

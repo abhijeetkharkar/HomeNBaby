@@ -15,17 +15,32 @@
         <span class="placeholder-title">{{ cinema.title }}</span>
       </div>
     </ng-template>
-
-    <div class="quality-badge" *ngIf="cinema.quality">
-      {{ cinema.quality }}
-    </div>
   </div>
 
   <!-- Movie Details Section -->
   <div class="cinema-details">
     <div class="details-top">
       <div class="title-row">
-        <h3 class="movie-title">{{ cinema.title }}</h3>
+        <div class="title-wrapper">
+          <a
+            *ngIf="cinema.imdbId; else plainTitle"
+            [href]="'https://www.imdb.com/title/' + cinema.imdbId + '/'"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="movie-title-link"
+            [title]="'View ' + cinema.title + ' on IMDb (opens in new tab)'"
+          >
+            <h3 class="movie-title">{{ cinema.title }}</h3>
+            <span class="imdb-chip">
+              <span class="imdb-text">IMDb</span>
+              <mat-icon class="external-icon">open_in_new</mat-icon>
+            </span>
+          </a>
+          <ng-template #plainTitle>
+            <h3 class="movie-title">{{ cinema.title }}</h3>
+          </ng-template>
+        </div>
+
         <button
           mat-icon-button
           class="delete-btn"
@@ -42,6 +57,8 @@
         <span class="meta-badge rated" *ngIf="cinema.rated">{{ cinema.rated }}</span>
         <span class="meta-dot" *ngIf="cinema.runtime">&bull;</span>
         <span class="meta-item runtime" *ngIf="cinema.runtime">{{ cinema.runtime }} min</span>
+        <span class="meta-dot" *ngIf="cinema.quality">&bull;</span>
+        <span class="meta-badge quality" *ngIf="cinema.quality">{{ cinema.quality }}</span>
       </div>
 
       <!-- Genres -->
@@ -65,9 +82,24 @@
       </div>
 
       <!-- Plot -->
-      <p class="movie-plot" *ngIf="cinema.plot">
-        {{ cinema.plot }}
-      </p>
+      <div class="plot-container" *ngIf="cinema.plot">
+        <p
+          class="movie-plot"
+          [class.expanded]="isPlotExpanded"
+          (click)="togglePlot($event)"
+          [title]="isPlotExpanded ? 'Click to collapse description' : 'Click to read full description'"
+        >
+          {{ cinema.plot }}
+        </p>
+        <button
+          type="button"
+          class="toggle-plot-btn"
+          (click)="togglePlot($event)"
+          *ngIf="cinema.plot.length > 90"
+        >
+          {{ isPlotExpanded ? 'Show less' : 'Read more' }}
+        </button>
+      </div>
 
       <!-- Cast & Crew -->
       <div class="crew-info">

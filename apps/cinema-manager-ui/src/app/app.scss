@@ -14,6 +14,10 @@
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-subtle);
   padding: 0.85rem 1.5rem;
+
+  @media (max-width: 600px) {
+    padding: 0.75rem 1rem;
+  }
 }
 
 .header-container {
@@ -39,11 +43,22 @@
     justify-content: center;
     box-shadow: 0 4px 14px rgba(229, 9, 20, 0.4);
 
+    @media (max-width: 600px) {
+      width: 36px;
+      height: 36px;
+    }
+
     mat-icon {
       color: white;
       font-size: 1.5rem;
       width: 1.5rem;
       height: 1.5rem;
+
+      @media (max-width: 600px) {
+        font-size: 1.25rem;
+        width: 1.25rem;
+        height: 1.25rem;
+      }
     }
   }
 
@@ -59,6 +74,10 @@
       line-height: 1.1;
       letter-spacing: -0.02em;
 
+      @media (max-width: 600px) {
+        font-size: 1.15rem;
+      }
+
       span {
         color: var(--accent-primary);
       }
@@ -68,46 +87,22 @@
       font-size: 0.75rem;
       color: var(--text-muted);
       font-weight: 500;
+
+      @media (max-width: 450px) {
+        display: none;
+      }
     }
   }
 }
 
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-
-  .portfolio-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-    text-decoration: none;
-    padding: 0.4rem 0.85rem;
-    border-radius: var(--radius-full);
-    border: 1px solid var(--border-subtle);
-    background-color: var(--bg-surface);
-    transition: all 0.2s ease;
-
-    mat-icon {
-      font-size: 1rem;
-      width: 1rem;
-      height: 1rem;
-    }
-
-    &:hover {
-      color: var(--text-primary);
-      border-color: rgba(255, 255, 255, 0.25);
-      background-color: #334155;
-    }
-  }
-}
 
 .main-content {
   flex: 1;
   padding: 2rem 1.5rem 4rem;
+
+  @media (max-width: 600px) {
+    padding: 1rem 0.75rem 2.5rem;
+  }
 }
 
 .content-container {
