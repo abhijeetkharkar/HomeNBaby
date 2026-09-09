@@ -41,13 +41,19 @@ export class CinemaManagerAgentService {
       this.movieProcessor = new MovieProcessor(this.apiClient, this.config);
       console.log('Movie processor initialized');
 
-      // Start local HTTP server for native video launching from web UI
-      this.localServer = new LocalServer();
-      this.localServer.start();
-
       // Initialize and start file watcher
       this.fileWatcher = new FileWatcher(this.movieProcessor, this.config, this.apiClient);
       await this.fileWatcher.start();
+
+      // Start local HTTP server for native video launching and device handshake
+      const agentId = (this.config.get('agent.id') as string) || require('os').hostname();
+      const agentName = (this.config.get('agent.name') as string) || `Cinema Agent - ${require('os').hostname()}`;
+      this.localServer = new LocalServer(
+        () => this.fileWatcher?.getWatchedPaths() || [],
+        agentId,
+        agentName
+      );
+      this.localServer.start();
       
       console.log('Cinema Manager Agent Service started successfully');
       

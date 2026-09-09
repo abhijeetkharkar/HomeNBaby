@@ -1,6 +1,10 @@
 export interface Cinema {
   id: number | string;
+  agentId?: string;
   path: string;
+  fileName?: string;
+  fileSize?: number;
+  format?: string;
   imdbId: string;
   tmdbId: number;
   type: string;
