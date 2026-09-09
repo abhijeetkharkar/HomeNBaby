@@ -34,7 +34,10 @@ npx --yes pkg $BundleJs --target node18-win-x64 --output $TargetExe
 # 4. Copy configuration & helper scripts
 Write-Host "[3/3] Creating configuration and launcher scripts..." -ForegroundColor Yellow
 $ConfigSrc = Join-Path $AppRoot "config\service.json"
-Copy-Item -Path $ConfigSrc -Destination (Join-Path $OutPath "service.json") -Force
+$ConfigDest = Join-Path $OutPath "service.json"
+if (-not (Test-Path $ConfigDest)) {
+    Copy-Item -Path $ConfigSrc -Destination $ConfigDest -Force
+}
 
 # Create install-service.bat
 $InstallBat = @"

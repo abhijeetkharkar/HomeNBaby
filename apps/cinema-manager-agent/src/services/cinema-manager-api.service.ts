@@ -3,7 +3,7 @@ const fetch = globalThis.fetch || require('node-fetch');
 import * as os from 'os';
 import { Auth0M2MService } from '../auth/auth0-m2m.service';
 import { ConfigService } from '../config/config.service';
-import { CreateCinemaDto, CinemaFile } from '@cinema-manager/models';
+import { CreateCinemaDto, CinemaFile, LookupPath } from '@cinema-manager/models';
 
 /**
  * API client service for communicating with the Cinema Manager API
@@ -59,7 +59,8 @@ export class CinemaManagerApiService {
         throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
-      return (await response.json()) as CinemaFile;
+      const text = await response.text();
+      return text ? (JSON.parse(text) as CinemaFile) : ({} as CinemaFile);
     } catch (error) {
       console.error('Failed to create cinema:', error);
       throw error;
@@ -81,7 +82,7 @@ export class CinemaManagerApiService {
         }
       );
 
-      if (response.status === 404) {
+      if (response.status === 404 || response.status === 204) {
         return null;
       }
 
@@ -94,7 +95,12 @@ export class CinemaManagerApiService {
         throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
-      return (await response.json()) as CinemaFile;
+      const text = await response.text();
+      if (!text || text.trim() === '' || text === 'null') {
+        return null;
+      }
+
+      return JSON.parse(text) as CinemaFile;
     } catch (error) {
       console.error('Failed to get cinema by path:', error);
       throw error;
@@ -195,10 +201,39 @@ export class CinemaManagerApiService {
         throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
-      return (await response.json()) as CinemaFile[];
+      const text = await response.text();
+      return text ? (JSON.parse(text) as CinemaFile[]) : [];
     } catch (error) {
       console.error('Failed to get cinemas:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Get all configured lookup paths from API
+   */
+  async getLookupPaths(): Promise<LookupPath[]> {
+    try {
+      const headers = await this.getHeaders();
+      const response = await fetch(`${this.baseUrl}/api/lookup-paths`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          this.auth0Service.clearToken();
+          return this.getLookupPaths();
+        }
+        const errorText = await response.text();
+        throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const text = await response.text();
+      return text ? (JSON.parse(text) as LookupPath[]) : [];
+    } catch (error) {
+      console.warn('Could not fetch lookup paths from API:', error);
+      return [];
     }
   }
 

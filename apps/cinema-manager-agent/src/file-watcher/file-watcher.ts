@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { MovieProcessor } from '../processors/movie-processor';
 import { ConfigService } from '../config/config.service';
+import { CinemaManagerApiService } from '../services/cinema-manager-api.service';
 
 /**
  * File watcher service that monitors directories for video files and processes them
@@ -18,7 +19,8 @@ export class FileWatcher {
 
   constructor(
     private readonly movieProcessor: MovieProcessor,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly apiClient?: CinemaManagerApiService
   ) {}
 
   /**
@@ -27,21 +29,57 @@ export class FileWatcher {
    */
   async start(): Promise<void> {
     try {
-      // Get watch paths from configuration
-      this.watchPaths = this.configService.get('agent.watchPaths') as string[];
-      
-      for (const watchPath of this.watchPaths) {
+      // 1. Get local watch paths from configuration
+      const localPaths: string[] = (this.configService.get('agent.watchPaths') as string[]) || [];
+
+      // 2. Fetch remote lookup paths from central API
+      let remotePaths: string[] = [];
+      if (this.apiClient) {
+        try {
+          const apiLookupPaths = await this.apiClient.getLookupPaths();
+          remotePaths = apiLookupPaths.map((lp) => lp.path);
+          if (remotePaths.length > 0) {
+            console.log(`Fetched ${remotePaths.length} lookup path(s) from central API`);
+          }
+        } catch (e) {
+          console.warn('Failed to fetch lookup paths from API, using local paths:', e);
+        }
+      }
+
+      // 3. Deduplicate all paths
+      const allPaths = Array.from(new Set([...localPaths, ...remotePaths]));
+      this.watchPaths = [];
+
+      for (const watchPath of allPaths) {
         if (fs.existsSync(watchPath)) {
           await this.watchFolder(watchPath);
+          this.watchPaths.push(watchPath);
         } else {
-          console.warn(`Watch path does not exist, skipping: ${watchPath}`);
+          console.warn(`Watch path does not exist on this machine, skipping: ${watchPath}`);
         }
       }
       
-      console.log(`Started watching ${this.watchers.length} folders`);
+      console.log(`Started watching ${this.watchers.length} folders: ${this.watchPaths.join(', ')}`);
     } catch (error) {
       console.error('Failed to start file watcher:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Dynamically sync watched paths (called periodically on heartbeat)
+   */
+  async syncPaths(paths: string[]): Promise<void> {
+    for (const p of paths) {
+      if (!this.watchPaths.includes(p)) {
+        if (fs.existsSync(p)) {
+          console.log(`Discovered new lookup path dynamically: ${p}`);
+          await this.watchFolder(p);
+          this.watchPaths.push(p);
+        } else {
+          console.warn(`Discovered lookup path does not exist on this machine: ${p}`);
+        }
+      }
     }
   }
 
