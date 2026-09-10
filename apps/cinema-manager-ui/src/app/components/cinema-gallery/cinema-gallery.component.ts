@@ -114,14 +114,19 @@ export class CinemaGalleryComponent implements OnInit, OnDestroy {
       next: (cinemas) => {
         // Enforce path applicability: ONLY show movies whose paths reside within this device's watched directories
         const verifiedPaths = this.currentDevice?.watchPaths || [];
+        console.log(`[CinemaManager] Loaded ${cinemas.length} movies from cloud database. Active watched paths:`, verifiedPaths);
+
         if (verifiedPaths.length > 0) {
-          this.allCinemas = cinemas.filter((c) => {
-            if (!c.path) return false;
-            const normPath = c.path.toLowerCase().replace(/\//g, '\\');
-            return verifiedPaths.some((wp) =>
-              normPath.startsWith(wp.toLowerCase().replace(/\//g, '\\'))
+          this.allCinemas = cinemas.filter((c) => this.isPathInWatchedFolder(c.path, verifiedPaths));
+          console.log(`[CinemaManager] Matched ${this.allCinemas.length} movies for this device.`);
+          if (this.allCinemas.length === 0 && cinemas.length > 0) {
+            console.warn(
+              '[CinemaManager] 0 movies matched watched paths. Sample movie path from DB:',
+              cinemas[0]?.path,
+              'vs Watched paths:',
+              verifiedPaths
             );
-          });
+          }
         } else {
           this.allCinemas = cinemas;
         }
@@ -213,6 +218,30 @@ export class CinemaGalleryComponent implements OnInit, OnDestroy {
 
     dialogRef.afterClosed().subscribe(() => {
       this.loadCinemas();
+    });
+  }
+
+  private normalizePath(p: string): string {
+    if (!p) return '';
+    let clean = p.trim().replace(/^["']|["']$/g, '');
+    try {
+      clean = decodeURIComponent(clean);
+    } catch {}
+    clean = clean.replace(/\\+/g, '/').toLowerCase();
+    clean = clean.replace(/\/+$/, '');
+    return clean;
+  }
+
+  private isPathInWatchedFolder(moviePath: string, watchedFolders: string[]): boolean {
+    if (!moviePath) return false;
+    if (!watchedFolders || watchedFolders.length === 0) return true;
+
+    const normMoviePath = this.normalizePath(moviePath);
+
+    return watchedFolders.some((wp) => {
+      const normWp = this.normalizePath(wp);
+      if (!normWp) return false;
+      return normMoviePath === normWp || normMoviePath.startsWith(normWp + '/');
     });
   }
 }
