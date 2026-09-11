@@ -151,7 +151,125 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
-  # ── 2. IAM Role for Cinema API Lambda ────────────────────────────────────
+  MasterMoviesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${ProjectName}-master-movies'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: canonicalKey
+          AttributeType: S
+      KeySchema:
+        - AttributeName: canonicalKey
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: App
+          Value: cinema-manager-api
+        - Key: Environment
+          Value: !Ref Environment
+
+  PairingCodesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${ProjectName}-pairing-codes'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: code
+          AttributeType: S
+      KeySchema:
+        - AttributeName: code
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+      Tags:
+        - Key: App
+          Value: cinema-manager-api
+        - Key: Environment
+          Value: !Ref Environment
+
+  AuditLogsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${ProjectName}-audit-logs'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: App
+          Value: cinema-manager-api
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── 2. Cognito Authentication ────────────────────────────────────────────
+  CinemaUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${ProjectName}-user-pool-${Environment}'
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      UserPoolTags:
+        App: cinema-manager
+        Environment: !Ref Environment
+
+  CinemaCognitoDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub 'cinema-abhijeetkharkar-${Environment}'
+      UserPoolId: !Ref CinemaUserPool
+
+  CinemaUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${ProjectName}-web-client-${Environment}'
+      UserPoolId: !Ref CinemaUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+      SupportedIdentityProviders:
+        - COGNITO
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+      CallbackURLs:
+        - 'https://cinema.abhijeetkharkar.com/'
+        - 'http://localhost:4200/'
+      LogoutURLs:
+        - 'https://cinema.abhijeetkharkar.com/'
+        - 'http://localhost:4200/'
+
+  # ── 3. IAM Role for Cinema API Lambda ────────────────────────────────────
   CinemaApiLambdaRole:
     Type: AWS::IAM::Role
     Properties:
@@ -189,13 +307,19 @@ Resources:
                   - !Sub '${UsersTable.Arn}/index/*'
                   - !GetAtt LookupPathsTable.Arn
                   - !Sub '${LookupPathsTable.Arn}/index/*'
+                  - !GetAtt MasterMoviesTable.Arn
+                  - !Sub '${MasterMoviesTable.Arn}/index/*'
+                  - !GetAtt PairingCodesTable.Arn
+                  - !Sub '${PairingCodesTable.Arn}/index/*'
+                  - !GetAtt AuditLogsTable.Arn
+                  - !Sub '${AuditLogsTable.Arn}/index/*'
       Tags:
         - Key: App
           Value: cinema-manager-api
         - Key: Environment
           Value: !Ref Environment
 
-  # ── 3. Lambda Function for Cinema API ────────────────────────────────────
+  # ── 4. Lambda Function for Cinema API ────────────────────────────────────
   CinemaApiLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -217,6 +341,11 @@ Resources:
           AGENTS_TABLE: !Ref AgentsTable
           USERS_TABLE: !Ref UsersTable
           LOOKUP_PATHS_TABLE: !Ref LookupPathsTable
+          MASTER_MOVIES_TABLE: !Ref MasterMoviesTable
+          PAIRING_CODES_TABLE: !Ref PairingCodesTable
+          AUDIT_LOGS_TABLE: !Ref AuditLogsTable
+          USER_POOL_ID: !Ref CinemaUserPool
+          USER_POOL_CLIENT_ID: !Ref CinemaUserPoolClient
           TMDB_API_KEY: !Ref TmdbApiKey
           OMDB_API_KEY: !Ref OmdbApiKey
       Tags:
@@ -243,4 +372,41 @@ Outputs:
     Value: !Ref MoviesTable
     Export:
       Name: !Sub '${AWS::StackName}-MoviesTable'
+
+  MasterMoviesTableName:
+    Description: 'Master Movies Cache Table Name'
+    Value: !Ref MasterMoviesTable
+    Export:
+      Name: !Sub '${AWS::StackName}-MasterMoviesTable'
+
+  PairingCodesTableName:
+    Description: 'Pairing Codes Table Name'
+    Value: !Ref PairingCodesTable
+    Export:
+      Name: !Sub '${AWS::StackName}-PairingCodesTable'
+
+  AuditLogsTableName:
+    Description: 'Audit Logs Table Name'
+    Value: !Ref AuditLogsTable
+    Export:
+      Name: !Sub '${AWS::StackName}-AuditLogsTable'
+
+  CinemaUserPoolId:
+    Description: 'Cinema Cognito User Pool ID'
+    Value: !Ref CinemaUserPool
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolId'
+
+  CinemaUserPoolClientId:
+    Description: 'Cinema Cognito User Pool Client ID'
+    Value: !Ref CinemaUserPoolClient
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolClientId'
+
+  CinemaCognitoDomain:
+    Description: 'Cinema Cognito Hosted UI Domain'
+    Value: !Sub '${CinemaCognitoDomain}.auth.${AWS::Region}.amazoncognito.com'
+    Export:
+      Name: !Sub '${AWS::StackName}-CognitoDomain'
+
 

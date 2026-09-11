@@ -1,5 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import axios from 'axios';
+
+import { DynamoDbService } from '../dynamodb/dynamodb.service';
 
 export interface EnrichedMetadata {
   imdbId?: string;
@@ -35,8 +37,10 @@ export class MetadataService {
     process.env.OMDB_BASE_URL || 'https://www.omdbapi.com/';
   private readonly omdbApiKey = process.env.OMDB_API_KEY || '';
 
+  constructor(@Optional() private readonly dynamoDb?: DynamoDbService) {}
+
   /**
-   * Enrich movie with metadata from TMDB and OMDB APIs
+   * Enrich movie with metadata from TMDB and OMDB APIs (with DynamoDB master cache)
    * @param searchString - Movie title
    * @param year - Optional release year
    * @returns Enriched metadata or fallback object
@@ -45,6 +49,23 @@ export class MetadataService {
     const extracted = this.extractTitleAndYear(searchString, year);
     const cleanedTitle = extracted.title;
     const effectiveYear = extracted.year;
+    const canonicalKey = `${cleanedTitle.toLowerCase().replace(/[^a-z0-9]/g, '')}_${effectiveYear || 0}`;
+
+    // 1. Check Master Cache
+    if (this.dynamoDb) {
+      try {
+        const cached = await this.dynamoDb.getItem<any>(
+          this.dynamoDb.masterMoviesTable,
+          { canonicalKey }
+        );
+        if (cached && cached.metadata) {
+          this.logger.log(`[Cache Hit] Master cache resolved "${canonicalKey}" (${cleanedTitle})`);
+          return cached.metadata as EnrichedMetadata;
+        }
+      } catch (cacheErr) {
+        this.logger.warn(`Master cache lookup failed for "${canonicalKey}":`, cacheErr);
+      }
+    }
 
     this.logger.log(`Enriching movie: "${cleanedTitle}" (Year: ${effectiveYear || 'unknown'}) [from: "${searchString}"]`);
 
@@ -212,7 +233,7 @@ export class MetadataService {
       const rawGenre = omdbData?.Genre && omdbData?.Genre !== 'N/A' ? omdbData.Genre : '';
       const genre = (rawGenre && rawGenre.trim()) ? rawGenre.trim() : 'Unknown';
 
-      return {
+      const enriched: EnrichedMetadata = {
         imdbId: imdbId || omdbData?.imdbID || '',
         tmdbId: parseSafeInt(tmdbMovie?.id, 0),
         type: omdbData?.Type || 'movie',
@@ -234,6 +255,23 @@ export class MetadataService {
         poster: posterPath,
         quality: '1080p',
       };
+
+      if (this.dynamoDb && enriched.title) {
+        try {
+          await this.dynamoDb.putItem(this.dynamoDb.masterMoviesTable, {
+            canonicalKey,
+            title: enriched.title,
+            year: enriched.year || effectiveYear || 0,
+            metadata: enriched,
+            updatedAt: new Date().toISOString(),
+          });
+          this.logger.log(`[Cache Write] Stored "${canonicalKey}" in master movies cache.`);
+        } catch (writeErr) {
+          this.logger.warn(`Failed to write "${canonicalKey}" to master cache:`, writeErr);
+        }
+      }
+
+      return enriched;
     } catch (err) {
       this.logger.error(`Error enriching metadata for "${cleanedTitle}":`, err);
       return this.createFallbackMetadata(cleanedTitle, effectiveYear);
@@ -247,7 +285,7 @@ export class MetadataService {
     let base = rawString.replace(/\.[a-zA-Z0-9]{2,4}$/, '');
 
     // Check for 4-digit release year delimiter
-    const yearMatch = base.match(/[\s._([{-](19\d\d|20\d\d)[\s._)\]}-]/);
+    const yearMatch = base.match(/[\s._([{-](19\d\d|20\d\d)([\s._)\]}-]|$)/);
     let year = passedYear;
     let rawTitle = base;
 

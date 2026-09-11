@@ -1,0 +1,98 @@
+<div class="wizard-overlay">
+  <div class="wizard-modal">
+    <!-- Success Banner -->
+    <div class="success-screen" *ngIf="isPairingComplete">
+      <div class="success-icon">
+        <mat-icon>check_circle</mat-icon>
+      </div>
+      <h2>Companion Agent Connected!</h2>
+      <p>
+        Successfully paired with <strong>{{ pairedDevice?.agentName || 'Your PC' }}</strong>.
+        Syncing your local media library now...
+      </p>
+      <button mat-flat-button class="btn-primary" (click)="finishSetup()">
+        Open My Cinema Gallery
+      </button>
+    </div>
+
+    <!-- Step-by-Step Setup -->
+    <div class="wizard-content" *ngIf="!isPairingComplete">
+      <div class="wizard-header">
+        <div class="header-icon">
+          <mat-icon>devices</mat-icon>
+        </div>
+        <h2>Connect Your Companion Agent</h2>
+        <p>Follow these quick steps to link your local movies to Cinema Manager.</p>
+      </div>
+
+      <div class="steps-container">
+        <!-- Step 1: Watch Folder -->
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <div class="step-body">
+            <h3>Set Your Movie Folder</h3>
+            <p>Where are your movies stored on this device?</p>
+            <div class="path-input-row">
+              <input
+                type="text"
+                [(ngModel)]="lookupPath"
+                placeholder="e.g. D:\Movies or /Volumes/Media"
+              />
+              <button mat-flat-button class="btn-save" (click)="savePath()">
+                <mat-icon>{{ pathSaved ? 'check' : 'save' }}</mat-icon>
+                {{ pathSaved ? 'Saved' : 'Save' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Download Agent -->
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <div class="step-body">
+            <h3>Download Companion Agent</h3>
+            <p>Runs quietly in the background to discover files and launch original 4K video.</p>
+            <div class="download-row">
+              <a [href]="releaseUrl" target="_blank" class="download-btn">
+                <mat-icon>window</mat-icon>
+                <span>Download for Windows (.exe)</span>
+              </a>
+              <a [href]="releaseUrl" target="_blank" class="download-btn">
+                <mat-icon>laptop_mac</mat-icon>
+                <span>Download for macOS (.dmg)</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Enter Pairing Code -->
+        <div class="step-card highlight">
+          <div class="step-number">3</div>
+          <div class="step-body">
+            <h3>Pair Your Device</h3>
+            <p>Launch the downloaded companion agent and enter this pairing code when prompted:</p>
+            
+            <div class="code-box">
+              <span class="code-value">{{ pairingCode }}</span>
+              <span class="countdown-badge">
+                <mat-icon>timer</mat-icon>
+                Expires in {{ formattedTime }}
+              </span>
+            </div>
+
+            <div class="detection-status">
+              <mat-spinner diameter="20"></mat-spinner>
+              <span>Listening for agent connection on this device...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wizard-footer">
+        <button mat-button class="btn-skip" (click)="finishSetup()">
+          Skip to Library (Unpaired Mode)
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -6,6 +6,7 @@ import { MetadataModule } from '../metadata/metadata.module';
 import { CinemasModule } from '../cinemas/cinemas.module';
 import { LookupPathsModule } from '../lookup-paths/lookup-paths.module';
 import { AgentsModule } from '../agents/agents.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AgentsModule } from '../agents/agents.module';
     CinemasModule,
     LookupPathsModule,
     AgentsModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

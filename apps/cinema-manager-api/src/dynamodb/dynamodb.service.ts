@@ -23,6 +23,12 @@ export class DynamoDbService {
     process.env.LOOKUP_PATHS_TABLE || 'cinema-manager-lookup-paths';
   public readonly usersTable =
     process.env.USERS_TABLE || 'cinema-manager-users';
+  public readonly masterMoviesTable =
+    process.env.MASTER_MOVIES_TABLE || 'cinema-manager-master-movies';
+  public readonly pairingCodesTable =
+    process.env.PAIRING_CODES_TABLE || 'cinema-manager-pairing-codes';
+  public readonly auditLogsTable =
+    process.env.AUDIT_LOGS_TABLE || 'cinema-manager-audit-logs';
 
   constructor() {
     const client = new DynamoDBClient({

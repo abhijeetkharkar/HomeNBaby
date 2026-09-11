@@ -3,11 +3,12 @@ const fetch = globalThis.fetch || require('node-fetch');
 import * as os from 'os';
 import { Auth0M2MService } from '../auth/auth0-m2m.service';
 import { ConfigService } from '../config/config.service';
+import { CredentialsService } from '../vault/credentials.service';
 import { CreateCinemaDto, CinemaFile, LookupPath } from '@cinema-manager/models';
 
 /**
  * API client service for communicating with the Cinema Manager API
- * Uses Auth0 machine-to-machine authentication when configured
+ * Uses Auth0 machine-to-machine authentication or native Agent Token
  */
 export class CinemaManagerApiService {
   private readonly baseUrl: string;
@@ -15,10 +16,11 @@ export class CinemaManagerApiService {
 
   constructor(
     private auth0Service: Auth0M2MService,
-    private configService: ConfigService
+    private configService: ConfigService,
+    private credentialsService?: CredentialsService
   ) {
     this.baseUrl = configService.get('api.baseUrl') as string;
-    this.agentId = configService.get('agent.id') as string;
+    this.agentId = credentialsService?.getDeviceId() || (configService.get('agent.id') as string);
   }
 
   private async getHeaders(): Promise<Record<string, string>> {
@@ -26,11 +28,41 @@ export class CinemaManagerApiService {
       'Content-Type': 'application/json',
       'User-Agent': `CinemaManagerAgent/${this.getVersion()}`,
     };
+
+    if (this.credentialsService) {
+      const agentToken = this.credentialsService.getAgentToken();
+      if (agentToken) {
+        headers['X-Agent-Token'] = agentToken;
+      }
+    }
+
     const token = await this.auth0Service.getAccessToken();
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
     return headers;
+  }
+
+  /**
+   * Pair this agent with a Pairing Code from the web UI
+   */
+  async pairWithCode(code: string, deviceName: string): Promise<{ agentToken: string; deviceId: string; watchPaths: string[] }> {
+    const payload = {
+      code,
+      deviceName,
+      platform: os.platform(),
+      agentVersion: this.getVersion(),
+    };
+    const response = await fetch(`${this.baseUrl}/auth/pair-device`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Failed to pair device: ${response.status} - ${err}`);
+    }
+    return (await response.json()) as any;
   }
 
   /**
@@ -154,30 +186,42 @@ export class CinemaManagerApiService {
   }
 
   /**
-   * Send heartbeat to backend API
+   * Send heartbeat to backend API and record audit event
    */
-  async sendHeartbeat(watchPaths: string[]): Promise<void> {
+  async sendHeartbeat(watchPaths: string[] = []): Promise<void> {
     try {
       const headers = await this.getHeaders();
       const agentName = this.configService.get('agent.name') as string;
-      const response = await fetch(`${this.baseUrl}/api/agents/heartbeat`, {
+      const effectiveDeviceId = this.credentialsService?.getDeviceId() || this.agentId;
+
+      // 1. Report agent online status & paths to /api/agents/heartbeat
+      await fetch(`${this.baseUrl}/api/agents/heartbeat`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          agentId: this.agentId,
+          agentId: effectiveDeviceId,
           agentName: agentName || os.hostname(),
           hostname: os.hostname(),
           version: this.getVersion(),
           watchPaths,
           status: 'online',
         }),
-      });
+      }).catch((e: any) => console.warn('Could not report agent heartbeat to API:', e.message));
 
-      if (response.ok) {
-        console.log('Heartbeat recorded successfully');
-      }
+      // 2. Record audit trail in /auth/audit-log
+      await fetch(`${this.baseUrl}/auth/audit-log`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          deviceId: effectiveDeviceId,
+          eventType: 'AGENT_HEARTBEAT',
+          osPlatform: os.platform(),
+          agentVersion: this.getVersion(),
+          details: { watchPathsCount: watchPaths.length },
+        }),
+      }).catch(() => {});
     } catch (e) {
-      console.warn('Could not report agent heartbeat to API:', e);
+      console.warn('Could not report agent heartbeat:', e);
     }
   }
 

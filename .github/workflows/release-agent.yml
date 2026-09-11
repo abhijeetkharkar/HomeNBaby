@@ -1,0 +1,109 @@
+name: Release Cinema Companion Agent
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version tag (e.g. v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build shared models
+        run: npx nx run cinema-manager-models:build
+
+      - name: Package Windows Agent (.exe)
+        run: powershell -ExecutionPolicy Bypass -File apps/cinema-manager-agent/package-agent.ps1
+
+      - name: Compress Windows package
+        run: Compress-Archive -Path dist/cinema-agent-win-x64/* -DestinationPath dist/cinema-agent-win-x64.zip -Force
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinema-agent-win-x64
+          path: dist/cinema-agent-win-x64.zip
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build shared models
+        run: npx nx run cinema-manager-models:build
+
+      - name: Bundle Agent source
+        run: |
+          mkdir -p apps/cinema-manager-agent/dist
+          npx esbuild apps/cinema-manager-agent/src/main.ts --bundle --platform=node --target=node18 --outfile=apps/cinema-manager-agent/dist/agent.bundle.js
+
+      - name: Compile macOS binary
+        run: |
+          mkdir -p dist/cinema-agent-macos
+          npx --yes pkg apps/cinema-manager-agent/dist/agent.bundle.js --target node18-macos-x64,node18-macos-arm64 --output dist/cinema-agent-macos/cinema-agent
+          cd dist/cinema-agent-macos && zip -r ../cinema-agent-macos.zip .
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinema-agent-macos
+          path: dist/cinema-agent-macos.zip
+
+  publish-release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: cinema-agent-win-x64
+          path: release-assets
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: cinema-agent-macos
+          path: release-assets
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          name: Cinema Companion Agent ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
