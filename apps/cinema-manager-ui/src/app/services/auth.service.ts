@@ -17,7 +17,7 @@ export class AuthService {
 
   // Cognito Configuration
   private readonly cognitoDomain = 'cinema-abhijeetkharkar-prod.auth.us-east-1.amazoncognito.com';
-  private readonly clientId = '6ci895vprgja3c4ts2kit1urvl'; // Default / fallback or configured
+  private readonly clientId = '2mm23qkt8ve7etsdfbi70nk2b8'; // Live Cinema Cognito User Pool Client
 
   private readonly apiUrl =
     window.location.hostname === 'localhost'
