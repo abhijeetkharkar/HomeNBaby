@@ -257,6 +257,7 @@ Resources:
         - COGNITO
       AllowedOAuthFlows:
         - code
+        - implicit
       AllowedOAuthFlowsUserPoolClient: true
       AllowedOAuthScopes:
         - openid
