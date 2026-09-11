@@ -11,15 +11,49 @@
           <span class="brand-subtitle">Home Theater & Media Library</span>
         </div>
       </div>
+
+      <!-- User Auth Section in Header -->
+      <div class="header-actions">
+        <button mat-button class="btn-setup" *ngIf="authService.isAuthenticated()" (click)="openOnboarding()">
+          <mat-icon>phonelink_setup</mat-icon>
+          <span>Pair Agent</span>
+        </button>
+
+        <div class="user-pill" *ngIf="authService.isAuthenticated()">
+          <mat-icon>account_circle</mat-icon>
+          <span class="user-email">{{ authService.currentUser()?.email }}</span>
+          <button mat-icon-button class="btn-logout" (click)="onSignOut()" title="Sign Out">
+            <mat-icon>logout</mat-icon>
+          </button>
+        </div>
+
+        <button mat-flat-button class="btn-signin" *ngIf="!authService.isAuthenticated()" (click)="onSignIn()">
+          <mat-icon>login</mat-icon>
+          <span>Sign In</span>
+        </button>
+      </div>
     </div>
   </header>
 
   <!-- Main Content Area -->
   <main class="main-content">
     <div class="content-container">
-      <router-outlet></router-outlet>
+      <!-- Unauthenticated Visitors see Showcase Landing Page -->
+      <app-showcase-landing
+        *ngIf="!authService.isAuthenticated() && !isExploringDemo"
+        (exploreDemo)="isExploringDemo = true"
+      ></app-showcase-landing>
+
+      <!-- Authenticated Users (or Demo Explorers) see Cinema Gallery -->
+      <router-outlet *ngIf="authService.isAuthenticated() || isExploringDemo"></router-outlet>
     </div>
   </main>
+
+  <!-- Onboarding Wizard Modal -->
+  <app-onboarding-wizard
+    *ngIf="showOnboarding"
+    (completed)="closeOnboarding()"
+  ></app-onboarding-wizard>
 
   <!-- Footer -->
   <footer class="app-footer">

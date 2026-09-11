@@ -1,0 +1,81 @@
+<div class="showcase-container">
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-badge">
+      <mat-icon>shield</mat-icon>
+      <span>Zero Cloud Storage &bull; Private &bull; 100% Local Playback</span>
+    </div>
+
+    <h1 class="hero-title">
+      Your Personal Cinema,<br />
+      <span class="gradient-text">Beautifully Organized.</span>
+    </h1>
+
+    <p class="hero-subhead">
+      Transform your local movie collection into an immersive theater experience.
+      Automatic IMDb ratings, posters, plot descriptions, and instant 4K playback straight from your hard drive.
+    </p>
+
+    <div class="hero-actions">
+      <button mat-flat-button class="cta-primary" (click)="onSignIn()">
+        <mat-icon>login</mat-icon>
+        Sign In / Sign Up
+      </button>
+      <button mat-stroked-button class="cta-secondary" (click)="onDemoClick()">
+        <mat-icon>play_circle</mat-icon>
+        Explore Library Demo
+      </button>
+    </div>
+  </section>
+
+  <!-- Live Showcase Preview Row -->
+  <section class="preview-section">
+    <h2 class="section-title">The Cinema Experience</h2>
+    <div class="poster-preview-row">
+      <div class="preview-card" *ngFor="let movie of samplePosters">
+        <div class="poster-container">
+          <img [src]="movie.poster" [alt]="movie.title" loading="lazy" />
+          <span class="quality-tag">1080p</span>
+        </div>
+        <div class="card-info">
+          <h3>{{ movie.title }}</h3>
+          <div class="card-meta">
+            <span class="imdb-pill">
+              <span class="imdb-text">IMDb</span>
+              <span class="rating-val">{{ movie.rating }}</span>
+            </span>
+            <span class="year-val">{{ movie.year }}</span>
+          </div>
+          <span class="genre-text">{{ movie.genre }}</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Feature Highlights Grid -->
+  <section class="features-section">
+    <div class="feature-card">
+      <div class="feature-icon"><mat-icon>hard_drive</mat-icon></div>
+      <h3>Zero Cloud Storage</h3>
+      <p>Your media stays completely private on your local storage. No uploading, no storage fees, no bandwidth limits.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon"><mat-icon>bolt</mat-icon></div>
+      <h3>DynamoDB Master Cache</h3>
+      <p>Offline regex filename parser with sub-millisecond cloud cache hits for posters, ratings, and plot details.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon"><mat-icon>computer</mat-icon></div>
+      <h3>Desktop Companion Agent</h3>
+      <p>Runs silently on Windows and macOS. Automatically detects new downloads and streams high-bitrate video to your browser.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon"><mat-icon>vpn_key</mat-icon></div>
+      <h3>Hardware-Encrypted Pairing</h3>
+      <p>Seamless 1-click device pairing secured by Windows DPAPI and Apple Keychain services.</p>
+    </div>
+  </section>
+</div>

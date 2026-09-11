@@ -1,8 +1,11 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import serverlessExpress from '@codegenie/serverless-express';
 import { Callback, Context, Handler } from 'aws-lambda';
 import { AppModule } from './app/app.module';
+
+// Use installed serverless-http wrapper for Express Lambda
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const serverless = require('serverless-http');
 
 let cachedServer: Handler;
 
@@ -14,7 +17,7 @@ async function bootstrapServer(): Promise<Handler> {
   app.setGlobalPrefix('cinema-manager');
   await app.init();
   const expressApp = app.getHttpAdapter().getInstance();
-  return serverlessExpress({ app: expressApp });
+  return serverless(expressApp);
 }
 
 export const handler: Handler = async (

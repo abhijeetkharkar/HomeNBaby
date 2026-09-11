@@ -1,8 +1,11 @@
+import * as readline from 'readline';
+import * as os from 'os';
 import { FileWatcher } from './file-watcher/file-watcher';
 import { MovieProcessor } from './processors/movie-processor';
 import { CinemaManagerApiService } from './services/cinema-manager-api.service';
 import { Auth0M2MService } from './auth/auth0-m2m.service';
 import { ConfigService } from './config/config.service';
+import { CredentialsService } from './vault/credentials.service';
 import { LocalServer } from './server/local-server';
 
 /**
@@ -14,6 +17,7 @@ export class CinemaManagerAgentService {
   private movieProcessor?: MovieProcessor;
   private apiClient?: CinemaManagerApiService;
   private auth0Service?: Auth0M2MService;
+  private credentials?: CredentialsService;
   private config?: ConfigService;
   private localServer?: LocalServer;
   private heartbeatInterval?: NodeJS.Timeout;
@@ -25,16 +29,21 @@ export class CinemaManagerAgentService {
     try {
       console.log('Starting Cinema Manager Agent Service...');
       
-      // Initialize configuration
+      // Initialize credentials vault and configuration
+      this.credentials = new CredentialsService();
       this.config = new ConfigService();
       console.log('Configuration loaded successfully');
 
-      // Initialize Auth0 M2M service
+      // Initialize Auth0 M2M service (if configured)
       this.auth0Service = new Auth0M2MService(this.config);
-      console.log('Auth0 M2M service initialized');
+
+      // Prompt for pairing if not yet paired and running in interactive terminal
+      if (!this.credentials.isPaired() && process.stdin.isTTY && !process.env.CI) {
+        await this.promptPairing();
+      }
 
       // Initialize API client
-      this.apiClient = new CinemaManagerApiService(this.auth0Service, this.config);
+      this.apiClient = new CinemaManagerApiService(this.auth0Service, this.config, this.credentials);
       console.log('API client initialized');
 
       // Initialize movie processor
@@ -159,6 +168,50 @@ export class CinemaManagerAgentService {
       },
       watchPaths: this.fileWatcher?.getWatchedPaths() || []
     };
+  }
+
+  /**
+   * Interactive prompt asking the user for their pairing code
+   */
+  private async promptPairing(): Promise<void> {
+    console.log('\n======================================================');
+    console.log('      Cinema Manager Desktop Companion Setup');
+    console.log('======================================================');
+    console.log('No linked account found on this machine.');
+    console.log('1. Log in to https://cinema.abhijeetkharkar.com');
+    console.log('2. Copy your 6-character Pairing Code (e.g. CIN-8492)\n');
+
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    const code = await new Promise<string>((resolve) => {
+      rl.question('Enter Pairing Code (or press Enter to skip): ', (answer) => {
+        rl.close();
+        resolve(answer.trim());
+      });
+    });
+
+    if (code) {
+      try {
+        console.log(`Pairing device with code "${code}"...`);
+        const tempApiClient = new CinemaManagerApiService(this.auth0Service!, this.config!);
+        const deviceName = (this.config?.get('agent.name') as string) || os.hostname();
+        const res = await tempApiClient.pairWithCode(code, deviceName);
+        this.credentials?.saveCredentials({
+          agentToken: res.agentToken,
+          deviceId: res.deviceId,
+          deviceName,
+          pairedAt: new Date().toISOString(),
+          watchPaths: res.watchPaths,
+        });
+        console.log('Device successfully paired and credentials securely stored in local vault!\n');
+      } catch (err: any) {
+        console.error('Pairing failed:', err.message);
+        console.log('Continuing in unauthenticated local mode...\n');
+      }
+    }
   }
 
   /**
