@@ -32,6 +32,8 @@
   display: flex;
   align-items: center;
   gap: 0.85rem;
+  text-decoration: none;
+  cursor: pointer;
 
   .brand-icon {
     width: 42px;
@@ -100,6 +102,35 @@
   align-items: center;
   gap: 12px;
 
+  .nav-link-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #9ca3af;
+    text-decoration: none;
+    font-size: 0.88rem;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    &:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    &.nav-active {
+      color: #e50914;
+      background: rgba(229, 9, 20, 0.12);
+    }
+  }
+
   .btn-setup {
     color: #e50914;
     display: flex;
@@ -161,22 +192,26 @@
   }
 
   .btn-signin {
-    background: #e50914;
-    color: #fff;
-    font-weight: 600;
-    font-size: 0.9rem;
+    background: linear-gradient(135deg, #e50914 0%, #b91c1c 100%);
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.88rem;
     padding: 6px 16px;
-    border-radius: 6px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     gap: 6px;
+    text-decoration: none;
+    box-shadow: 0 4px 14px rgba(229, 9, 20, 0.35);
+    transition: all 0.2s ease;
 
     &:hover {
-      background: #b80710;
+      background: linear-gradient(135deg, #f43f5e 0%, #e50914 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(229, 9, 20, 0.5);
     }
   }
 }
-
 
 .main-content {
   flex: 1;

@@ -1,0 +1,403 @@
+<div class="auth-container">
+  <!-- Subtle Background Glows -->
+  <div class="glow-orb glow-top"></div>
+  <div class="glow-orb glow-bottom"></div>
+
+  <div class="auth-card">
+    <!-- Brand Header -->
+    <div class="auth-header">
+      <a routerLink="/" class="brand-link">
+        <div class="brand-icon">
+          <mat-icon>local_movies</mat-icon>
+        </div>
+        <div class="brand-title">Cinema<span>Manager</span></div>
+      </a>
+      <p class="auth-subtitle">Private, High-Bitrate 4K Home Theater</p>
+    </div>
+
+    <!-- Alert Banners -->
+    <div class="alert alert-error" *ngIf="errorMessage">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ errorMessage }}</span>
+    </div>
+
+    <div class="alert alert-success" *ngIf="successMessage">
+      <mat-icon>check_circle_outline</mat-icon>
+      <span>{{ successMessage }}</span>
+    </div>
+
+    <!-- Tabs for SignIn / SignUp -->
+    <div class="auth-tabs" *ngIf="authStep === 'signIn' || authStep === 'signUp'">
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="authStep === 'signIn'"
+        (click)="setStep('signIn')"
+      >
+        Sign In
+      </button>
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="authStep === 'signUp'"
+        (click)="setStep('signUp')"
+      >
+        Create Account
+      </button>
+    </div>
+
+    <!-- 1. SIGN IN FORM -->
+    <form class="auth-form" *ngIf="authStep === 'signIn'" (ngSubmit)="handleSignIn()">
+      <div class="form-group">
+        <label for="signin-email">Email Address</label>
+        <div class="input-wrapper">
+          <mat-icon class="input-icon">mail_outline</mat-icon>
+          <input
+            id="signin-email"
+            type="email"
+            name="email"
+            [(ngModel)]="email"
+            placeholder="name@example.com"
+            required
+            autocomplete="email"
+          />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="label-row">
+          <label for="signin-password">Password</label>
+          <button
+            type="button"
+            class="text-link"
+            (click)="setStep('forgotPassword')"
+          >
+            Forgot password?
+          </button>
+        </div>
+        <div class="input-wrapper">
+          <mat-icon class="input-icon">lock_outline</mat-icon>
+          <input
+            id="signin-password"
+            [type]="hidePassword ? 'password' : 'text'"
+            name="password"
+            [(ngModel)]="password"
+            placeholder="••••••••"
+            required
+            autocomplete="current-password"
+          />
+          <button
+            type="button"
+            class="toggle-eye-btn"
+            (click)="hidePassword = !hidePassword"
+            tabindex="-1"
+          >
+            <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        mat-flat-button
+        class="btn-submit"
+        [disabled]="isLoading"
+      >
+        <mat-spinner diameter="20" *ngIf="isLoading"></mat-spinner>
+        <span *ngIf="!isLoading">Sign In to Cinema</span>
+      </button>
+
+      <div class="auth-footer">
+        <span>Don't have an account?</span>
+        <button type="button" class="text-link accent" (click)="setStep('signUp')">
+          Sign Up Free
+        </button>
+      </div>
+    </form>
+
+    <!-- 2. SIGN UP FORM -->
+    <form class="auth-form" *ngIf="authStep === 'signUp'" (ngSubmit)="handleSignUp()">
+      <div class="form-group">
+        <label for="signup-email">Email Address</label>
+        <div class="input-wrapper">
+          <mat-icon class="input-icon">mail_outline</mat-icon>
+          <input
+            id="signup-email"
+            type="email"
+            name="email"
+            [(ngModel)]="email"
+            placeholder="name@example.com"
+            required
+            autocomplete="email"
+          />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="signup-password">Password</label>
+        <div class="input-wrapper">
+          <mat-icon class="input-icon">lock_outline</mat-icon>
+          <input
+            id="signup-password"
+            [type]="hidePassword ? 'password' : 'text'"
+            name="password"
+            [(ngModel)]="password"
+            placeholder="Min. 8 characters"
+            required
+            autocomplete="new-password"
+          />
+          <button
+            type="button"
+            class="toggle-eye-btn"
+            (click)="hidePassword = !hidePassword"
+            tabindex="-1"
+          >
+            <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="signup-confirm">Confirm Password</label>
+        <div class="input-wrapper">
+          <mat-icon class="input-icon">lock_outline</mat-icon>
+          <input
+            id="signup-confirm"
+            [type]="hideConfirmPassword ? 'password' : 'text'"
+            name="confirmPassword"
+            [(ngModel)]="confirmPassword"
+            placeholder="Re-enter password"
+            required
+            autocomplete="new-password"
+          />
+          <button
+            type="button"
+            class="toggle-eye-btn"
+            (click)="hideConfirmPassword = !hideConfirmPassword"
+            tabindex="-1"
+          >
+            <mat-icon>{{ hideConfirmPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <p class="password-hint">
+        <mat-icon>info_outline</mat-icon>
+        Password must be at least 8 characters and include numbers.
+      </p>
+
+      <button
+        type="submit"
+        mat-flat-button
+        class="btn-submit"
+        [disabled]="isLoading"
+      >
+        <mat-spinner diameter="20" *ngIf="isLoading"></mat-spinner>
+        <span *ngIf="!isLoading">Create Free Account</span>
+      </button>
+
+      <div class="auth-footer">
+        <span>Already have an account?</span>
+        <button type="button" class="text-link accent" (click)="setStep('signIn')">
+          Sign In
+        </button>
+      </div>
+    </form>
+
+    <!-- 3. CONFIRM SIGN UP (OTP) -->
+    <form class="auth-form" *ngIf="authStep === 'confirmSignUp'" (ngSubmit)="handleConfirmSignUp()">
+      <div class="step-badge">
+        <mat-icon>mark_email_read</mat-icon>
+        <span>Email Verification</span>
+      </div>
+
+      <p class="step-desc">
+        We sent a 6-digit confirmation code to <strong>{{ email }}</strong>. Enter it below to activate your account.
+      </p>
+
+      <div class="form-group">
+        <label for="otp-code">6-Digit Confirmation Code</label>
+        <div class="input-wrapper otp-input-wrapper">
+          <input
+            id="otp-code"
+            type="text"
+            name="verificationCode"
+            [(ngModel)]="verificationCode"
+            placeholder="123456"
+            maxlength="6"
+            required
+            autocomplete="one-time-code"
+          />
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        mat-flat-button
+        class="btn-submit"
+        [disabled]="isLoading"
+      >
+        <mat-spinner diameter="20" *ngIf="isLoading"></mat-spinner>
+        <span *ngIf="!isLoading">Verify & Continue</span>
+      </button>
+
+      <div class="action-row">
+        <button
+          type="button"
+          class="text-link"
+          (click)="handleResendCode()"
+          [disabled]="isLoading"
+        >
+          Resend code
+        </button>
+        <button
+          type="button"
+          class="text-link"
+          (click)="setStep('signIn')"
+        >
+          Back to Sign In
+        </button>
+      </div>
+    </form>
+
+    <!-- 4. FORGOT PASSWORD -->
+    <form class="auth-form" *ngIf="authStep === 'forgotPassword'" (ngSubmit)="handleForgotPassword()">
+      <div class="step-badge">
+        <mat-icon>lock_reset</mat-icon>
+        <span>Reset Password</span>
+      </div>
+
+      <p class="step-desc">
+        Enter the email address tied to your Cinema Manager account and we'll send you a password reset code.
+      </p>
+
+      <div class="form-group">
+        <label for="forgot-email">Email Address</label>
+        <div class="input-wrapper">
+          <mat-icon class="input-icon">mail_outline</mat-icon>
+          <input
+            id="forgot-email"
+            type="email"
+            name="email"
+            [(ngModel)]="email"
+            placeholder="name@example.com"
+            required
+            autocomplete="email"
+          />
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        mat-flat-button
+        class="btn-submit"
+        [disabled]="isLoading"
+      >
+        <mat-spinner diameter="20" *ngIf="isLoading"></mat-spinner>
+        <span *ngIf="!isLoading">Send Reset Code</span>
+      </button>
+
+      <div class="action-row center">
+        <button
+          type="button"
+          class="text-link"
+          (click)="setStep('signIn')"
+        >
+          Back to Sign In
+        </button>
+      </div>
+    </form>
+
+    <!-- 5. CONFIRM RESET PASSWORD -->
+    <form class="auth-form" *ngIf="authStep === 'confirmResetPassword'" (ngSubmit)="handleConfirmResetPassword()">
+      <div class="step-badge">
+        <mat-icon>vpn_key</mat-icon>
+        <span>Set New Password</span>
+      </div>
+
+      <p class="step-desc">
+        Enter the code sent to <strong>{{ email }}</strong> and your new password.
+      </p>
+
+      <div class="form-group">
+        <label for="reset-code">Reset Code</label>
+        <div class="input-wrapper otp-input-wrapper">
+          <input
+            id="reset-code"
+            type="text"
+            name="verificationCode"
+            [(ngModel)]="verificationCode"
+            placeholder="123456"
+            required
+          />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="reset-password">New Password</label>
+        <div class="input-wrapper">
+          <mat-icon class="input-icon">lock_outline</mat-icon>
+          <input
+            id="reset-password"
+            [type]="hidePassword ? 'password' : 'text'"
+            name="newPassword"
+            [(ngModel)]="newPassword"
+            placeholder="Min. 8 characters"
+            required
+          />
+          <button
+            type="button"
+            class="toggle-eye-btn"
+            (click)="hidePassword = !hidePassword"
+            tabindex="-1"
+          >
+            <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="reset-confirm">Confirm New Password</label>
+        <div class="input-wrapper">
+          <mat-icon class="input-icon">lock_outline</mat-icon>
+          <input
+            id="reset-confirm"
+            [type]="hideConfirmPassword ? 'password' : 'text'"
+            name="confirmNewPassword"
+            [(ngModel)]="confirmNewPassword"
+            placeholder="Re-enter new password"
+            required
+          />
+          <button
+            type="button"
+            class="toggle-eye-btn"
+            (click)="hideConfirmPassword = !hideConfirmPassword"
+            tabindex="-1"
+          >
+            <mat-icon>{{ hideConfirmPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        mat-flat-button
+        class="btn-submit"
+        [disabled]="isLoading"
+      >
+        <mat-spinner diameter="20" *ngIf="isLoading"></mat-spinner>
+        <span *ngIf="!isLoading">Update Password & Sign In</span>
+      </button>
+
+      <div class="action-row center">
+        <button
+          type="button"
+          class="text-link"
+          (click)="setStep('signIn')"
+        >
+          Back to Sign In
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

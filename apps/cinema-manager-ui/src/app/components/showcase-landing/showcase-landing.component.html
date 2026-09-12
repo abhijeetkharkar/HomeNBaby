@@ -8,74 +8,241 @@
 
     <h1 class="hero-title">
       Your Personal Cinema,<br />
-      <span class="gradient-text">Beautifully Organized.</span>
+      <span class="gradient-text">Zero Cloud Storage.</span>
     </h1>
 
     <p class="hero-subhead">
-      Transform your local movie collection into an immersive theater experience.
-      Automatic IMDb ratings, posters, plot descriptions, and instant 4K playback straight from your hard drive.
+      Turn your local hard drive into a luxury private streaming platform.
+      Automatic IMDb ratings, posters, and instant 4K playback launched straight from your browser.
     </p>
 
     <div class="hero-actions">
-      <button mat-flat-button class="cta-primary" (click)="onSignIn()">
-        <mat-icon>login</mat-icon>
-        Sign In / Sign Up
+      <button mat-flat-button class="cta-primary" (click)="goToLogin('signUp')">
+        <mat-icon>movie</mat-icon>
+        Get Started Free
       </button>
-      <button mat-stroked-button class="cta-secondary" (click)="onDemoClick()">
-        <mat-icon>play_circle</mat-icon>
-        Explore Library Demo
+      <button mat-stroked-button class="cta-secondary" (click)="goToLogin('signIn')">
+        <mat-icon>login</mat-icon>
+        Sign In
       </button>
     </div>
   </section>
 
-  <!-- Live Showcase Preview Row -->
-  <section class="preview-section">
-    <h2 class="section-title">The Cinema Experience</h2>
-    <div class="poster-preview-row">
-      <div class="preview-card" *ngFor="let movie of samplePosters">
-        <div class="poster-container">
-          <img [src]="movie.poster" [alt]="movie.title" loading="lazy" />
-          <span class="quality-tag">1080p</span>
+  <!-- Interactive 4-Step Animated User Journey -->
+  <section class="journey-section">
+    <div class="section-header">
+      <span class="eyebrow">How It Works</span>
+      <h2 class="section-title">From Hard Drive to Home Theater in 4 Steps</h2>
+      <p class="section-subtitle">
+        See how effortlessly Cinema Manager links your local files to your private web dashboard.
+      </p>
+    </div>
+
+    <!-- Stepper Navigation Tabs -->
+    <div class="stepper-tabs">
+      <div
+        class="step-tab"
+        *ngFor="let step of steps; let i = index"
+        [class.active]="activeStepIndex === i"
+        (click)="selectStep(i)"
+      >
+        <div class="tab-header">
+          <span class="step-num">{{ step.stepNumber }}</span>
+          <span class="step-badge">{{ step.highlightText }}</span>
         </div>
-        <div class="card-info">
-          <h3>{{ movie.title }}</h3>
-          <div class="card-meta">
-            <span class="imdb-pill">
-              <span class="imdb-text">IMDb</span>
-              <span class="rating-val">{{ movie.rating }}</span>
-            </span>
-            <span class="year-val">{{ movie.year }}</span>
+        <div class="tab-title">{{ step.title }}</div>
+        <div class="tab-progress-bar">
+          <div class="progress-fill" [class.animating]="activeStepIndex === i"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Stage Display Card -->
+    <div class="stage-card">
+      <!-- Left: Step Explanation -->
+      <div class="stage-info">
+        <div class="step-tag">Step {{ steps[activeStepIndex].stepNumber }} of 04</div>
+        <h3 class="stage-title">{{ steps[activeStepIndex].title }}</h3>
+        <h4 class="stage-subtitle">{{ steps[activeStepIndex].subtitle }}</h4>
+        <p class="stage-desc">{{ steps[activeStepIndex].description }}</p>
+
+        <div class="stage-benefits">
+          <div class="benefit-item" *ngIf="activeStepIndex === 0">
+            <mat-icon>verified_user</mat-icon>
+            <span>Direct Cognito Authentication with zero third-party tracking</span>
           </div>
-          <span class="genre-text">{{ movie.genre }}</span>
+          <div class="benefit-item" *ngIf="activeStepIndex === 1">
+            <mat-icon>folder_open</mat-icon>
+            <span>Supports internal SSDs, NAS shares, and external USB hard drives</span>
+          </div>
+          <div class="benefit-item" *ngIf="activeStepIndex === 2">
+            <mat-icon>lock</mat-icon>
+            <span>Hardware-encrypted vault keyed to your local operating system</span>
+          </div>
+          <div class="benefit-item" *ngIf="activeStepIndex === 3">
+            <mat-icon>play_circle</mat-icon>
+            <span>Launches original uncompressed 4K video directly in VLC or browser</span>
+          </div>
+        </div>
+
+        <button mat-flat-button class="stage-cta-btn" (click)="goToLogin()">
+          <span>Experience It Now</span>
+          <mat-icon>arrow_forward</mat-icon>
+        </button>
+      </div>
+
+      <!-- Right: Animated Visual Demonstration -->
+      <div class="stage-visual">
+        <!-- VISUAL 1: Sign In Mockup -->
+        <div class="mock-card mock-auth" *ngIf="activeStepIndex === 0">
+          <div class="mock-header">
+            <div class="mock-dot red"></div>
+            <div class="mock-dot yellow"></div>
+            <div class="mock-dot green"></div>
+            <span class="mock-title">cinema.abhijeetkharkar.com/login</span>
+          </div>
+          <div class="mock-body">
+            <div class="mock-input-row">
+              <span class="mock-label">Email</span>
+              <div class="mock-input typing-email">user&#64;cinema.local</div>
+            </div>
+            <div class="mock-input-row">
+              <span class="mock-label">Password</span>
+              <div class="mock-input typing-pw">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</div>
+            </div>
+            <div class="mock-btn pulsing-gold">
+              <mat-icon>login</mat-icon>
+              <span>Sign In & Continue</span>
+            </div>
+            <div class="mock-status-pill success">
+              <mat-icon>check_circle</mat-icon>
+              <span>Authenticated via AWS Cognito</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- VISUAL 2: Folder Selection Mockup -->
+        <div class="mock-card mock-folder" *ngIf="activeStepIndex === 1">
+          <div class="mock-header">
+            <div class="mock-dot red"></div>
+            <div class="mock-dot yellow"></div>
+            <div class="mock-dot green"></div>
+            <span class="mock-title">Configure Watch Directory</span>
+          </div>
+          <div class="mock-body">
+            <div class="folder-picker-box">
+              <mat-icon class="folder-icon pulse-blue">folder_special</mat-icon>
+              <div class="folder-details">
+                <span class="folder-path">D:\Movies\4K_Collection</span>
+                <span class="folder-sub">128 video files detected (.mkv, .mp4)</span>
+              </div>
+              <span class="status-badge green">Verified</span>
+            </div>
+            <div class="scan-progress-bar">
+              <div class="scan-fill"></div>
+            </div>
+            <p class="mock-note">
+              <mat-icon>info</mat-icon>
+              Files remain 100% on your drive &mdash; zero cloud uploads.
+            </p>
+          </div>
+        </div>
+
+        <!-- VISUAL 3: Terminal Agent Pairing Mockup -->
+        <div class="mock-card mock-terminal" *ngIf="activeStepIndex === 2">
+          <div class="mock-header">
+            <div class="mock-dot red"></div>
+            <div class="mock-dot yellow"></div>
+            <div class="mock-dot green"></div>
+            <span class="mock-title">cinema-agent &bull; 127.0.0.1:3334</span>
+          </div>
+          <div class="mock-body terminal-body">
+            <div class="terminal-line"><span class="cmd-cyan">&gt;</span> cinema-agent start</div>
+            <div class="terminal-line text-muted">[VAULT] Initializing hardware DPAPI keystore... OK</div>
+            <div class="terminal-line"><span class="cmd-yellow">?</span> Enter Pairing Code: <span class="typing-code">CIN-4829</span></div>
+            <div class="terminal-line text-green"><mat-icon class="inline-icon">check</mat-icon> Pairing verified with AWS Cloud!</div>
+            <div class="terminal-line text-amber">&#9889; Local streaming server active on port 3334</div>
+            <div class="terminal-pulse-indicator">
+              <span class="live-dot"></span>
+              <span>Agent Online &bull; Ready to stream</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- VISUAL 4: Watch in 4K Mockup -->
+        <div class="mock-card mock-watch" *ngIf="activeStepIndex === 3">
+          <div class="mock-movie-card">
+            <div class="movie-poster-mock">
+              <img
+                src="https://m.media-amazon.com/images/M/MV5BYzdjMDAxZGItMjI2My00ODA1LTlkNzItOWFjMDU5ZDJlYWY3XkEyXkFqcGc@._V1_SX300.jpg"
+                alt="Interstellar"
+              />
+              <span class="tag-4k">4K UHD</span>
+              <span class="tag-hdr">HDR10</span>
+            </div>
+            <div class="movie-content-mock">
+              <div class="movie-title-row">
+                <span class="m-title">Interstellar</span>
+                <span class="m-year">2014</span>
+              </div>
+              <div class="m-meta">
+                <span class="imdb-score">★ 8.7</span>
+                <span class="m-genre">Sci-Fi, Adventure</span>
+              </div>
+              <p class="m-plot">A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival.</p>
+
+              <!-- The Glowing Watch Button -->
+              <div class="watch-button-wrapper">
+                <div class="watch-btn-glow"></div>
+                <button class="mock-watch-btn">
+                  <mat-icon>play_arrow</mat-icon>
+                  <span>Watch in 4K (Local Stream)</span>
+                </button>
+              </div>
+              <span class="instant-indicator">&#10003; Launches instant original bitrate without transcoding lag</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Feature Highlights Grid -->
+  <!-- Core Features Grid -->
   <section class="features-section">
     <div class="feature-card">
       <div class="feature-icon"><mat-icon>hard_drive</mat-icon></div>
       <h3>Zero Cloud Storage</h3>
-      <p>Your media stays completely private on your local storage. No uploading, no storage fees, no bandwidth limits.</p>
+      <p>Your media stays completely private on your local storage. No uploading, no cloud hosting fees, no bandwidth caps.</p>
     </div>
 
     <div class="feature-card">
       <div class="feature-icon"><mat-icon>bolt</mat-icon></div>
       <h3>DynamoDB Master Cache</h3>
-      <p>Offline regex filename parser with sub-millisecond cloud cache hits for posters, ratings, and plot details.</p>
+      <p>Sub-millisecond global cache hits for posters, ratings, and plot summaries with zero redundant external API calls.</p>
     </div>
 
     <div class="feature-card">
       <div class="feature-icon"><mat-icon>computer</mat-icon></div>
       <h3>Desktop Companion Agent</h3>
-      <p>Runs silently on Windows and macOS. Automatically detects new downloads and streams high-bitrate video to your browser.</p>
+      <p>Runs silently on Windows and macOS. Automatically discovers new files and streams high-bitrate video to your browser.</p>
     </div>
 
     <div class="feature-card">
       <div class="feature-icon"><mat-icon>vpn_key</mat-icon></div>
       <h3>Hardware-Encrypted Pairing</h3>
-      <p>Seamless 1-click device pairing secured by Windows DPAPI and Apple Keychain services.</p>
+      <p>Seamless 1-click device pairing bound to your local OS user profile via AES-256-GCM and DPAPI security.</p>
+    </div>
+  </section>
+
+  <!-- Bottom CTA Banner -->
+  <section class="bottom-cta-section">
+    <div class="bottom-cta-content">
+      <h2>Ready for the Ultimate Private Theater?</h2>
+      <p>Free, open, private. Connect your drive and begin watching in less than 2 minutes.</p>
+      <button mat-flat-button class="cta-primary-large" (click)="goToLogin('signUp')">
+        <mat-icon>local_movies</mat-icon>
+        <span>Get Started Now</span>
+      </button>
     </div>
   </section>
 </div>

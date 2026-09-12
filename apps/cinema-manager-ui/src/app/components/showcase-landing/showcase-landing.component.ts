@@ -1,54 +1,96 @@
-import { Component, EventEmitter, Output } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router, RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { AuthService } from '../../services/auth.service';
+
+export interface WorkflowStep {
+  id: string;
+  stepNumber: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  highlightText: string;
+}
 
 @Component({
   selector: 'app-showcase-landing',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MatButtonModule],
+  imports: [CommonModule, RouterModule, MatIconModule, MatButtonModule],
   templateUrl: './showcase-landing.component.html',
   styleUrls: ['./showcase-landing.component.scss'],
 })
-export class ShowcaseLandingComponent {
-  @Output() exploreDemo = new EventEmitter<void>();
+export class ShowcaseLandingComponent implements OnInit, OnDestroy {
+  private readonly router = inject(Router);
 
-  samplePosters = [
+  activeStepIndex = 0;
+  private autoCycleTimer?: any;
+  readonly stepDuration = 5000; // 5 seconds per step
+
+  steps: WorkflowStep[] = [
     {
-      title: 'Inception',
-      year: 2010,
-      genre: 'Action, Sci-Fi',
-      rating: 8.8,
-      poster: 'https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_SX300.jpg',
+      id: 'signup',
+      stepNumber: '01',
+      title: 'Sign In / Sign Up',
+      subtitle: 'Fast, secure in-app account creation',
+      description: 'Create your private account in seconds. No cloud storage fees, no telemetry on your personal media files.',
+      highlightText: 'Private & Secure',
     },
     {
-      title: 'The Dark Knight',
-      year: 2008,
-      genre: 'Action, Crime, Drama',
-      rating: 9.0,
-      poster: 'https://m.media-amazon.com/images/M/MV5BMTMxNTMwODM0NF5BMl5BanBnXkFtZTcwODAyMTk2Mw@@._V1_SX300.jpg',
+      id: 'folder',
+      stepNumber: '02',
+      title: 'Set Movie Directory',
+      subtitle: 'Tell the app where your videos live',
+      description: 'Specify your local folder path (e.g. D:\\Movies or an external USB SSD). Media never leaves your machine.',
+      highlightText: '100% Local Storage',
     },
     {
-      title: 'Interstellar',
-      year: 2014,
-      genre: 'Adventure, Drama, Sci-Fi',
-      rating: 8.7,
-      poster: 'https://m.media-amazon.com/images/M/MV5BYzdjMDAxZGItMjI2My00ODA1LTlkNzItOWFjMDU5ZDJlYWY3XkEyXkFqcGc@._V1_SX300.jpg',
+      id: 'agent',
+      stepNumber: '03',
+      title: 'Launch Companion Agent',
+      subtitle: '1-click hardware-bound connection',
+      description: 'Download the lightweight agent for Windows (.exe) or macOS (.dmg). Enter your 6-digit code once to pair.',
+      highlightText: 'AES-256 Vault',
+    },
+    {
+      id: 'watch',
+      stepNumber: '04',
+      title: 'Instant 4K Playback',
+      subtitle: 'Watch button appears on your dashboard',
+      description: 'Return to your browser. Your movie library automatically lights up with IMDb ratings, posters, and an instant Watch button.',
+      highlightText: 'Full 4K Bitrate',
     },
   ];
 
-  constructor(public authService: AuthService) {}
-
-  onSignIn(): void {
-    this.authService.login();
+  ngOnInit(): void {
+    this.startAutoCycle();
   }
 
-  onSignUp(): void {
-    this.authService.signup();
+  ngOnDestroy(): void {
+    this.stopAutoCycle();
   }
 
-  onDemoClick(): void {
-    this.exploreDemo.emit();
+  startAutoCycle(): void {
+    this.stopAutoCycle();
+    this.autoCycleTimer = setInterval(() => {
+      this.activeStepIndex = (this.activeStepIndex + 1) % this.steps.length;
+    }, this.stepDuration);
+  }
+
+  stopAutoCycle(): void {
+    if (this.autoCycleTimer) {
+      clearInterval(this.autoCycleTimer);
+      this.autoCycleTimer = undefined;
+    }
+  }
+
+  selectStep(index: number): void {
+    this.activeStepIndex = index;
+    // Reset timer on manual click
+    this.startAutoCycle();
+  }
+
+  goToLogin(step = 'signIn'): void {
+    this.router.navigate(['/login'], { queryParams: { step } });
   }
 }
