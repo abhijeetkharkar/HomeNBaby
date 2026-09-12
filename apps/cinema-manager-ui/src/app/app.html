@@ -2,7 +2,7 @@
   <!-- Top Navigation Header -->
   <header class="app-header">
     <div class="header-container">
-      <div class="brand-section">
+      <a [routerLink]="authService.isAuthenticated() ? '/dashboard' : '/'" class="brand-section">
         <div class="brand-icon">
           <mat-icon>local_movies</mat-icon>
         </div>
@@ -10,42 +10,46 @@
           <h1 class="brand-title">Cinema<span>Manager</span></h1>
           <span class="brand-subtitle">Home Theater & Media Library</span>
         </div>
-      </div>
+      </a>
 
       <!-- User Auth Section in Header -->
       <div class="header-actions">
-        <button mat-button class="btn-setup" *ngIf="authService.isAuthenticated()" (click)="openOnboarding()">
-          <mat-icon>phonelink_setup</mat-icon>
-          <span>Pair Agent</span>
-        </button>
+        <!-- If Authenticated -->
+        <ng-container *ngIf="authService.isAuthenticated()">
+          <a routerLink="/dashboard" routerLinkActive="nav-active" class="nav-link-btn">
+            <mat-icon>dashboard</mat-icon>
+            <span>Dashboard</span>
+          </a>
 
-        <div class="user-pill" *ngIf="authService.isAuthenticated()">
-          <mat-icon>account_circle</mat-icon>
-          <span class="user-email">{{ authService.currentUser()?.email }}</span>
-          <button mat-icon-button class="btn-logout" (click)="onSignOut()" title="Sign Out">
-            <mat-icon>logout</mat-icon>
+          <button mat-button class="btn-setup" (click)="openOnboarding()">
+            <mat-icon>phonelink_setup</mat-icon>
+            <span>Pair Agent</span>
           </button>
-        </div>
 
-        <button mat-flat-button class="btn-signin" *ngIf="!authService.isAuthenticated()" (click)="onSignIn()">
-          <mat-icon>login</mat-icon>
-          <span>Sign In</span>
-        </button>
+          <div class="user-pill">
+            <mat-icon>account_circle</mat-icon>
+            <span class="user-email">{{ authService.currentUser()?.email }}</span>
+            <button mat-icon-button class="btn-logout" (click)="onSignOut()" title="Sign Out">
+              <mat-icon>logout</mat-icon>
+            </button>
+          </div>
+        </ng-container>
+
+        <!-- If Unauthenticated -->
+        <ng-container *ngIf="!authService.isAuthenticated()">
+          <a routerLink="/login" class="btn-signin mat-flat-button">
+            <mat-icon>login</mat-icon>
+            <span>Sign In</span>
+          </a>
+        </ng-container>
       </div>
     </div>
   </header>
 
-  <!-- Main Content Area -->
+  <!-- Main Content Area with Dynamic Router Outlet -->
   <main class="main-content">
     <div class="content-container">
-      <!-- Unauthenticated Visitors see Showcase Landing Page -->
-      <app-showcase-landing
-        *ngIf="!authService.isAuthenticated() && !isExploringDemo"
-        (exploreDemo)="isExploringDemo = true"
-      ></app-showcase-landing>
-
-      <!-- Authenticated Users (or Demo Explorers) see Cinema Gallery -->
-      <router-outlet *ngIf="authService.isAuthenticated() || isExploringDemo"></router-outlet>
+      <router-outlet></router-outlet>
     </div>
   </main>
 
