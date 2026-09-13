@@ -72,13 +72,39 @@ jobs:
         run: |
           mkdir -p dist/cinema-agent-macos
           npx --yes pkg apps/cinema-manager-agent/dist/agent.bundle.js --target node18-macos-x64,node18-macos-arm64 --output dist/cinema-agent-macos/cinema-agent
+          chmod +x dist/cinema-agent-macos/*
+
+      - name: Create macOS launcher script
+        run: |
+          cat << 'EOF' > dist/cinema-agent-macos/start-agent.command
+          #!/bin/bash
+          DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+          echo "=========================================="
+          echo "   Cinema Manager Companion Agent"
+          echo "=========================================="
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "arm64" ] && [ -f "$DIR/cinema-agent-macos-arm64" ]; then
+            "$DIR/cinema-agent-macos-arm64" "$@"
+          elif [ -f "$DIR/cinema-agent-macos-x64" ]; then
+            "$DIR/cinema-agent-macos-x64" "$@"
+          elif [ -f "$DIR/cinema-agent" ]; then
+            "$DIR/cinema-agent" "$@"
+          fi
+          EOF
+          chmod +x dist/cinema-agent-macos/start-agent.command
+
+      - name: Package macOS DMG & ZIP
+        run: |
+          hdiutil create -volname "Cinema Companion" -srcfolder dist/cinema-agent-macos -ov -format UDZO dist/cinema-agent-macos.dmg
           cd dist/cinema-agent-macos && zip -r ../cinema-agent-macos.zip .
 
-      - name: Upload macOS artifact
+      - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: cinema-agent-macos
-          path: dist/cinema-agent-macos.zip
+          path: |
+            dist/cinema-agent-macos.dmg
+            dist/cinema-agent-macos.zip
 
   publish-release:
     needs: [build-windows, build-macos]
@@ -102,7 +128,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: release-assets/*
+          files: release-assets/**/*
           name: Cinema Companion Agent ${{ github.ref_name }}
           draft: false
           prerelease: false
