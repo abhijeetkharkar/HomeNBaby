@@ -26,7 +26,10 @@ export class OnboardingWizardComponent implements OnInit, OnDestroy {
   lookupPath = 'D:\\Movies';
   pathSaved = false;
 
-  readonly releaseUrl = 'https://github.com/abhijeetkharkar/HomeNBaby/releases/latest';
+  readonly releaseUrlWin =
+    'https://github.com/abhijeetkharkar/HomeNBaby/releases/latest/download/cinema-agent-win-x64.zip';
+  readonly releaseUrlMac =
+    'https://github.com/abhijeetkharkar/HomeNBaby/releases/latest/download/cinema-agent-macos.dmg';
 
   constructor(
     public authService: AuthService,
