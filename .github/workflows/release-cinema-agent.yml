@@ -1,0 +1,130 @@
+name: Release Cinema Agent
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version tag (e.g. v1.0.0-alpha.1)'
+        required: true
+        default: 'v1.0.0-alpha.1'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Install DMG packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y genisoimage zip
+
+      - name: Build shared models
+        run: npx nx run cinema-manager-models:build
+
+      - name: Bundle Agent source
+        run: |
+          mkdir -p apps/cinema-manager-agent/dist
+          npx esbuild apps/cinema-manager-agent/src/main.ts --bundle --platform=node --target=node18 --outfile=apps/cinema-manager-agent/dist/agent.bundle.js
+
+      - name: Package Windows Agent (.exe)
+        run: |
+          mkdir -p dist/cinema-agent-win-x64
+          npx --yes pkg apps/cinema-manager-agent/dist/agent.bundle.js --target node18-win-x64 --output dist/cinema-agent-win-x64/cinema-agent.exe
+          cp apps/cinema-manager-agent/config/service.json dist/cinema-agent-win-x64/service.json
+
+          cat << 'EOF' > dist/cinema-agent-win-x64/run.bat
+          @echo off
+          title Cinema Manager Companion Agent
+          "%~dp0cinema-agent.exe"
+          pause
+          EOF
+
+          cat << 'EOF' > dist/cinema-agent-win-x64/install-service.bat
+          @echo off
+          echo Installing Cinema Manager Windows Service...
+          "%~dp0cinema-agent.exe" --install
+          pause
+          EOF
+
+          cat << 'EOF' > dist/cinema-agent-win-x64/uninstall-service.bat
+          @echo off
+          echo Uninstalling Cinema Manager Windows Service...
+          "%~dp0cinema-agent.exe" --uninstall
+          pause
+          EOF
+
+          cat << 'EOF' > dist/cinema-agent-win-x64/README.txt
+          Cinema Manager Desktop Companion Agent (Windows)
+          =================================================
+          1. Quick Start:
+             Double-click 'run.bat' or 'cinema-agent.exe'.
+             When prompted, enter your 6-digit Pairing Code from https://cinema.abhijeetkharkar.com.
+
+          2. Run as Background Service:
+             Right-click 'install-service.bat' and select 'Run as Administrator'.
+          EOF
+
+          cd dist/cinema-agent-win-x64 && zip -r ../cinema-agent-win-x64.zip . && cd ../..
+
+      - name: Package macOS Agent (.dmg & .zip)
+        run: |
+          mkdir -p dist/cinema-agent-macos
+          npx --yes pkg apps/cinema-manager-agent/dist/agent.bundle.js --target node18-macos-x64,node18-macos-arm64 --output dist/cinema-agent-macos/cinema-agent
+          chmod +x dist/cinema-agent-macos/*
+
+          cat << 'EOF' > dist/cinema-agent-macos/start-agent.command
+          #!/bin/bash
+          DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+          echo "=========================================="
+          echo "   Cinema Manager Companion Agent"
+          echo "=========================================="
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "arm64" ] && [ -f "$DIR/cinema-agent-macos-arm64" ]; then
+            "$DIR/cinema-agent-macos-arm64" "$@"
+          elif [ -f "$DIR/cinema-agent-macos-x64" ]; then
+            "$DIR/cinema-agent-macos-x64" "$@"
+          elif [ -f "$DIR/cinema-agent" ]; then
+            "$DIR/cinema-agent" "$@"
+          fi
+          EOF
+          chmod +x dist/cinema-agent-macos/start-agent.command
+
+          cat << 'EOF' > dist/cinema-agent-macos/README.txt
+          Cinema Manager Desktop Companion Agent (macOS)
+          ==============================================
+          Double-click 'start-agent.command' to launch.
+          When prompted, enter your 6-digit Pairing Code from https://cinema.abhijeetkharkar.com.
+          EOF
+
+          genisoimage -V "CinemaCompanion" -D -R -apple -no-pad -o dist/cinema-agent-macos.dmg dist/cinema-agent-macos
+          cd dist/cinema-agent-macos && zip -r ../cinema-agent-macos.zip . && cd ../..
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/cinema-agent-win-x64.zip
+            dist/cinema-agent-macos.dmg
+            dist/cinema-agent-macos.zip
+          name: Cinema Companion Agent ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
+          make_latest: true
+          generate_release_notes: true
