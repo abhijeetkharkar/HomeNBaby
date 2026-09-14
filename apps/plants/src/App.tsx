@@ -1,18 +1,80 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useCareApi, computeUrgency } from './hooks/useCareApi';
 import { PLANTS, PLANT_GROUPS } from './data/plants';
+import { FERTILIZERS } from './data/fertilizers';
 
 import type { PlantGroup, PlantDef } from './data/plants';
 import { PlantCard } from './components/PlantCard';
 import { LogCareModal } from './components/LogCareModal';
 
 type ExtendedGroup = PlantGroup | 'all';
-type FilterType = 'all' | 'water-due' | 'fert-due' | 'agrothrive' | 'schultz' | 'espoma';
+type FilterType =
+  | 'all'
+  | 'water-due'
+  | 'fert-due'
+  | 'schultz'
+  | 'agrothrive'
+  | 'espoma'
+  | 'bone-meal'
+  | 'blood-meal'
+  | 'epsom-salt';
+
+function rankUrgency(u: { status: 'overdue' | 'due-today' | 'due-soon' | 'never' | 'ok'; daysUntil: number }): number {
+  switch (u.status) {
+    case 'overdue': return 1;
+    case 'due-today': return 2;
+    case 'due-soon': return 3;
+    case 'never': return 4;
+    case 'ok': return 5;
+    default: return 6;
+  }
+}
+
+function getPlantUrgency(
+  plant: PlantDef,
+  latestLogs: Record<string, { timestamp: string } | undefined>,
+  filter: FilterType,
+) {
+  const waterUrgency = plant.waterFreqDays
+    ? computeUrgency(latestLogs[`${plant.id}__water`]?.timestamp || null, plant.waterFreqDays)
+    : null;
+  const fertUrgency = computeUrgency(
+    latestLogs[`${plant.id}__fertilize`]?.timestamp || null,
+    plant.fertFreqDays,
+  );
+  const fert2Urgency = plant.fertFreqDays2
+    ? computeUrgency(latestLogs[`${plant.id}__fertilize-2`]?.timestamp || null, plant.fertFreqDays2)
+    : null;
+
+  if (filter === 'water-due') {
+    return waterUrgency || { status: 'ok' as const, daysUntil: 999 };
+  }
+
+  if (filter === 'fert-due') {
+    const urgencies = [fertUrgency, ...(fert2Urgency ? [fert2Urgency] : [])];
+    return urgencies.reduce(
+      (prev, curr) => (rankUrgency(curr) < rankUrgency(prev) ? curr : prev),
+      fertUrgency,
+    );
+  }
+
+  const allUrgencies = [
+    ...(waterUrgency ? [waterUrgency] : []),
+    fertUrgency,
+    ...(fert2Urgency ? [fert2Urgency] : []),
+  ];
+
+  return allUrgencies.reduce(
+    (prev, curr) => (rankUrgency(curr) < rankUrgency(prev) ? curr : prev),
+    fertUrgency,
+  );
+}
 
 function App() {
   const { latestLogs, logCare, loading } = useCareApi();
   const [activeGroup, setActiveGroup] = useState<ExtendedGroup>('all');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [showFertGuide, setShowFertGuide] = useState(false);
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -20,7 +82,7 @@ function App() {
   const [modalType, setModalType] = useState<'water' | 'fertilize' | 'fertilize-2'>('water');
 
   const visiblePlants = useMemo(() => {
-    let list = PLANTS;
+    let list = [...PLANTS];
 
     // 1. Group Filtering
     if (activeGroup !== 'all') {
@@ -34,101 +96,263 @@ function App() {
           if (!p.waterFreqDays) return false;
           const last = latestLogs[`${p.id}__water`]?.timestamp;
           const urgency = computeUrgency(last || null, p.waterFreqDays);
-          return urgency.status === 'overdue' || urgency.status === 'due-today' || urgency.status === 'due-soon' || urgency.status === 'never';
+          return (
+            urgency.status === 'overdue' ||
+            urgency.status === 'due-today' ||
+            urgency.status === 'due-soon' ||
+            urgency.status === 'never'
+          );
         });
       } else if (activeFilter === 'fert-due') {
         list = list.filter(p => {
           const last = latestLogs[`${p.id}__fertilize`]?.timestamp;
           const urgency = computeUrgency(last || null, p.fertFreqDays);
-          return urgency.status === 'overdue' || urgency.status === 'due-today' || urgency.status === 'due-soon' || urgency.status === 'never';
+          return (
+            urgency.status === 'overdue' ||
+            urgency.status === 'due-today' ||
+            urgency.status === 'due-soon' ||
+            urgency.status === 'never'
+          );
         });
-      } else if (activeFilter === 'agrothrive') {
-        list = list.filter(p =>
-          p.fertRecommendation.toLowerCase().includes('agrothrive') ||
-          p.fertRecommendation2?.toLowerCase().includes('agrothrive') ||
-          p.altFertilizers?.some(a => a.toLowerCase().includes('agrothrive'))
-        );
       } else if (activeFilter === 'schultz') {
-        list = list.filter(p =>
-          p.fertRecommendation.toLowerCase().includes('schultz') ||
-          p.fertRecommendation2?.toLowerCase().includes('schultz') ||
-          p.altFertilizers?.some(a => a.toLowerCase().includes('schultz'))
+        list = list.filter(
+          p =>
+            p.fertRecommendation.toLowerCase().includes('schultz') ||
+            p.fertRecommendation2?.toLowerCase().includes('schultz') ||
+            p.altFertilizers?.some(a => a.toLowerCase().includes('schultz')),
+        );
+      } else if (activeFilter === 'agrothrive') {
+        list = list.filter(
+          p =>
+            p.fertRecommendation.toLowerCase().includes('agrothrive') ||
+            p.fertRecommendation2?.toLowerCase().includes('agrothrive') ||
+            p.altFertilizers?.some(a => a.toLowerCase().includes('agrothrive')),
         );
       } else if (activeFilter === 'espoma') {
-        list = list.filter(p =>
-          p.fertRecommendation.toLowerCase().includes('espoma') ||
-          p.fertRecommendation2?.toLowerCase().includes('espoma') ||
-          p.altFertilizers?.some(a => a.toLowerCase().includes('espoma'))
+        list = list.filter(
+          p =>
+            p.fertRecommendation.toLowerCase().includes('espoma') ||
+            p.fertRecommendation2?.toLowerCase().includes('espoma') ||
+            p.altFertilizers?.some(a => a.toLowerCase().includes('espoma')),
+        );
+      } else if (activeFilter === 'bone-meal') {
+        list = list.filter(
+          p =>
+            p.fertRecommendation.toLowerCase().includes('bone meal') ||
+            p.fertRecommendation2?.toLowerCase().includes('bone meal') ||
+            p.altFertilizers?.some(a => a.toLowerCase().includes('bone meal')),
+        );
+      } else if (activeFilter === 'blood-meal') {
+        list = list.filter(
+          p =>
+            p.fertRecommendation.toLowerCase().includes('blood meal') ||
+            p.fertRecommendation2?.toLowerCase().includes('blood meal') ||
+            p.altFertilizers?.some(a => a.toLowerCase().includes('blood meal')),
+        );
+      } else if (activeFilter === 'epsom-salt') {
+        list = list.filter(
+          p =>
+            p.fertRecommendation.toLowerCase().includes('epsom') ||
+            p.fertRecommendation2?.toLowerCase().includes('epsom') ||
+            p.altFertilizers?.some(a => a.toLowerCase().includes('epsom')) ||
+            p.notes.some(n => n.toLowerCase().includes('epsom salt')),
         );
       }
     }
+
+    // 3. 5-Tier Urgency Sorting: Overdue -> Due Today -> Due Soon -> No Record -> OK
+    list.sort((a, b) => {
+      const uA = getPlantUrgency(a, latestLogs, activeFilter);
+      const uB = getPlantUrgency(b, latestLogs, activeFilter);
+      const rankA = rankUrgency(uA);
+      const rankB = rankUrgency(uB);
+
+      if (rankA !== rankB) {
+        return rankA - rankB;
+      }
+      // Both overdue: most overdue first (-10 before -1)
+      if (uA.status === 'overdue') {
+        return uA.daysUntil - uB.daysUntil;
+      }
+      // Both due-soon or OK: closest due date first (1 before 5)
+      if (uA.status === 'due-soon' || uA.status === 'ok') {
+        return uA.daysUntil - uB.daysUntil;
+      }
+      return a.name.localeCompare(b.name);
+    });
 
     return list;
   }, [activeGroup, activeFilter, latestLogs]);
 
-  const handleOpenModal = useCallback((plant: PlantDef, defaultType: 'water' | 'fertilize' | 'fertilize-2') => {
-    setModalPlant(plant);
-    setModalType(defaultType);
-    setModalOpen(true);
-  }, []);
+  const handleOpenModal = useCallback(
+    (plant: PlantDef, defaultType: 'water' | 'fertilize' | 'fertilize-2') => {
+      setModalPlant(plant);
+      setModalType(defaultType);
+      setModalOpen(true);
+    },
+    [],
+  );
 
-  const handleConfirmLog = useCallback(async (plantId: string, type: 'water' | 'fertilize' | 'fertilize-2', fertilizer?: string, notes?: string) => {
-    await logCare(plantId, type, fertilizer, notes);
+  const handleConfirmLog = useCallback(
+    async (
+      plantId: string,
+      type: 'water' | 'fertilize' | 'fertilize-2',
+      fertilizer?: string,
+      notes?: string,
+    ) => {
+      await logCare(plantId, type, fertilizer, notes);
 
-    // Auto-log watering if they fertilize with a liquid fertilizer (since it is water-based)
-    if (type.includes('fertilize') && fertilizer) {
-      const liquidKeywords = ['schultz', 'agrothrive', 'liquid'];
-      const isLiquid = liquidKeywords.some(k => fertilizer.toLowerCase().includes(k));
-      if (isLiquid) {
-        await logCare(plantId, 'water', undefined, `Auto-logged from ${fertilizer}`);
+      // Auto-log watering if fertilizing with a liquid fertilizer
+      if (type.includes('fertilize') && fertilizer) {
+        const liquidKeywords = ['schultz', 'agrothrive', 'liquid'];
+        const isLiquid = liquidKeywords.some(k => fertilizer.toLowerCase().includes(k));
+        if (isLiquid) {
+          await logCare(plantId, 'water', undefined, `Auto-logged from ${fertilizer}`);
+        }
       }
-    }
-    setModalOpen(false);
-  }, [logCare]);
+      setModalOpen(false);
+    },
+    [logCare],
+  );
 
   return (
     <div className="app-container">
       <header className="header">
-        <h1 className="title">Plants Tracker <span style={{ fontSize: '2rem' }}>🌱</span></h1>
+        <h1 className="title">
+          Plants Tracker <span style={{ fontSize: '2rem' }}>🌱</span>
+        </h1>
+        <button
+          className={`fert-guide-toggle-btn ${showFertGuide ? 'active' : ''}`}
+          onClick={() => setShowFertGuide(!showFertGuide)}
+          title="Toggle Fertilizer Application & Dosage Guide"
+        >
+          <span>🧪 Fertilizer Application Guide</span>
+          <span className="toggle-chevron">{showFertGuide ? '▲' : '▼'}</span>
+        </button>
       </header>
 
+      {/* Collapsible Fertilizer Application Guide */}
+      {showFertGuide && (
+        <section className="fert-guide-container">
+          <div className="fert-guide-header">
+            <h3>🧪 Fertilizer & Dosage Reference Guide</h3>
+            <p>Application rates, mixing ratios, and best practices for your plant inventory</p>
+          </div>
+          <div className="fert-guide-grid">
+            {FERTILIZERS.map(f => (
+              <div key={f.id} className="fert-guide-card">
+                <div className="fert-card-top">
+                  <h4 className="fert-card-name">{f.name}</h4>
+                  <div className="fert-badges">
+                    <span className="fert-npk-badge">NPK {f.npk}</span>
+                    <span className={`fert-type-badge fert-type-${f.type}`}>{f.type}</span>
+                  </div>
+                </div>
+                <div className="fert-card-row">
+                  <span className="fert-card-label">🥣 Dosage:</span>
+                  <span className="fert-card-val">{f.dosage}</span>
+                </div>
+                <div className="fert-card-row">
+                  <span className="fert-card-label">💧 Method:</span>
+                  <span className="fert-card-val">{f.applicationMethod}</span>
+                </div>
+                <p className="fert-card-desc">{f.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Filter Control Bar */}
       <div className="tracker-filters">
+        {/* Plant Groups */}
         <div className="filter-row">
           <span className="filter-label">Group:</span>
-          <button className={`filter-btn ${activeGroup === 'all' ? 'active' : ''}`} onClick={() => setActiveGroup('all')}>
-            🌎 All
-          </button>
-          {PLANT_GROUPS.map(g => (
+          <div className="filter-chips">
             <button
-              key={g.key}
-              className={`filter-btn ${activeGroup === g.key ? 'active' : ''}`}
-              onClick={() => setActiveGroup(g.key)}
+              className={`filter-btn group-chip ${activeGroup === 'all' ? 'active' : ''}`}
+              onClick={() => setActiveGroup('all')}
             >
-              {g.emoji} {g.label}
+              🌎 All Groups
             </button>
-          ))}
+            {PLANT_GROUPS.map(g => (
+              <button
+                key={g.key}
+                className={`filter-btn group-chip ${activeGroup === g.key ? 'active' : ''}`}
+                onClick={() => setActiveGroup(g.key)}
+              >
+                {g.emoji} {g.label}
+              </button>
+            ))}
+          </div>
         </div>
-        
+
+        {/* Task / Urgency */}
         <div className="filter-row">
-          <span className="filter-label">Quick:</span>
-          <button className={`filter-btn ${activeFilter === 'all' ? 'active' : ''}`} onClick={() => setActiveFilter('all')}>
-            All Tasks
-          </button>
-          <button className={`filter-btn ${activeFilter === 'water-due' ? 'active' : ''}`} onClick={() => setActiveFilter('water-due')}>
-            💧 Water Due
-          </button>
-          <button className={`filter-btn ${activeFilter === 'fert-due' ? 'active' : ''}`} onClick={() => setActiveFilter('fert-due')}>
-            🧪 Fertilizer Due
-          </button>
-          <button className={`filter-btn ${activeFilter === 'agrothrive' ? 'active' : ''}`} onClick={() => setActiveFilter('agrothrive')}>
-            🧪 AgroThrive
-          </button>
-          <button className={`filter-btn ${activeFilter === 'schultz' ? 'active' : ''}`} onClick={() => setActiveFilter('schultz')}>
-            🧪 Schultz
-          </button>
-          <button className={`filter-btn ${activeFilter === 'espoma' ? 'active' : ''}`} onClick={() => setActiveFilter('espoma')}>
-            🧪 Espoma
-          </button>
+          <span className="filter-label">Tasks:</span>
+          <div className="filter-chips">
+            <button
+              className={`filter-btn task-chip ${activeFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setActiveFilter('all')}
+            >
+              ⚡ All Tasks
+            </button>
+            <button
+              className={`filter-btn task-chip chip-water ${activeFilter === 'water-due' ? 'active' : ''}`}
+              onClick={() => setActiveFilter('water-due')}
+            >
+              💧 Water Due
+            </button>
+            <button
+              className={`filter-btn task-chip chip-fert ${activeFilter === 'fert-due' ? 'active' : ''}`}
+              onClick={() => setActiveFilter('fert-due')}
+            >
+              🧪 Fertilizer Due
+            </button>
+          </div>
+        </div>
+
+        {/* Fertilizer Inventory */}
+        <div className="filter-row">
+          <span className="filter-label">Fertilizer:</span>
+          <div className="filter-chips">
+            <button
+              className={`filter-btn fert-chip ${activeFilter === 'schultz' ? 'active' : ''}`}
+              onClick={() => setActiveFilter(activeFilter === 'schultz' ? 'all' : 'schultz')}
+            >
+              🧪 Schultz (10-15-10)
+            </button>
+            <button
+              className={`filter-btn fert-chip ${activeFilter === 'agrothrive' ? 'active' : ''}`}
+              onClick={() => setActiveFilter(activeFilter === 'agrothrive' ? 'all' : 'agrothrive')}
+            >
+              🌿 AgroThrive Liquid
+            </button>
+            <button
+              className={`filter-btn fert-chip ${activeFilter === 'espoma' ? 'active' : ''}`}
+              onClick={() => setActiveFilter(activeFilter === 'espoma' ? 'all' : 'espoma')}
+            >
+              🌱 Espoma (Garden/Indoor)
+            </button>
+            <button
+              className={`filter-btn fert-chip ${activeFilter === 'bone-meal' ? 'active' : ''}`}
+              onClick={() => setActiveFilter(activeFilter === 'bone-meal' ? 'all' : 'bone-meal')}
+            >
+              🦴 Bone Meal
+            </button>
+            <button
+              className={`filter-btn fert-chip ${activeFilter === 'blood-meal' ? 'active' : ''}`}
+              onClick={() => setActiveFilter(activeFilter === 'blood-meal' ? 'all' : 'blood-meal')}
+            >
+              🩸 Blood Meal
+            </button>
+            <button
+              className={`filter-btn fert-chip ${activeFilter === 'epsom-salt' ? 'active' : ''}`}
+              onClick={() => setActiveFilter(activeFilter === 'epsom-salt' ? 'all' : 'epsom-salt')}
+            >
+              🧂 Epsom Salt
+            </button>
+          </div>
         </div>
       </div>
 
@@ -139,7 +363,7 @@ function App() {
       ) : (
         <div className="plant-list">
           <div className="results-count">
-            {visiblePlants.length} plant{visiblePlants.length !== 1 ? 's' : ''} match your filters
+            Showing {visiblePlants.length} plant{visiblePlants.length !== 1 ? 's' : ''} (sorted by due status)
           </div>
           {visiblePlants.map(plant => (
             <PlantCard
@@ -152,8 +376,15 @@ function App() {
             />
           ))}
           {visiblePlants.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', gridColumn: '1 / -1' }}>
-              No plants need attention here! 🎉
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '3rem',
+                color: 'var(--text-muted)',
+                gridColumn: '1 / -1',
+              }}
+            >
+              No plants need attention under this filter! 🎉
             </div>
           )}
         </div>
