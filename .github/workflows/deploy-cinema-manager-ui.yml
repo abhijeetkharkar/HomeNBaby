@@ -1,0 +1,46 @@
+name: Deploy Cinema Manager UI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/cinema-manager-ui/**'
+      - 'libs/cinema-models/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy Cinema Manager UI Application
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || (github.event.head_commit != null && (startsWith(github.event.head_commit.message, 'Merge pull request') || contains(github.event.head_commit.message, '(#')))
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::797884421713:role/HomeNBaby-GitHubActions-DeployRole
+          aws-region: us-east-1
+
+      - name: Make deploy script executable
+        run: chmod +x ./apps/cinema-manager-ui/infra/deploy.sh
+
+      - name: Deploy Cinema Manager UI
+        shell: bash
+        run: ./apps/cinema-manager-ui/infra/deploy.sh prod us-east-1 none

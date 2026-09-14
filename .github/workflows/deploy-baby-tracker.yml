@@ -1,0 +1,45 @@
+name: Deploy Baby Tracker
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/baby-tracker/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy Baby Tracker Application
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || (github.event.head_commit != null && (startsWith(github.event.head_commit.message, 'Merge pull request') || contains(github.event.head_commit.message, '(#')))
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::797884421713:role/HomeNBaby-GitHubActions-DeployRole
+          aws-region: us-east-1
+
+      - name: Make deploy script executable
+        run: chmod +x ./apps/baby-tracker/infra/deploy.sh
+
+      - name: Deploy Baby Tracker
+        shell: bash
+        run: ./apps/baby-tracker/infra/deploy.sh prod us-east-1 none
