@@ -35,6 +35,11 @@ if (Test-Path $ParamFile) {
     }
 }
 
+$ProfileArgs = @()
+if ($Profile -and $Profile -ne "none" -and $Profile -ne "default-env") {
+    $ProfileArgs = @("--profile", $Profile)
+}
+
 Write-Host "Deploying CloudFormation stack: $StackName..." -ForegroundColor Cyan
 if ($Params.Count -gt 0) {
     aws cloudformation deploy `
@@ -43,7 +48,7 @@ if ($Params.Count -gt 0) {
         --parameter-overrides @Params `
         --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM `
         --region $Region `
-        --profile $Profile `
+        @ProfileArgs `
         --no-fail-on-empty-changeset
 } else {
     aws cloudformation deploy `
@@ -51,7 +56,7 @@ if ($Params.Count -gt 0) {
         --template-file $TemplateFile `
         --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM `
         --region $Region `
-        --profile $Profile `
+        @ProfileArgs `
         --no-fail-on-empty-changeset
 }
 
@@ -59,7 +64,7 @@ Write-Host "Fetching Lambda function name..." -ForegroundColor Cyan
 $FunctionName = aws cloudformation describe-stacks `
     --stack-name $StackName `
     --region $Region `
-    --profile $Profile `
+    @ProfileArgs `
     --query "Stacks[0].Outputs[?OutputKey=='CinemaApiLambdaName'].OutputValue" `
     --output text
 
@@ -69,7 +74,7 @@ if (Test-Path $ZipFile) {
         --function-name $FunctionName `
         --zip-file "fileb://$ZipFile" `
         --region $Region `
-        --profile $Profile | Out-Null
+        @ProfileArgs | Out-Null
 }
 
 Write-Host "Cinema Manager API deployed successfully" -ForegroundColor Green

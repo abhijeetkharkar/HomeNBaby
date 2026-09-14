@@ -18,6 +18,11 @@ if (Test-Path $ParamFile) {
     }
 }
 
+$ProfileArgs = @()
+if ($Profile -and $Profile -ne "none" -and $Profile -ne "default-env") {
+    $ProfileArgs = @("--profile", $Profile)
+}
+
 Write-Host "Deploying CloudFormation stack: $StackName..." -ForegroundColor Cyan
 if ($Params.Count -gt 0) {
     aws cloudformation deploy `
@@ -26,7 +31,7 @@ if ($Params.Count -gt 0) {
         --parameter-overrides @Params `
         --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM `
         --region $Region `
-        --profile $Profile `
+        @ProfileArgs `
         --no-fail-on-empty-changeset
 } else {
     aws cloudformation deploy `
@@ -34,7 +39,7 @@ if ($Params.Count -gt 0) {
         --template-file $TemplateFile `
         --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM `
         --region $Region `
-        --profile $Profile `
+        @ProfileArgs `
         --no-fail-on-empty-changeset
 }
 

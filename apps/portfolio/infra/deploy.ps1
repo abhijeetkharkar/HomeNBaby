@@ -27,6 +27,11 @@ if (Test-Path $ParamFile) {
     }
 }
 
+$ProfileArgs = @()
+if ($Profile -and $Profile -ne "none" -and $Profile -ne "default-env") {
+    $ProfileArgs = @("--profile", $Profile)
+}
+
 Write-Host "Deploying CloudFormation stack: $StackName..." -ForegroundColor Cyan
 if ($Params.Count -gt 0) {
     aws cloudformation deploy `
@@ -35,7 +40,7 @@ if ($Params.Count -gt 0) {
         --parameter-overrides @Params `
         --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM `
         --region $Region `
-        --profile $Profile `
+        @ProfileArgs `
         --no-fail-on-empty-changeset
 } else {
     aws cloudformation deploy `
@@ -43,7 +48,7 @@ if ($Params.Count -gt 0) {
         --template-file $TemplateFile `
         --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM `
         --region $Region `
-        --profile $Profile `
+        @ProfileArgs `
         --no-fail-on-empty-changeset
 }
 
@@ -51,21 +56,21 @@ Write-Host "Fetching stack outputs..." -ForegroundColor Cyan
 $BucketName = aws cloudformation describe-stacks `
     --stack-name $StackName `
     --region $Region `
-    --profile $Profile `
+    @ProfileArgs `
     --query "Stacks[0].Outputs[?OutputKey=='PortfolioBucketName'].OutputValue" `
     --output text
 
 $DistId = aws cloudformation describe-stacks `
     --stack-name $StackName `
     --region $Region `
-    --profile $Profile `
+    @ProfileArgs `
     --query "Stacks[0].Outputs[?OutputKey=='PortfolioDistributionId'].OutputValue" `
     --output text
 
 Write-Host "Syncing dist/ to s3://$BucketName..." -ForegroundColor Cyan
-aws s3 sync (Join-Path $AppRoot "dist") "s3://$BucketName" --delete --region $Region --profile $Profile
+aws s3 sync (Join-Path $AppRoot "dist") "s3://$BucketName" --delete --region $Region @ProfileArgs
 
 Write-Host "Invalidating CloudFront cache for $DistId..." -ForegroundColor Cyan
-aws cloudfront create-invalidation --distribution-id $DistId --paths "/*" --region $Region --profile $Profile | Out-Null
+aws cloudfront create-invalidation --distribution-id $DistId --paths "/*" --region $Region @ProfileArgs | Out-Null
 
 Write-Host "Portfolio deployed successfully to https://portfolio.abhijeetkharkar.com" -ForegroundColor Green

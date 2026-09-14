@@ -1,0 +1,135 @@
+name: Deploy Monorepo Applications
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/**'
+      - 'libs/**'
+      - 'infra/**'
+      - 'deploy-all.ps1'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Application to deploy'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - plants
+          - baby-tracker
+          - portfolio
+          - cinema-manager-ui
+          - cinema-manager-api
+          - api
+          - reminders
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy Stacks & Frontends
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Detect Changed Paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name == 'push'
+        with:
+          filters: |
+            plants:
+              - 'apps/plants/**'
+            baby:
+              - 'apps/baby-tracker/**'
+            portfolio:
+              - 'apps/portfolio/**'
+            cinema_ui:
+              - 'apps/cinema-manager-ui/**'
+              - 'libs/cinema-models/**'
+            cinema_api:
+              - 'apps/cinema-manager-api/**'
+              - 'libs/cinema-models/**'
+            api:
+              - 'apps/api/**'
+            reminders:
+              - 'apps/reminders/**'
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::797884421713:role/HomeNBaby-GitHubActions-DeployRole
+          aws-region: us-east-1
+
+      # 1. Plants (plants.abhijeetkharkar.com)
+      - name: Deploy Plants
+        if: |
+          (github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'plants')) ||
+          (github.event_name == 'push' && steps.filter.outputs.plants == 'true')
+        shell: pwsh
+        run: ./apps/plants/infra/deploy.ps1 -Profile none
+
+      # 2. Baby Tracker (baby.abhijeetkharkar.com)
+      - name: Deploy Baby Tracker
+        if: |
+          (github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'baby-tracker')) ||
+          (github.event_name == 'push' && steps.filter.outputs.baby == 'true')
+        shell: pwsh
+        run: ./apps/baby-tracker/infra/deploy.ps1 -Profile none
+
+      # 3. Shared Backend API (api.abhijeetkharkar.com)
+      - name: Deploy API
+        if: |
+          (github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'api')) ||
+          (github.event_name == 'push' && steps.filter.outputs.api == 'true')
+        shell: pwsh
+        run: ./apps/api/infra/deploy.ps1 -Profile none
+
+      # 4. Reminders Cron Service
+      - name: Deploy Reminders
+        if: |
+          (github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'reminders')) ||
+          (github.event_name == 'push' && steps.filter.outputs.reminders == 'true')
+        shell: pwsh
+        run: ./apps/reminders/infra/deploy.ps1 -Profile none
+
+      # 5. Portfolio (abhijeetkharkar.com)
+      - name: Deploy Portfolio
+        if: |
+          (github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'portfolio')) ||
+          (github.event_name == 'push' && steps.filter.outputs.portfolio == 'true')
+        shell: pwsh
+        run: ./apps/portfolio/infra/deploy.ps1 -Profile none
+
+      # 6. Cinema Manager API (api.abhijeetkharkar.com/cinema-manager)
+      - name: Deploy Cinema Manager API
+        if: |
+          (github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'cinema-manager-api')) ||
+          (github.event_name == 'push' && steps.filter.outputs.cinema_api == 'true')
+        shell: pwsh
+        run: ./apps/cinema-manager-api/infra/deploy.ps1 -Profile none
+
+      # 7. Cinema Manager UI (cinema.abhijeetkharkar.com)
+      - name: Deploy Cinema Manager UI
+        if: |
+          (github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'cinema-manager-ui')) ||
+          (github.event_name == 'push' && steps.filter.outputs.cinema_ui == 'true')
+        shell: pwsh
+        run: ./apps/cinema-manager-ui/infra/deploy.ps1 -Profile none
