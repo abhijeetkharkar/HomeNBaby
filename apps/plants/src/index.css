@@ -567,12 +567,170 @@ body {
 .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 6px rgba(46, 167, 111, 0.2); }
 .btn-primary:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-1px); }
 .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
-/* -- Tracker Filters ---------------------------------------- */
+/* ── Fertilizer Guide Toggle & Container ───────────────────── */
+.fert-guide-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: white;
+  border: 1px solid rgba(46, 167, 111, 0.25);
+  color: var(--primary-hover);
+  padding: 0.6rem 1.1rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.fert-guide-toggle-btn:hover {
+  background: var(--secondary);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.fert-guide-toggle-btn.active {
+  background: #1d3527;
+  color: #a7f3d0;
+  border-color: #1d3527;
+  box-shadow: 0 4px 12px rgba(29, 53, 39, 0.25);
+}
+
+.toggle-chevron {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.fert-guide-container {
+  background: white;
+  border: 1px solid rgba(46, 167, 111, 0.15);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  animation: fadeIn 0.25s ease;
+}
+
+.fert-guide-header {
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding-bottom: 0.75rem;
+}
+
+.fert-guide-header h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 0.25rem;
+}
+
+.fert-guide-header p {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.fert-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.fert-guide-card {
+  background: var(--bg-color);
+  border: 1px solid rgba(46, 167, 111, 0.12);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.fert-guide-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+  border-color: rgba(46, 167, 111, 0.3);
+}
+
+.fert-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.fert-card-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.3;
+}
+
+.fert-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.fert-npk-badge {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.fert-type-badge {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+
+.fert-type-liquid { background: #e0f2fe; color: #0369a1; }
+.fert-type-granular { background: #fef3c7; color: #92400e; }
+.fert-type-powder { background: #fce7f3; color: #9d174d; }
+.fert-type-supplement { background: #ede9fe; color: #6d28d9; }
+
+.fert-card-row {
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.fert-card-label {
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-right: 0.35rem;
+}
+
+.fert-card-val {
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+.fert-card-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: auto;
+  padding-top: 0.4rem;
+  border-top: 1px dashed rgba(0, 0, 0, 0.08);
+}
+
+/* ── Tracker Filters ──────────────────────────────────────── */
 .tracker-filters {
   background: white;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  padding: 1rem;
+  padding: 1.25rem;
   margin-bottom: 1.5rem;
   display: flex;
   flex-direction: column;
@@ -583,29 +741,86 @@ body {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
 
 .filter-label {
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   text-transform: uppercase;
   color: var(--text-muted);
-  width: 60px;
+  min-width: 80px;
+  letter-spacing: 0.04em;
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  flex: 1;
 }
 
 .filter-btn {
-  border: 1px solid var(--card-border);
-  background: var(--bg-color);
-  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f8fafc;
+  padding: 0.45rem 0.85rem;
   border-radius: 99px;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  color: var(--text-muted);
+  color: #475569;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
+.filter-btn:hover {
+  background: #f1f5f9;
+  color: var(--text-main);
+  border-color: rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+/* Group Chips Active */
+.group-chip.active {
+  background: #1d3527;
+  color: #f0fdf4;
+  border-color: #1d3527;
+  box-shadow: 0 2px 8px rgba(29, 53, 39, 0.3);
+}
+
+/* Task Chips Active */
+.task-chip.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.chip-water.active {
+  background: #0284c7;
+  color: white;
+  border-color: #0284c7;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+}
+
+.chip-fert.active {
+  background: #16a34a;
+  color: white;
+  border-color: #16a34a;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
+}
+
+/* Fertilizer Chips Active */
+.fert-chip.active {
+  background: #854d0e;
+  color: #fefce8;
+  border-color: #854d0e;
+  box-shadow: 0 2px 8px rgba(133, 77, 14, 0.3);
+}
+
+/* Back of Card Styles */
 .back-scroll-area {
   height: 100%;
   overflow-y: auto;
@@ -676,19 +891,6 @@ body {
   position: absolute;
   left: 0;
   top: 0;
-}
-
-.filter-btn:hover {
-  background: var(--secondary);
-  color: var(--primary);
-  border-color: var(--primary);
-}
-
-.filter-btn.active {
-  background: var(--primary);
-  color: white;
-  border-color: var(--primary);
-  box-shadow: 0 2px 8px rgba(46, 167, 111, 0.3);
 }
 
 .results-count {

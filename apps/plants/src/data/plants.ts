@@ -741,6 +741,27 @@ export const PLANTS: PlantDef[] = [
       'Perennial evergreen herb — harvest fresh sprigs year-round',
     ],
   },
+  {
+    id: 'cauliflower',
+    name: 'Cauliflower',
+    lightRequirements: 'Full Sun to Partial Shade (15,000–50,000+ Lux)',
+    bestTimeToPlantSeed: 'Jul-Aug, Dec-Jan',
+    bestTimeToTransplant: 'Aug-Oct',
+    seedToFruitTime: '70-90 days',
+    fruitingSeason: 'Late Fall-Winter',
+    emoji: '🥦',
+    imageUrl: '/plants/cauliflower.jpg',
+    group: 'outdoor-potted',
+    fertFreqDays: [14, 21],
+    fertRecommendation: 'Espoma Garden-tone',
+    altFertilizers: ['AgroThrive General', 'Bone meal', 'Blood meal'],
+    notes: [
+      'Heavy feeder — needs consistent moisture & steady nutrition for compact curds',
+      'Blanching: when the head reaches 2–3" in size, tie outer leaves over curd to keep it creamy white and protect from sun scorch',
+      'Cool-season brassica — thrives in Austin fall/winter (Sept–Feb)',
+      'Uneven watering causes loose "ricey" or separated buttons',
+    ],
+  },
 ];
 
 export const PLANT_GROUPS: { key: PlantGroup; label: string; emoji: string }[] = [
