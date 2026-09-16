@@ -1,4 +1,4 @@
-<div class="wizard-overlay">
+<div class="wizard-overlay" (click)="onBackdropClick($event)">
   <div class="wizard-modal">
     <!-- Success Banner -->
     <div class="success-screen" *ngIf="isPairingComplete">
@@ -21,8 +21,19 @@
         <div class="header-icon">
           <mat-icon>devices</mat-icon>
         </div>
-        <h2>Connect Your Companion Agent</h2>
-        <p>Follow these quick steps to link your local movies to Cinema Manager.</p>
+        <div class="header-text">
+          <h2>Connect Your Companion Agent</h2>
+          <p>Follow these quick steps to link your local movies to Cinema Manager.</p>
+        </div>
+        <button
+          mat-icon-button
+          class="modal-close-btn"
+          (click)="finishSetup()"
+          title="Close dialog (or press Esc)"
+          aria-label="Close dialog"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
       </div>
 
       <div class="steps-container">
@@ -53,13 +64,25 @@
             <h3>Download Companion Agent</h3>
             <p>Runs quietly in the background to discover files and launch original 4K video.</p>
             <div class="download-row">
-              <a [href]="releaseUrlWin" target="_blank" class="download-btn">
+              <a
+                [href]="releaseUrlWin"
+                target="_blank"
+                class="download-btn"
+                [class.primary-rec]="isWin"
+              >
                 <mat-icon>window</mat-icon>
                 <span>Download for Windows (.exe)</span>
+                <span class="rec-badge" *ngIf="isWin">Detected</span>
               </a>
-              <a [href]="releaseUrlMac" target="_blank" class="download-btn">
+              <a
+                [href]="releaseUrlMac"
+                target="_blank"
+                class="download-btn"
+                [class.primary-rec]="isMac"
+              >
                 <mat-icon>laptop_mac</mat-icon>
                 <span>Download for macOS (.dmg)</span>
+                <span class="rec-badge" *ngIf="isMac">Detected</span>
               </a>
             </div>
           </div>

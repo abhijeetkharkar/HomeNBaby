@@ -29,6 +29,8 @@ export class DynamoDbService {
     process.env.PAIRING_CODES_TABLE || 'cinema-manager-pairing-codes';
   public readonly auditLogsTable =
     process.env.AUDIT_LOGS_TABLE || 'cinema-manager-audit-logs';
+  public readonly telemetryTable =
+    process.env.TELEMETRY_TABLE || 'cinema-manager-telemetry';
 
   constructor() {
     const client = new DynamoDBClient({
@@ -151,6 +153,31 @@ export class DynamoDbService {
       return (response.Items as T[]) || [];
     } catch (error) {
       this.logger.error(`Error querying table ${tableName}`, error);
+      throw error;
+    }
+  }
+
+  async updateItem(
+    tableName: string,
+    key: Record<string, any>,
+    updateExpression: string,
+    expressionAttributeValues?: Record<string, any>,
+    expressionAttributeNames?: Record<string, string>
+  ): Promise<any> {
+    try {
+      const response = await this.docClient.send(
+        new UpdateCommand({
+          TableName: tableName,
+          Key: key,
+          UpdateExpression: updateExpression,
+          ExpressionAttributeValues: expressionAttributeValues,
+          ExpressionAttributeNames: expressionAttributeNames,
+          ReturnValues: 'ALL_NEW',
+        })
+      );
+      return response.Attributes;
+    } catch (error) {
+      this.logger.error(`Error updating item in table ${tableName}`, error);
       throw error;
     }
   }

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -32,6 +32,7 @@ import { ConfigurationDialog } from '../configuration-dialog/configuration-dialo
 export class CinemaGalleryComponent implements OnInit, OnDestroy {
   private readonly cinemaApiService = inject(CinemaManagerApiService);
   private readonly dialog = inject(MatDialog);
+  private readonly ngZone = inject(NgZone);
 
   allCinemas: Cinema[] = [];
   displayedCinemas: Cinema[] = [];
@@ -44,6 +45,23 @@ export class CinemaGalleryComponent implements OnInit, OnDestroy {
   searchQuery = '';
   selectedGenre = 'All';
   selectedSort = 'rating';
+
+  // Client OS detection for tailored download link
+  readonly releaseUrlWin =
+    'https://github.com/abhijeetkharkar/HomeNBaby/releases/latest/download/cinema-agent-win-x64.zip';
+  readonly releaseUrlMac =
+    'https://github.com/abhijeetkharkar/HomeNBaby/releases/latest/download/cinema-agent-macos.dmg';
+
+  clientOS: 'windows' | 'macos' | 'linux' | 'other' = 'windows';
+  primaryDownloadUrl = this.releaseUrlWin;
+  primaryOSLabel = 'Windows (.exe)';
+  primaryOSIcon = 'desktop_windows';
+  altDownloadUrl = this.releaseUrlMac;
+  altOSLabel = 'macOS (.dmg)';
+
+  // Smart Polling backoff
+  failedPollCount = 0;
+  readonly maxAutoPollAttempts = 3;
 
   genres: string[] = [
     'All',
@@ -62,14 +80,55 @@ export class CinemaGalleryComponent implements OnInit, OnDestroy {
   ];
 
   async ngOnInit(): Promise<void> {
+    this.detectClientOS();
     await this.verifyDeviceAndLoad();
 
-    // Check device status every 5s in background if offline
-    this.devicePollInterval = setInterval(async () => {
-      if (!this.isAgentConnected) {
-        await this.verifyDeviceAndLoad(true);
-      }
-    }, 5000);
+    // Smart polling: Auto-poll up to 3 times initially; run outside Angular zone to avoid test/CD stalls
+    this.ngZone.runOutsideAngular(() => {
+      this.devicePollInterval = setInterval(async () => {
+        if (this.cinemaApiService.showPairingModal()) {
+          return; // Avoid concurrent polling when wizard modal is open
+        }
+        if (!this.isAgentConnected) {
+          if (this.failedPollCount < this.maxAutoPollAttempts) {
+            this.failedPollCount++;
+            await this.ngZone.run(() => this.verifyDeviceAndLoad(true));
+          }
+        } else {
+          this.failedPollCount = 0;
+        }
+      }, 6000);
+    });
+  }
+
+  detectClientOS(): void {
+    if (typeof window === 'undefined' || !window.navigator) return;
+    const ua = window.navigator.userAgent.toLowerCase();
+    const platform = (
+      (window.navigator as any).userAgentData?.platform ||
+      window.navigator.platform ||
+      ''
+    ).toLowerCase();
+
+    if (platform.includes('mac') || ua.includes('macintosh') || ua.includes('mac os')) {
+      this.clientOS = 'macos';
+      this.primaryDownloadUrl = this.releaseUrlMac;
+      this.primaryOSLabel = 'macOS (.dmg)';
+      this.primaryOSIcon = 'laptop_mac';
+      this.altDownloadUrl = this.releaseUrlWin;
+      this.altOSLabel = 'Windows (.exe)';
+    } else {
+      this.clientOS = 'windows';
+      this.primaryDownloadUrl = this.releaseUrlWin;
+      this.primaryOSLabel = 'Windows (.exe)';
+      this.primaryOSIcon = 'desktop_windows';
+      this.altDownloadUrl = this.releaseUrlMac;
+      this.altOSLabel = 'macOS (.dmg)';
+    }
+  }
+
+  openPairingWizard(): void {
+    this.cinemaApiService.openPairingModal();
   }
 
   ngOnDestroy(): void {
@@ -82,6 +141,7 @@ export class CinemaGalleryComponent implements OnInit, OnDestroy {
   async verifyDeviceAndLoad(isSilent = false): Promise<void> {
     if (!isSilent) {
       this.isCheckingDevice = true;
+      this.failedPollCount = 0; // Manual re-check resets backoff counter
     }
 
     const device = await this.cinemaApiService.checkLocalDevice();
@@ -91,6 +151,7 @@ export class CinemaGalleryComponent implements OnInit, OnDestroy {
       this.isAgentConnected = true;
       this.currentDevice = device;
       this.isCheckingDevice = false;
+      this.failedPollCount = 0;
 
       if (!wasConnected || this.allCinemas.length === 0) {
         this.loadCinemas();

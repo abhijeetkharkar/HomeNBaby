@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, EventEmitter, Output } from '@angular/core';
+import { Component, OnInit, OnDestroy, EventEmitter, Output, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -26,6 +26,9 @@ export class OnboardingWizardComponent implements OnInit, OnDestroy {
   lookupPath = 'D:\\Movies';
   pathSaved = false;
 
+  isMac = false;
+  isWin = true;
+
   readonly releaseUrlWin =
     'https://github.com/abhijeetkharkar/HomeNBaby/releases/latest/download/cinema-agent-win-x64.zip';
   readonly releaseUrlMac =
@@ -36,9 +39,39 @@ export class OnboardingWizardComponent implements OnInit, OnDestroy {
     private apiService: CinemaManagerApiService
   ) {}
 
+  @HostListener('document:keydown.escape')
+  onEscapePress(): void {
+    this.finishSetup();
+  }
+
+  onBackdropClick(event: MouseEvent): void {
+    if ((event.target as HTMLElement).classList.contains('wizard-overlay')) {
+      this.finishSetup();
+    }
+  }
+
   async ngOnInit(): Promise<void> {
+    this.detectOS();
     await this.fetchPairingCode();
     this.startDetectionPolling();
+  }
+
+  private detectOS(): void {
+    if (typeof window === 'undefined' || !window.navigator) return;
+    const ua = window.navigator.userAgent.toLowerCase();
+    const platform = (
+      (window.navigator as any).userAgentData?.platform ||
+      window.navigator.platform ||
+      ''
+    ).toLowerCase();
+
+    if (platform.includes('mac') || ua.includes('macintosh') || ua.includes('mac os')) {
+      this.isMac = true;
+      this.isWin = false;
+    } else {
+      this.isWin = true;
+      this.isMac = false;
+    }
   }
 
   ngOnDestroy(): void {

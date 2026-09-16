@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Observable, throwError } from 'rxjs';
@@ -22,6 +22,17 @@ export interface DeviceInfo {
 export class CinemaManagerApiService {
   private readonly http = inject(HttpClient);
   private readonly snackBar = inject(MatSnackBar, { optional: true });
+
+  readonly showPairingModal = signal<boolean>(false);
+
+  openPairingModal(): void {
+    this.showPairingModal.set(true);
+  }
+
+  closePairingModal(): void {
+    this.showPairingModal.set(false);
+  }
+
   // Default to production API Gateway or local port if in dev mode
   private readonly apiUrl =
     window.location.hostname === 'localhost'

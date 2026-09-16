@@ -213,6 +213,30 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
+  TelemetryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${ProjectName}-telemetry'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: App
+          Value: cinema-manager-api
+        - Key: Environment
+          Value: !Ref Environment
+
   # ── 2. Cognito Authentication ────────────────────────────────────────────
   CinemaUserPool:
     Type: AWS::Cognito::UserPool
@@ -314,6 +338,8 @@ Resources:
                   - !Sub '${PairingCodesTable.Arn}/index/*'
                   - !GetAtt AuditLogsTable.Arn
                   - !Sub '${AuditLogsTable.Arn}/index/*'
+                  - !GetAtt TelemetryTable.Arn
+                  - !Sub '${TelemetryTable.Arn}/index/*'
       Tags:
         - Key: App
           Value: cinema-manager-api
@@ -345,6 +371,8 @@ Resources:
           MASTER_MOVIES_TABLE: !Ref MasterMoviesTable
           PAIRING_CODES_TABLE: !Ref PairingCodesTable
           AUDIT_LOGS_TABLE: !Ref AuditLogsTable
+          TELEMETRY_TABLE: !Ref TelemetryTable
+          ADMIN_EMAIL: 'abhijeetkharkar@gmail.com'
           USER_POOL_ID: !Ref CinemaUserPool
           USER_POOL_CLIENT_ID: !Ref CinemaUserPoolClient
           TMDB_API_KEY: !Ref TmdbApiKey

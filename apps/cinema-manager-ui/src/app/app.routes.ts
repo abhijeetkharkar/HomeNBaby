@@ -1,5 +1,6 @@
 import { Route } from '@angular/router';
 import { authGuard, unauthGuard } from './guards/auth.guard';
+import { adminGuard } from './guards/admin.guard';
 
 export const appRoutes: Route[] = [
   {
@@ -22,6 +23,14 @@ export const appRoutes: Route[] = [
       import(
         './components/cinema-gallery/cinema-gallery.component'
       ).then((m) => m.CinemaGalleryComponent),
+  },
+  {
+    path: 'admin',
+    canActivate: [adminGuard],
+    loadComponent: () =>
+      import(
+        './components/admin-dashboard/admin-dashboard.component'
+      ).then((m) => m.AdminDashboardComponent),
   },
   {
     path: '**',

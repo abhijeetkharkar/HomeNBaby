@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { MatDialog } from '@angular/material/dialog';
+import { signal } from '@angular/core';
 import { of } from 'rxjs';
 import { CinemaGalleryComponent } from './cinema-gallery.component';
 import { CinemaManagerApiService } from '../../services/cinema-manager-api.service';
@@ -12,6 +13,17 @@ describe('CinemaGalleryComponent', () => {
 
   beforeEach(async () => {
     mockApiService = {
+      showPairingModal: signal(false),
+      openPairingModal: jest.fn(),
+      closePairingModal: jest.fn(),
+      checkLocalDevice: jest.fn().mockResolvedValue({
+        status: 'ok',
+        agent: 'cinema-agent',
+        agentId: 'agent-test',
+        agentName: 'Test Media PC',
+        hostname: 'localhost',
+        watchPaths: ['C:/Videos', 'C:\\Videos'],
+      }),
       getCinemas: jest.fn().mockReturnValue(
         of([
           {
@@ -43,20 +55,23 @@ describe('CinemaGalleryComponent', () => {
     }).compileComponents();
   });
 
-  it('should create and load cinemas on init', () => {
+  it('should create and load cinemas on init', async () => {
     const fixture = TestBed.createComponent(CinemaGalleryComponent);
     fixture.detectChanges();
+    await fixture.whenStable();
     const component = fixture.componentInstance;
 
     expect(component).toBeTruthy();
     expect(component.allCinemas.length).toBe(1);
     expect(component.displayedCinemas.length).toBe(1);
     expect(component.displayedCinemas[0].title).toBe('Interstellar');
+    fixture.destroy();
   });
 
-  it('should filter cinemas by search query', () => {
+  it('should filter cinemas by search query', async () => {
     const fixture = TestBed.createComponent(CinemaGalleryComponent);
     fixture.detectChanges();
+    await fixture.whenStable();
     const component = fixture.componentInstance;
 
     component.searchQuery = 'Matrix';
@@ -68,5 +83,6 @@ describe('CinemaGalleryComponent', () => {
     component.onSearchChange();
 
     expect(component.displayedCinemas.length).toBe(1);
+    fixture.destroy();
   });
 });
