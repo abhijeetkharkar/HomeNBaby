@@ -53,12 +53,6 @@ export class App implements OnInit, OnDestroy {
           this.telemetryService.sendHeartbeat();
         }
       }, 5 * 60 * 1000);
-
-      // Check local agent; if not found, open pairing wizard once
-      const device = await this.apiService.checkLocalDevice();
-      if (!device) {
-        this.apiService.openPairingModal();
-      }
     }
   }
 
