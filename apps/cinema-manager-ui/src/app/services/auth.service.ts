@@ -1,4 +1,4 @@
-import { Injectable, signal, inject } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -36,6 +36,10 @@ export class AuthService {
 
   readonly currentUser = signal<UserSession | null>(null);
   readonly isAuthenticated = signal<boolean>(false);
+  readonly isAdmin = computed(() => {
+    const user = this.currentUser();
+    return (user?.email || '').toLowerCase().trim() === 'abhijeetkharkar@gmail.com';
+  });
 
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
@@ -107,7 +111,13 @@ export class AuthService {
       if (err.__type === 'UserNotConfirmedException') {
         return { success: false, requiresConfirmation: true };
       }
-      return { success: false, error: this.formatCognitoError(err) };
+      const formattedError = this.formatCognitoError(err);
+      fetch(`${this.apiUrl}/auth/record-login-error`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, error: formattedError }),
+      }).catch(() => {});
+      return { success: false, error: formattedError };
     }
   }
 
@@ -228,6 +238,15 @@ export class AuthService {
 
       this.currentUser.set(user);
       this.isAuthenticated.set(true);
+
+      // Record login telemetry
+      fetch(`${this.apiUrl}/auth/record-login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      }).catch(() => {});
     } catch (e) {
       console.error('Failed to parse auth token payload:', e);
     }

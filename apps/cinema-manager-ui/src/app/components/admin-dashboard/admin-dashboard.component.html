@@ -1,0 +1,377 @@
+<div class="admin-page">
+  <!-- Top Navigation Header -->
+  <header class="admin-header">
+    <div class="header-left">
+      <div class="brand-badge">
+        <mat-icon class="shield-icon">security</mat-icon>
+        <span class="brand-name">CINEMA MANAGER</span>
+        <span class="admin-tag">ADMIN OBSERVABILITY</span>
+      </div>
+      <div class="admin-user-pill">
+        <mat-icon class="crown-icon">workspace_premium</mat-icon>
+        <span>{{ auth.currentUser()?.email }}</span>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <button
+        mat-stroked-button
+        class="action-btn auto-refresh-btn"
+        [class.active]="autoRefresh()"
+        (click)="toggleAutoRefresh()"
+        matTooltip="Toggle 30s auto-refresh"
+      >
+        <mat-icon class="refresh-indicator" [class.spinning]="autoRefresh()">autorenew</mat-icon>
+        <span>{{ autoRefresh() ? 'Auto 30s ON' : 'Auto OFF' }}</span>
+      </button>
+
+      <button
+        mat-stroked-button
+        class="action-btn"
+        (click)="loadAllData()"
+        [disabled]="isLoading()"
+        matTooltip="Refresh all metrics"
+      >
+        <mat-icon [class.spinning]="isLoading()">refresh</mat-icon>
+        <span>Refresh</span>
+      </button>
+
+      <button mat-flat-button class="dashboard-btn" routerLink="/dashboard">
+        <mat-icon>movie</mat-icon>
+        <span>Back to Cinema</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Loading State -->
+  <div class="loading-overlay" *ngIf="isLoading() && !summary()">
+    <mat-spinner diameter="48"></mat-spinner>
+    <p>Loading real-time telemetry from DynamoDB...</p>
+  </div>
+
+  <main class="dashboard-body" *ngIf="summary()">
+    <!-- 1. Real-Time KPI Cards -->
+    <section class="kpi-grid">
+      <!-- Live Logins Card -->
+      <div class="kpi-card card-live">
+        <div class="kpi-header">
+          <span class="kpi-label">Live Active Users</span>
+          <div class="live-dot" matTooltip="Active in last 15 minutes">
+            <span class="pulse"></span>
+            <span class="dot"></span>
+          </div>
+        </div>
+        <div class="kpi-value">{{ summary()?.liveLogins || 0 }}</div>
+        <div class="kpi-footer">
+          <span class="subtext">Active session window: 15 min</span>
+          <div class="active-users-list" *ngIf="summary()?.activeSessions?.length">
+            <span
+              class="user-tag"
+              *ngFor="let s of summary()?.activeSessions"
+              [matTooltip]="'Last active: ' + formatDate(s.lastActive)"
+            >
+              {{ s.email }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Logins Today Card -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-label">Logins Today</span>
+          <mat-icon class="kpi-icon icon-crimson">how_to_reg</mat-icon>
+        </div>
+        <div class="kpi-value">{{ summary()?.today?.logins || 0 }}</div>
+        <div class="kpi-footer">
+          <span class="subtext" [class.text-warn]="summary()?.today?.loginErrors">
+            {{ summary()?.today?.loginErrors || 0 }} auth failure(s)
+          </span>
+        </div>
+      </div>
+
+      <!-- Cache Hit Ratio Card -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-label">Master Cache Hit Rate</span>
+          <mat-icon class="kpi-icon icon-emerald">bolt</mat-icon>
+        </div>
+        <div class="kpi-value">
+          {{ summary()?.today?.cacheHitRatio || 100 }}<span class="unit">%</span>
+        </div>
+        <div class="kpi-footer">
+          <div class="progress-track">
+            <div
+              class="progress-fill fill-emerald"
+              [style.width.%]="summary()?.today?.cacheHitRatio || 100"
+            ></div>
+          </div>
+          <span class="subtext">
+            {{ summary()?.today?.cacheHits || 0 }} hits from DynamoDB master
+          </span>
+        </div>
+      </div>
+
+      <!-- TMDB API Volume -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-label">TMDB Calls Today</span>
+          <mat-icon class="kpi-icon icon-blue">cloud_sync</mat-icon>
+        </div>
+        <div class="kpi-value">{{ summary()?.today?.tmdbCalls || 0 }}</div>
+        <div class="kpi-footer">
+          <span
+            class="subtext"
+            [class.text-warn]="summary()?.today?.tmdbErrors"
+          >
+            {{ summary()?.today?.tmdbErrors || 0 }} errors logged
+          </span>
+        </div>
+      </div>
+
+      <!-- OMDB API Volume -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-label">OMDB Calls Today</span>
+          <mat-icon class="kpi-icon icon-amber">api</mat-icon>
+        </div>
+        <div class="kpi-value">{{ summary()?.today?.omdbCalls || 0 }}</div>
+        <div class="kpi-footer">
+          <span
+            class="subtext"
+            [class.text-warn]="summary()?.today?.omdbErrors"
+          >
+            {{ summary()?.today?.omdbErrors || 0 }} errors logged
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 14-Day Activity & Telemetry Trends -->
+    <section class="section-card chart-section">
+      <div class="section-title-row">
+        <div>
+          <h2 class="section-title">14-Day Activity & Request History</h2>
+          <p class="section-desc">Daily logins, DynamoDB cache hits, and external API calls</p>
+        </div>
+        <div class="chart-legend">
+          <span class="legend-item"><span class="legend-box box-crimson"></span> Logins</span>
+          <span class="legend-item"><span class="legend-box box-emerald"></span> Cache Hits</span>
+          <span class="legend-item"><span class="legend-box box-amber"></span> External API Calls</span>
+        </div>
+      </div>
+
+      <!-- Interactive SVG Trend Chart -->
+      <div class="chart-container">
+        <div class="chart-bars-wrap">
+          <div
+            class="chart-bar-col"
+            *ngFor="let col of chartBars()"
+            [matTooltip]="col.date + '\nLogins: ' + col.logins + '\nCache Hits: ' + col.cacheHits + '\nAPI Calls: ' + col.totalApiCalls"
+          >
+            <div class="bars-stack">
+              <!-- API Calls -->
+              <div
+                class="bar bar-amber"
+                [style.height.px]="col.apiHeight"
+              ></div>
+              <!-- Cache Hits -->
+              <div
+                class="bar bar-emerald"
+                [style.height.px]="col.cacheHeight"
+              ></div>
+              <!-- Logins -->
+              <div
+                class="bar bar-crimson"
+                [style.height.px]="col.loginHeight"
+              ></div>
+            </div>
+            <span class="col-date">{{ col.dayLabel }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Ranked Movie Leaderboards (Day / Month / Year) -->
+    <section class="section-card leaderboards-section">
+      <div class="leaderboard-toolbar">
+        <div class="tab-buttons">
+          <button
+            class="tab-btn"
+            [class.active]="activeLeaderboardTab() === 'views'"
+            (click)="setLeaderboardTab('views')"
+          >
+            <mat-icon>play_circle</mat-icon>
+            <span>Top 10 Most Viewed</span>
+          </button>
+          <button
+            class="tab-btn"
+            [class.active]="activeLeaderboardTab() === 'fetches'"
+            (click)="setLeaderboardTab('fetches')"
+          >
+            <mat-icon>auto_graph</mat-icon>
+            <span>Top 10 Most Fetched</span>
+          </button>
+        </div>
+
+        <div class="period-pills">
+          <button
+            class="pill-btn"
+            [class.active]="activePeriod() === 'day'"
+            (click)="setPeriod('day')"
+          >
+            Today
+          </button>
+          <button
+            class="pill-btn"
+            [class.active]="activePeriod() === 'month'"
+            (click)="setPeriod('month')"
+          >
+            This Month
+          </button>
+          <button
+            class="pill-btn"
+            [class.active]="activePeriod() === 'year'"
+            (click)="setPeriod('year')"
+          >
+            This Year
+          </button>
+        </div>
+      </div>
+
+      <!-- Leaderboard List -->
+      <div class="leaderboard-content" *ngIf="!isLeaderboardLoading()">
+        <!-- Most Viewed List -->
+        <div class="movie-list" *ngIf="activeLeaderboardTab() === 'views'">
+          <div class="empty-state" *ngIf="topViewed().length === 0">
+            <mat-icon>movie_filter</mat-icon>
+            <p>No movie playback recorded for this {{ activePeriod() }}.</p>
+            <span class="subtext">Playback clicks will automatically show up here in real time.</span>
+          </div>
+
+          <div
+            class="movie-rank-card"
+            *ngFor="let item of topViewed(); let i = index"
+          >
+            <div class="rank-badge" [ngClass]="getRankBadgeClass(i + 1)">
+              #{{ i + 1 }}
+            </div>
+            <div class="poster-wrap">
+              <img
+                *ngIf="item.poster"
+                [src]="item.poster"
+                [alt]="item.title"
+                loading="lazy"
+              />
+              <mat-icon *ngIf="!item.poster">movie</mat-icon>
+            </div>
+            <div class="movie-info">
+              <h4 class="movie-title">{{ item.title }}</h4>
+              <span class="movie-year">{{ item.year || 'Unknown Year' }}</span>
+            </div>
+            <div class="metric-block">
+              <span class="metric-num">{{ item.count }}</span>
+              <span class="metric-lbl">views</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Most Fetched List -->
+        <div class="movie-list" *ngIf="activeLeaderboardTab() === 'fetches'">
+          <div class="empty-state" *ngIf="topFetched().length === 0">
+            <mat-icon>search_off</mat-icon>
+            <p>No metadata queries recorded for this {{ activePeriod() }}.</p>
+            <span class="subtext">Searches and library syncs will automatically rank here.</span>
+          </div>
+
+          <div
+            class="movie-rank-card"
+            *ngFor="let item of topFetched(); let i = index"
+          >
+            <div class="rank-badge" [ngClass]="getRankBadgeClass(i + 1)">
+              #{{ i + 1 }}
+            </div>
+            <div class="poster-wrap">
+              <img
+                *ngIf="item.poster"
+                [src]="item.poster"
+                [alt]="item.title"
+                loading="lazy"
+              />
+              <mat-icon *ngIf="!item.poster">movie</mat-icon>
+            </div>
+            <div class="movie-info">
+              <h4 class="movie-title">{{ item.title }}</h4>
+              <span class="movie-year">{{ item.year || 'Unknown Year' }}</span>
+            </div>
+            <div class="fetches-split">
+              <span class="split-pill pill-cache" matTooltip="Served from DynamoDB master cache">
+                <mat-icon>bolt</mat-icon> {{ item.cacheHits || 0 }} Cache
+              </span>
+              <span class="split-pill pill-api" matTooltip="Queried from TMDB/OMDB APIs">
+                <mat-icon>cloud</mat-icon> {{ item.apiCalls || 0 }} API
+              </span>
+            </div>
+            <div class="metric-block">
+              <span class="metric-num">{{ item.count }}</span>
+              <span class="metric-lbl">fetches</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="leaderboard-spinner" *ngIf="isLeaderboardLoading()">
+        <mat-spinner diameter="32"></mat-spinner>
+      </div>
+    </section>
+
+    <!-- 4. System Error & Health Log -->
+    <section class="section-card errors-section">
+      <div class="section-title-row">
+        <div>
+          <h2 class="section-title">System Error & Health Log</h2>
+          <p class="section-desc">Recent TMDB/OMDB API timeouts, rate-limits, or failed authentication attempts</p>
+        </div>
+        <span class="error-count-pill" [class.has-errors]="recentErrors().length > 0">
+          {{ recentErrors().length }} Recent Event(s)
+        </span>
+      </div>
+
+      <div class="empty-state" *ngIf="recentErrors().length === 0">
+        <mat-icon class="icon-healthy">check_circle</mat-icon>
+        <p>All systems operational. No recent API or login errors recorded.</p>
+      </div>
+
+      <div class="error-table-wrap" *ngIf="recentErrors().length > 0">
+        <table class="error-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Type</th>
+              <th>Message</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let err of recentErrors()">
+              <td class="col-time">{{ formatDate(err.timestamp) }}</td>
+              <td>
+                <span
+                  class="type-pill"
+                  [ngClass]="{
+                    'pill-red': err.type === 'LOGIN_ERROR',
+                    'pill-amber': err.type === 'TMDB_ERROR' || err.type === 'OMDB_ERROR'
+                  }"
+                >
+                  {{ err.type }}
+                </span>
+              </td>
+              <td class="col-msg">{{ err.message }}</td>
+              <td class="col-details">{{ err.details || '-' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>

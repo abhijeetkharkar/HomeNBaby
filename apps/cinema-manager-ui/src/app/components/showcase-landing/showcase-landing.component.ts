@@ -4,6 +4,8 @@ import { Router, RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 
+import { AuthService } from '../../services/auth.service';
+
 export interface WorkflowStep {
   id: string;
   stepNumber: string;
@@ -22,6 +24,7 @@ export interface WorkflowStep {
 })
 export class ShowcaseLandingComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
+  public readonly auth = inject(AuthService);
 
   activeStepIndex = 0;
   private autoCycleTimer?: any;

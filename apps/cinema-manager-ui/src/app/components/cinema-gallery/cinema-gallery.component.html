@@ -27,27 +27,42 @@
       <div class="step-item">
         <span class="step-num">1</span>
         <div class="step-text">
-          <strong>Run on your Media PC</strong>
-          <span>Open Cinema Manager in a browser on the computer holding your media drives.</span>
+          <strong>Set Your Movie Folder</strong>
+          <span>Specify your local media directory path (e.g. <code>D:\Movies</code> or external SSD) in Folder Settings.</span>
         </div>
       </div>
-      <div class="step-item">
+      <div class="step-item highlight-step">
         <span class="step-num">2</span>
         <div class="step-text">
-          <strong>Start Cinema Agent</strong>
-          <span>Run <code>run.bat</code> or start the Windows Service from <code>dist/cinema-agent-win-x64/</code>.</span>
+          <strong>Download Companion Agent</strong>
+          <span>Runs quietly in the background to index local files and launch uncompressed 4K video.</span>
+          <div class="os-download-group">
+            <a [href]="primaryDownloadUrl" target="_blank" class="download-os-pill" title="Download Companion Agent installer">
+              <mat-icon>{{ primaryOSIcon }}</mat-icon>
+              <span>Download for {{ primaryOSLabel }}</span>
+              <mat-icon class="external-dl-icon">download</mat-icon>
+            </a>
+            <a [href]="altDownloadUrl" target="_blank" class="alt-os-text-link">
+              Or download for {{ altOSLabel }}
+            </a>
+          </div>
         </div>
       </div>
       <div class="step-item">
         <span class="step-num">3</span>
         <div class="step-text">
-          <strong>Instant Local Playback</strong>
-          <span>This page will automatically unlock and connect to your local VLC / native media player.</span>
+          <strong>Pair Your Device</strong>
+          <span>Launch the agent and enter your 6-digit pairing code once to securely link your library.</span>
         </div>
       </div>
     </div>
 
     <div class="agent-actions">
+      <button mat-flat-button class="pair-primary-btn" (click)="openPairingWizard()">
+        <mat-icon>phonelink_setup</mat-icon>
+        <span>Connect / Pair Agent</span>
+      </button>
+
       <button mat-flat-button class="retry-btn" (click)="verifyDeviceAndLoad()">
         <mat-icon>refresh</mat-icon>
         <span>Check Connection Now</span>
@@ -59,9 +74,13 @@
       </button>
     </div>
 
-    <span class="polling-hint">
+    <span class="polling-hint" *ngIf="failedPollCount < maxAutoPollAttempts">
       <mat-icon class="spin-icon">sync</mat-icon>
-      Auto-polling local agent on 127.0.0.1:3334 every 5 seconds...
+      Auto-polling local agent on 127.0.0.1:3334 (attempt {{ failedPollCount + 1 }} of {{ maxAutoPollAttempts }})...
+    </span>
+    <span class="polling-hint paused" *ngIf="failedPollCount >= maxAutoPollAttempts">
+      <mat-icon>info_outline</mat-icon>
+      Auto-polling paused. Start your companion agent, then click "Check Connection Now".
     </span>
   </div>
 

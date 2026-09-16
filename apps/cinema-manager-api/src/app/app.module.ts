@@ -7,6 +7,8 @@ import { CinemasModule } from '../cinemas/cinemas.module';
 import { LookupPathsModule } from '../lookup-paths/lookup-paths.module';
 import { AgentsModule } from '../agents/agents.module';
 import { AuthModule } from '../auth/auth.module';
+import { TelemetryModule } from '../telemetry/telemetry.module';
+import { AdminModule } from '../admin/admin.module';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { AuthModule } from '../auth/auth.module';
     LookupPathsModule,
     AgentsModule,
     AuthModule,
+    TelemetryModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,7 +1,7 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import axios from 'axios';
-
 import { DynamoDbService } from '../dynamodb/dynamodb.service';
+import { TelemetryService } from '../telemetry/telemetry.service';
 
 export interface EnrichedMetadata {
   imdbId?: string;
@@ -37,7 +37,10 @@ export class MetadataService {
     process.env.OMDB_BASE_URL || 'https://www.omdbapi.com/';
   private readonly omdbApiKey = process.env.OMDB_API_KEY || '';
 
-  constructor(@Optional() private readonly dynamoDb?: DynamoDbService) {}
+  constructor(
+    @Optional() private readonly dynamoDb?: DynamoDbService,
+    @Optional() private readonly telemetry?: TelemetryService
+  ) {}
 
   /**
    * Enrich movie with metadata from TMDB and OMDB APIs (with DynamoDB master cache)
@@ -60,6 +63,13 @@ export class MetadataService {
         );
         if (cached && cached.metadata) {
           this.logger.log(`[Cache Hit] Master cache resolved "${canonicalKey}" (${cleanedTitle})`);
+          if (this.telemetry) {
+            this.telemetry.recordCacheHit(canonicalKey, {
+              title: cleanedTitle,
+              year: effectiveYear,
+              poster: cached.metadata.poster,
+            }).catch(() => {});
+          }
           return cached.metadata as EnrichedMetadata;
         }
       } catch (cacheErr) {
@@ -112,8 +122,24 @@ export class MetadataService {
               tmdbMovie = retryRes.data.results[0];
             }
           }
+
+          if (this.telemetry) {
+            this.telemetry.recordExternalCall('tmdb', true, canonicalKey, {
+              title: cleanedTitle,
+              year: effectiveYear,
+            }).catch(() => {});
+          }
         } catch (tmdbSearchErr) {
           this.logger.warn(`TMDB search error for "${cleanedTitle}":`, tmdbSearchErr);
+          if (this.telemetry) {
+            this.telemetry.recordExternalCall(
+              'tmdb',
+              false,
+              canonicalKey,
+              { title: cleanedTitle, year: effectiveYear },
+              String((tmdbSearchErr as any)?.message || tmdbSearchErr)
+            ).catch(() => {});
+          }
         }
       }
 
@@ -195,8 +221,25 @@ export class MetadataService {
                 omdbData = omdbRetryRes.data;
               }
             }
+
+            if (this.telemetry) {
+              this.telemetry.recordExternalCall('omdb', true, canonicalKey, {
+                title: cleanedTitle,
+                year: effectiveYear,
+                poster: omdbData?.Poster,
+              }).catch(() => {});
+            }
           } catch (omdbErr) {
             this.logger.warn(`OMDB lookup by title "${cleanedTitle}" failed:`, omdbErr);
+            if (this.telemetry) {
+              this.telemetry.recordExternalCall(
+                'omdb',
+                false,
+                canonicalKey,
+                { title: cleanedTitle, year: effectiveYear },
+                String((omdbErr as any)?.message || omdbErr)
+              ).catch(() => {});
+            }
           }
         }
       }

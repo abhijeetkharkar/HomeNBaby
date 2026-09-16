@@ -16,7 +16,7 @@
       Automatic IMDb ratings, posters, and instant 4K playback launched straight from your browser.
     </p>
 
-    <div class="hero-actions">
+    <div class="hero-actions" *ngIf="!auth.isAuthenticated()">
       <button mat-flat-button class="cta-primary" (click)="goToLogin('signUp')">
         <mat-icon>movie</mat-icon>
         Get Started Free
@@ -25,6 +25,13 @@
         <mat-icon>login</mat-icon>
         Sign In
       </button>
+    </div>
+
+    <div class="hero-actions" *ngIf="auth.isAuthenticated()">
+      <a mat-flat-button class="cta-primary" routerLink="/dashboard">
+        <mat-icon>dashboard</mat-icon>
+        Open Dashboard
+      </a>
     </div>
   </section>
 

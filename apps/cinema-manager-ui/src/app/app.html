@@ -16,12 +16,31 @@
       <div class="header-actions">
         <!-- If Authenticated -->
         <ng-container *ngIf="authService.isAuthenticated()">
-          <a routerLink="/dashboard" routerLinkActive="nav-active" class="nav-link-btn">
-            <mat-icon>dashboard</mat-icon>
-            <span>Dashboard</span>
+          <!-- Link to Movies when on Admin view -->
+          <a
+            *ngIf="isOnAdmin()"
+            routerLink="/dashboard"
+            class="nav-link-btn"
+            title="Return to Movie Library"
+          >
+            <mat-icon>local_movies</mat-icon>
+            <span>Movies</span>
           </a>
 
-          <button mat-button class="btn-setup" (click)="openOnboarding()">
+          <!-- Admin Observability Portal (Exclusive to Admin) -->
+          <a
+            *ngIf="authService.isAdmin()"
+            routerLink="/admin"
+            routerLinkActive="nav-active"
+            class="admin-link-btn"
+            title="Admin Observability & Metrics Dashboard"
+          >
+            <mat-icon>admin_panel_settings</mat-icon>
+            <span>Admin</span>
+          </a>
+
+          <!-- Pair Companion Agent -->
+          <button mat-button class="btn-setup" (click)="openOnboarding()" title="Pair Hardware Agent">
             <mat-icon>phonelink_setup</mat-icon>
             <span>Pair Agent</span>
           </button>
@@ -55,7 +74,7 @@
 
   <!-- Onboarding Wizard Modal -->
   <app-onboarding-wizard
-    *ngIf="showOnboarding"
+    *ngIf="apiService.showPairingModal()"
     (completed)="closeOnboarding()"
   ></app-onboarding-wizard>
 
