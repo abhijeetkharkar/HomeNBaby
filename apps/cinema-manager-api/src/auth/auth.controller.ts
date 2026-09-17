@@ -7,13 +7,43 @@ import {
   UseGuards,
   Ip,
   Headers,
+  Inject,
+  Optional,
 } from '@nestjs/common';
 import { AuthService, PairDeviceDto, AuditLogDto } from './auth.service';
 import { CognitoAuthGuard } from './cognito-auth.guard';
+import { TelemetryService } from '../telemetry/telemetry.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    @Inject(AuthService) private readonly authService: AuthService,
+    @Optional() @Inject(TelemetryService) private readonly telemetryService?: TelemetryService
+  ) {}
+
+  /**
+   * Record successful user login telemetry
+   */
+  @Post('record-login')
+  @UseGuards(CognitoAuthGuard)
+  async recordLogin(@Req() req: any) {
+    const user = req.user;
+    if (user?.userId && this.telemetryService) {
+      await this.telemetryService.recordLogin(user.userId, user.email || '');
+    }
+    return { recorded: true };
+  }
+
+  /**
+   * Record login failure telemetry
+   */
+  @Post('record-login-error')
+  async recordLoginError(@Body() body: { email: string; error?: string }) {
+    if (body?.email && this.telemetryService) {
+      await this.telemetryService.recordLoginError(body.email, body.error || 'Unknown login error');
+    }
+    return { recorded: true };
+  }
 
   /**
    * Generates a 6-digit pairing code for the authenticated user

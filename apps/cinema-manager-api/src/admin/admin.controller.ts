@@ -1,11 +1,13 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Inject } from '@nestjs/common';
 import { AdminGuard } from '../auth/admin.guard';
 import { TelemetryService } from '../telemetry/telemetry.service';
 
 @Controller('admin')
 @UseGuards(AdminGuard)
 export class AdminController {
-  constructor(private readonly telemetryService: TelemetryService) {}
+  constructor(
+    @Inject(TelemetryService) private readonly telemetryService: TelemetryService
+  ) {}
 
   @Get('stats')
   async getStats() {
