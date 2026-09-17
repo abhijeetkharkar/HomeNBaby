@@ -13,7 +13,8 @@ type FertFilter =
   | 'all'
   | 'schultz'
   | 'agrothrive'
-  | 'espoma'
+  | 'espoma-garden-tone'
+  | 'espoma-indoor'
   | 'bone-meal'
   | 'blood-meal'
   | 'epsom-salt';
@@ -131,12 +132,19 @@ function App() {
             p.fertRecommendation2?.toLowerCase().includes('agrothrive') ||
             p.altFertilizers?.some(a => a.toLowerCase().includes('agrothrive')),
         );
-      } else if (activeFertFilter === 'espoma') {
+      } else if (activeFertFilter === 'espoma-garden-tone') {
         list = list.filter(
           p =>
-            p.fertRecommendation.toLowerCase().includes('espoma') ||
-            p.fertRecommendation2?.toLowerCase().includes('espoma') ||
-            p.altFertilizers?.some(a => a.toLowerCase().includes('espoma')),
+            p.fertRecommendation.toLowerCase().includes('garden-tone') ||
+            p.fertRecommendation2?.toLowerCase().includes('garden-tone') ||
+            p.altFertilizers?.some(a => a.toLowerCase().includes('garden-tone')),
+        );
+      } else if (activeFertFilter === 'espoma-indoor') {
+        list = list.filter(
+          p =>
+            p.fertRecommendation.toLowerCase().includes('indoor') ||
+            p.fertRecommendation2?.toLowerCase().includes('indoor') ||
+            p.altFertilizers?.some(a => a.toLowerCase().includes('indoor')),
         );
       } else if (activeFertFilter === 'bone-meal') {
         list = list.filter(
@@ -314,7 +322,8 @@ function App() {
               <option value="all">🧪 All Fertilizers</option>
               <option value="schultz">🧪 Schultz (10-15-10)</option>
               <option value="agrothrive">🌿 AgroThrive Liquid</option>
-              <option value="espoma">🌱 Espoma (Garden/Indoor)</option>
+              <option value="espoma-garden-tone">🌱 Espoma Garden-tone (3-4-4)</option>
+              <option value="espoma-indoor">🌱 Espoma Indoor! Liquid (2-2-2)</option>
               <option value="bone-meal">🦴 Bone Meal</option>
               <option value="blood-meal">🩸 Blood Meal</option>
               <option value="epsom-salt">🧂 Epsom Salt</option>
