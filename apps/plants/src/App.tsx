@@ -8,10 +8,9 @@ import { PlantCard } from './components/PlantCard';
 import { LogCareModal } from './components/LogCareModal';
 
 type ExtendedGroup = PlantGroup | 'all';
-type FilterType =
+type TaskFilter = 'all' | 'water-due' | 'fert-due';
+type FertFilter =
   | 'all'
-  | 'water-due'
-  | 'fert-due'
   | 'schultz'
   | 'agrothrive'
   | 'espoma'
@@ -33,7 +32,7 @@ function rankUrgency(u: { status: 'overdue' | 'due-today' | 'due-soon' | 'never'
 function getPlantUrgency(
   plant: PlantDef,
   latestLogs: Record<string, { timestamp: string } | undefined>,
-  filter: FilterType,
+  taskFilter: TaskFilter,
 ) {
   const waterUrgency = plant.waterFreqDays
     ? computeUrgency(latestLogs[`${plant.id}__water`]?.timestamp || null, plant.waterFreqDays)
@@ -46,11 +45,11 @@ function getPlantUrgency(
     ? computeUrgency(latestLogs[`${plant.id}__fertilize-2`]?.timestamp || null, plant.fertFreqDays2)
     : null;
 
-  if (filter === 'water-due') {
+  if (taskFilter === 'water-due') {
     return waterUrgency || { status: 'ok' as const, daysUntil: 999 };
   }
 
-  if (filter === 'fert-due') {
+  if (taskFilter === 'fert-due') {
     const urgencies = [fertUrgency, ...(fert2Urgency ? [fert2Urgency] : [])];
     return urgencies.reduce(
       (prev, curr) => (rankUrgency(curr) < rankUrgency(prev) ? curr : prev),
@@ -73,7 +72,8 @@ function getPlantUrgency(
 function App() {
   const { latestLogs, logCare, loading } = useCareApi();
   const [activeGroup, setActiveGroup] = useState<ExtendedGroup>('all');
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [activeTaskFilter, setActiveTaskFilter] = useState<TaskFilter>('all');
+  const [activeFertFilter, setActiveFertFilter] = useState<FertFilter>('all');
   const [showFertGuide, setShowFertGuide] = useState(false);
 
   // Modal State
@@ -89,67 +89,70 @@ function App() {
       list = list.filter(p => p.group === activeGroup);
     }
 
-    // 2. Quick Filtering
-    if (activeFilter !== 'all') {
-      if (activeFilter === 'water-due') {
-        list = list.filter(p => {
-          if (!p.waterFreqDays) return false;
-          const last = latestLogs[`${p.id}__water`]?.timestamp;
-          const urgency = computeUrgency(last || null, p.waterFreqDays);
-          return (
-            urgency.status === 'overdue' ||
-            urgency.status === 'due-today' ||
-            urgency.status === 'due-soon' ||
-            urgency.status === 'never'
-          );
-        });
-      } else if (activeFilter === 'fert-due') {
-        list = list.filter(p => {
-          const last = latestLogs[`${p.id}__fertilize`]?.timestamp;
-          const urgency = computeUrgency(last || null, p.fertFreqDays);
-          return (
-            urgency.status === 'overdue' ||
-            urgency.status === 'due-today' ||
-            urgency.status === 'due-soon' ||
-            urgency.status === 'never'
-          );
-        });
-      } else if (activeFilter === 'schultz') {
+    // 2. Task / Urgency Filtering
+    if (activeTaskFilter === 'water-due') {
+      list = list.filter(p => {
+        if (!p.waterFreqDays) return false;
+        const last = latestLogs[`${p.id}__water`]?.timestamp;
+        const urgency = computeUrgency(last || null, p.waterFreqDays);
+        return (
+          urgency.status === 'overdue' ||
+          urgency.status === 'due-today' ||
+          urgency.status === 'due-soon' ||
+          urgency.status === 'never'
+        );
+      });
+    } else if (activeTaskFilter === 'fert-due') {
+      list = list.filter(p => {
+        const last = latestLogs[`${p.id}__fertilize`]?.timestamp;
+        const urgency = computeUrgency(last || null, p.fertFreqDays);
+        return (
+          urgency.status === 'overdue' ||
+          urgency.status === 'due-today' ||
+          urgency.status === 'due-soon' ||
+          urgency.status === 'never'
+        );
+      });
+    }
+
+    // 3. Fertilizer Filtering
+    if (activeFertFilter !== 'all') {
+      if (activeFertFilter === 'schultz') {
         list = list.filter(
           p =>
             p.fertRecommendation.toLowerCase().includes('schultz') ||
             p.fertRecommendation2?.toLowerCase().includes('schultz') ||
             p.altFertilizers?.some(a => a.toLowerCase().includes('schultz')),
         );
-      } else if (activeFilter === 'agrothrive') {
+      } else if (activeFertFilter === 'agrothrive') {
         list = list.filter(
           p =>
             p.fertRecommendation.toLowerCase().includes('agrothrive') ||
             p.fertRecommendation2?.toLowerCase().includes('agrothrive') ||
             p.altFertilizers?.some(a => a.toLowerCase().includes('agrothrive')),
         );
-      } else if (activeFilter === 'espoma') {
+      } else if (activeFertFilter === 'espoma') {
         list = list.filter(
           p =>
             p.fertRecommendation.toLowerCase().includes('espoma') ||
             p.fertRecommendation2?.toLowerCase().includes('espoma') ||
             p.altFertilizers?.some(a => a.toLowerCase().includes('espoma')),
         );
-      } else if (activeFilter === 'bone-meal') {
+      } else if (activeFertFilter === 'bone-meal') {
         list = list.filter(
           p =>
             p.fertRecommendation.toLowerCase().includes('bone meal') ||
             p.fertRecommendation2?.toLowerCase().includes('bone meal') ||
             p.altFertilizers?.some(a => a.toLowerCase().includes('bone meal')),
         );
-      } else if (activeFilter === 'blood-meal') {
+      } else if (activeFertFilter === 'blood-meal') {
         list = list.filter(
           p =>
             p.fertRecommendation.toLowerCase().includes('blood meal') ||
             p.fertRecommendation2?.toLowerCase().includes('blood meal') ||
             p.altFertilizers?.some(a => a.toLowerCase().includes('blood meal')),
         );
-      } else if (activeFilter === 'epsom-salt') {
+      } else if (activeFertFilter === 'epsom-salt') {
         list = list.filter(
           p =>
             p.fertRecommendation.toLowerCase().includes('epsom') ||
@@ -160,10 +163,10 @@ function App() {
       }
     }
 
-    // 3. 5-Tier Urgency Sorting: Overdue -> Due Today -> Due Soon -> No Record -> OK
+    // 4. 5-Tier Urgency Sorting: Overdue -> Due Today -> Due Soon -> No Record -> OK
     list.sort((a, b) => {
-      const uA = getPlantUrgency(a, latestLogs, activeFilter);
-      const uB = getPlantUrgency(b, latestLogs, activeFilter);
+      const uA = getPlantUrgency(a, latestLogs, activeTaskFilter);
+      const uB = getPlantUrgency(b, latestLogs, activeTaskFilter);
       const rankA = rankUrgency(uA);
       const rankB = rankUrgency(uB);
 
@@ -182,7 +185,7 @@ function App() {
     });
 
     return list;
-  }, [activeGroup, activeFilter, latestLogs]);
+  }, [activeGroup, activeTaskFilter, activeFertFilter, latestLogs]);
 
   const handleOpenModal = useCallback(
     (plant: PlantDef, defaultType: 'water' | 'fertilize' | 'fertilize-2') => {
@@ -265,93 +268,57 @@ function App() {
 
       {/* Filter Control Bar */}
       <div className="tracker-filters">
-        {/* Plant Groups */}
-        <div className="filter-row">
-          <span className="filter-label">Group:</span>
-          <div className="filter-chips">
-            <button
-              className={`filter-btn group-chip ${activeGroup === 'all' ? 'active' : ''}`}
-              onClick={() => setActiveGroup('all')}
+        <div className="filter-grid">
+          {/* Group Dropdown */}
+          <div className="filter-control">
+            <label htmlFor="filter-group" className="filter-control-label">Group</label>
+            <select
+              id="filter-group"
+              className="filter-select"
+              value={activeGroup}
+              onChange={e => setActiveGroup(e.target.value as ExtendedGroup)}
             >
-              🌎 All Groups
-            </button>
-            {PLANT_GROUPS.map(g => (
-              <button
-                key={g.key}
-                className={`filter-btn group-chip ${activeGroup === g.key ? 'active' : ''}`}
-                onClick={() => setActiveGroup(g.key)}
-              >
-                {g.emoji} {g.label}
-              </button>
-            ))}
+              <option value="all">🌎 All Groups</option>
+              {PLANT_GROUPS.map(g => (
+                <option key={g.key} value={g.key}>
+                  {g.emoji} {g.label}
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
 
-        {/* Task / Urgency */}
-        <div className="filter-row">
-          <span className="filter-label">Tasks:</span>
-          <div className="filter-chips">
-            <button
-              className={`filter-btn task-chip ${activeFilter === 'all' ? 'active' : ''}`}
-              onClick={() => setActiveFilter('all')}
+          {/* Task / Urgency Dropdown */}
+          <div className="filter-control">
+            <label htmlFor="filter-task" className="filter-control-label">Task / Urgency</label>
+            <select
+              id="filter-task"
+              className="filter-select"
+              value={activeTaskFilter}
+              onChange={e => setActiveTaskFilter(e.target.value as TaskFilter)}
             >
-              ⚡ All Tasks
-            </button>
-            <button
-              className={`filter-btn task-chip chip-water ${activeFilter === 'water-due' ? 'active' : ''}`}
-              onClick={() => setActiveFilter('water-due')}
-            >
-              💧 Water Due
-            </button>
-            <button
-              className={`filter-btn task-chip chip-fert ${activeFilter === 'fert-due' ? 'active' : ''}`}
-              onClick={() => setActiveFilter('fert-due')}
-            >
-              🧪 Fertilizer Due
-            </button>
+              <option value="all">⚡ All Tasks</option>
+              <option value="water-due">💧 Water Due</option>
+              <option value="fert-due">🧪 Fertilizer Due</option>
+            </select>
           </div>
-        </div>
 
-        {/* Fertilizer Inventory */}
-        <div className="filter-row">
-          <span className="filter-label">Fertilizer:</span>
-          <div className="filter-chips">
-            <button
-              className={`filter-btn fert-chip ${activeFilter === 'schultz' ? 'active' : ''}`}
-              onClick={() => setActiveFilter(activeFilter === 'schultz' ? 'all' : 'schultz')}
+          {/* Fertilizer Dropdown */}
+          <div className="filter-control">
+            <label htmlFor="filter-fert" className="filter-control-label">Fertilizer</label>
+            <select
+              id="filter-fert"
+              className="filter-select"
+              value={activeFertFilter}
+              onChange={e => setActiveFertFilter(e.target.value as FertFilter)}
             >
-              🧪 Schultz (10-15-10)
-            </button>
-            <button
-              className={`filter-btn fert-chip ${activeFilter === 'agrothrive' ? 'active' : ''}`}
-              onClick={() => setActiveFilter(activeFilter === 'agrothrive' ? 'all' : 'agrothrive')}
-            >
-              🌿 AgroThrive Liquid
-            </button>
-            <button
-              className={`filter-btn fert-chip ${activeFilter === 'espoma' ? 'active' : ''}`}
-              onClick={() => setActiveFilter(activeFilter === 'espoma' ? 'all' : 'espoma')}
-            >
-              🌱 Espoma (Garden/Indoor)
-            </button>
-            <button
-              className={`filter-btn fert-chip ${activeFilter === 'bone-meal' ? 'active' : ''}`}
-              onClick={() => setActiveFilter(activeFilter === 'bone-meal' ? 'all' : 'bone-meal')}
-            >
-              🦴 Bone Meal
-            </button>
-            <button
-              className={`filter-btn fert-chip ${activeFilter === 'blood-meal' ? 'active' : ''}`}
-              onClick={() => setActiveFilter(activeFilter === 'blood-meal' ? 'all' : 'blood-meal')}
-            >
-              🩸 Blood Meal
-            </button>
-            <button
-              className={`filter-btn fert-chip ${activeFilter === 'epsom-salt' ? 'active' : ''}`}
-              onClick={() => setActiveFilter(activeFilter === 'epsom-salt' ? 'all' : 'epsom-salt')}
-            >
-              🧂 Epsom Salt
-            </button>
+              <option value="all">🧪 All Fertilizers</option>
+              <option value="schultz">🧪 Schultz (10-15-10)</option>
+              <option value="agrothrive">🌿 AgroThrive Liquid</option>
+              <option value="espoma">🌱 Espoma (Garden/Indoor)</option>
+              <option value="bone-meal">🦴 Bone Meal</option>
+              <option value="blood-meal">🩸 Blood Meal</option>
+              <option value="epsom-salt">🧂 Epsom Salt</option>
+            </select>
           </div>
         </div>
       </div>
