@@ -811,31 +811,34 @@ body {
     margin-bottom: 1.25rem;
   }
 
-  /* 1 category per row on mobile: label on left, select on right */
+  /* 2-column grid on mobile: fixed 120px label column, remaining 1fr select column */
   .filter-grid {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr;
     gap: 0.85rem;
   }
 
   .filter-control {
-    display: flex;
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: 120px 1fr;
     align-items: center;
-    justify-content: space-between;
     gap: 0.75rem;
   }
 
   .filter-control-label {
-    width: 110px;
-    min-width: 110px;
+    width: auto;
+    min-width: 0;
     font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
     text-align: left;
-    margin-bottom: 0;
+    margin: 0;
   }
 
   .filter-select {
-    flex: 1;
+    width: 100%;
     min-width: 0;
     padding: 0.55rem 0.75rem;
     font-size: 0.85rem;
