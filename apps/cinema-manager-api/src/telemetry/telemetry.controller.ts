@@ -6,13 +6,16 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  Inject,
 } from '@nestjs/common';
 import { TelemetryService } from './telemetry.service';
 import { CognitoAuthGuard } from '../auth/cognito-auth.guard';
 
 @Controller('telemetry')
 export class TelemetryController {
-  constructor(private readonly telemetryService: TelemetryService) {}
+  constructor(
+    @Inject(TelemetryService) private readonly telemetryService: TelemetryService
+  ) {}
 
   @Post('heartbeat')
   @UseGuards(CognitoAuthGuard)

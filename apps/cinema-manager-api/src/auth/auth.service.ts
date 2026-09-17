@@ -3,6 +3,7 @@ import {
   Logger,
   BadRequestException,
   UnauthorizedException,
+  Inject,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { DynamoDbService } from '../dynamodb/dynamodb.service';
@@ -37,7 +38,9 @@ export interface AuditLogDto {
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
-  constructor(private readonly dynamoDb: DynamoDbService) {}
+  constructor(
+    @Inject(DynamoDbService) private readonly dynamoDb: DynamoDbService,
+  ) {}
 
   /**
    * Generates an ephemeral 6-character Pairing Code with 10-minute TTL for a logged-in user

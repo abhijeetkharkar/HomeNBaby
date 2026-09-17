@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject } from '@nestjs/common';
 import axios from 'axios';
 import { DynamoDbService } from '../dynamodb/dynamodb.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
@@ -38,8 +38,8 @@ export class MetadataService {
   private readonly omdbApiKey = process.env.OMDB_API_KEY || '';
 
   constructor(
-    @Optional() private readonly dynamoDb?: DynamoDbService,
-    @Optional() private readonly telemetry?: TelemetryService
+    @Optional() @Inject(DynamoDbService) private readonly dynamoDb?: DynamoDbService,
+    @Optional() @Inject(TelemetryService) private readonly telemetry?: TelemetryService
   ) {}
 
   /**

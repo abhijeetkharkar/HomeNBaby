@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { DynamoDbService } from '../dynamodb/dynamodb.service';
 
 export interface DailyMetrics {
@@ -43,7 +43,9 @@ export interface ErrorEventItem {
 export class TelemetryService {
   private readonly logger = new Logger(TelemetryService.name);
 
-  constructor(private readonly dynamoDb: DynamoDbService) {}
+  constructor(
+    @Inject(DynamoDbService) private readonly dynamoDb: DynamoDbService
+  ) {}
 
   private getDateKeys(customDate?: string) {
     const now = customDate ? new Date(customDate) : new Date();
