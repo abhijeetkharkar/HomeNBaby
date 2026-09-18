@@ -48,7 +48,7 @@ export class AuthService {
     this.initSession();
   }
 
-  private initSession(): void {
+  private async initSession(): Promise<void> {
     const savedToken = localStorage.getItem(this.TOKEN_KEY);
     const savedUser = localStorage.getItem(this.USER_KEY);
     if (savedToken && savedUser) {
@@ -56,6 +56,16 @@ export class AuthService {
         const user = JSON.parse(savedUser);
         this.currentUser.set(user);
         this.isAuthenticated.set(true);
+
+        // Check if token is expired or expiring soon on initial load
+        const parts = savedToken.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+          const now = Math.floor(Date.now() / 1000);
+          if (payload.exp && payload.exp - now < 120) {
+            await this.refreshSession();
+          }
+        }
       } catch {
         this.logout();
       }
@@ -252,6 +262,85 @@ export class AuthService {
     }
   }
 
+  private refreshPromise: Promise<boolean> | null = null;
+
+  /**
+   * Refreshes the JWT using the stored Cognito RefreshToken via REFRESH_TOKEN_AUTH
+   */
+  async refreshSession(): Promise<boolean> {
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+    this.refreshPromise = this.performRefresh().finally(() => {
+      this.refreshPromise = null;
+    });
+    return this.refreshPromise;
+  }
+
+  private async performRefresh(): Promise<boolean> {
+    const refreshToken = localStorage.getItem(this.REFRESH_TOKEN_KEY);
+    if (!refreshToken) {
+      return false;
+    }
+
+    try {
+      const res = await this.callCognito('InitiateAuth', {
+        AuthFlow: 'REFRESH_TOKEN_AUTH',
+        ClientId: this.clientId,
+        AuthParameters: {
+          REFRESH_TOKEN: refreshToken,
+        },
+      });
+
+      if (res.AuthenticationResult) {
+        const { IdToken, AccessToken } = res.AuthenticationResult;
+        const current = this.currentUser();
+        const fallbackEmail = current?.email;
+        this.saveAuthResult(IdToken || AccessToken, refreshToken, fallbackEmail);
+        return true;
+      }
+      return false;
+    } catch (err: any) {
+      console.warn('Failed to refresh auth token:', err);
+      if (err?.__type === 'NotAuthorizedException' || err?.__type === 'UserNotFoundException') {
+        this.logout();
+      }
+      return false;
+    }
+  }
+
+  /**
+   * Returns a valid, non-expired token.
+   * If the current token is expired or within 2 minutes of expiry,
+   * it automatically uses the refresh token to obtain a fresh token.
+   */
+  async getValidToken(): Promise<string | null> {
+    const current = this.currentUser();
+    let token = current?.token || localStorage.getItem(this.TOKEN_KEY);
+    if (!token) {
+      return null;
+    }
+
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+        const now = Math.floor(Date.now() / 1000);
+        // Refresh if expired or expiring within 120 seconds
+        if (payload.exp && payload.exp - now < 120) {
+          const refreshed = await this.refreshSession();
+          if (refreshed) {
+            token = this.getToken();
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    return token;
+  }
+
   /**
    * Clears session and redirects to /
    */
@@ -268,7 +357,7 @@ export class AuthService {
    * Requests an ephemeral 6-digit Pairing Code from the API
    */
   async getPairingCode(): Promise<{ code: string; expiresAt: number }> {
-    const token = this.getToken();
+    const token = await this.getValidToken();
     const headers: Record<string, string> = {};
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;

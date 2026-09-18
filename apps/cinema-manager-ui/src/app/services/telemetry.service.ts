@@ -60,8 +60,8 @@ export class TelemetryService {
       ? 'http://localhost:3333/cinema-manager'
       : 'https://api.abhijeetkharkar.com/cinema-manager';
 
-  private getAuthHeaders(): HttpHeaders {
-    const token = this.auth.currentUser()?.token || '';
+  private async getAuthHeaders(): Promise<HttpHeaders> {
+    const token = (await this.auth.getValidToken()) || '';
     return new HttpHeaders({
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
@@ -69,46 +69,51 @@ export class TelemetryService {
   }
 
   async getDashboardSummary(): Promise<DashboardSummaryResponse> {
+    const headers = await this.getAuthHeaders();
     return firstValueFrom(
       this.http.get<DashboardSummaryResponse>(`${this.apiUrl}/admin/stats`, {
-        headers: this.getAuthHeaders(),
+        headers,
       })
     );
   }
 
   async getTopViewed(period: 'day' | 'month' | 'year' = 'day'): Promise<LeaderboardItem[]> {
+    const headers = await this.getAuthHeaders();
     return firstValueFrom(
       this.http.get<LeaderboardItem[]>(
         `${this.apiUrl}/admin/leaderboard/views?period=${period}`,
-        { headers: this.getAuthHeaders() }
+        { headers }
       )
     );
   }
 
   async getTopFetched(period: 'day' | 'month' | 'year' = 'day'): Promise<LeaderboardItem[]> {
+    const headers = await this.getAuthHeaders();
     return firstValueFrom(
       this.http.get<LeaderboardItem[]>(
         `${this.apiUrl}/admin/leaderboard/fetches?period=${period}`,
-        { headers: this.getAuthHeaders() }
+        { headers }
       )
     );
   }
 
   async getRecentErrors(limit = 20): Promise<ErrorEventItem[]> {
+    const headers = await this.getAuthHeaders();
     return firstValueFrom(
       this.http.get<ErrorEventItem[]>(`${this.apiUrl}/admin/errors?limit=${limit}`, {
-        headers: this.getAuthHeaders(),
+        headers,
       })
     );
   }
 
   async sendHeartbeat(): Promise<void> {
     try {
+      const headers = await this.getAuthHeaders();
       await firstValueFrom(
         this.http.post(
           `${this.apiUrl}/telemetry/heartbeat`,
           {},
-          { headers: this.getAuthHeaders() }
+          { headers }
         )
       );
     } catch {
