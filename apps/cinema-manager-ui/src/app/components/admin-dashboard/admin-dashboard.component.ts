@@ -49,30 +49,53 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   readonly autoRefresh = signal<boolean>(true);
   private refreshIntervalId?: any;
 
-  readonly maxChartHeight = 120; // px for SVG bars
+  readonly maxChartHeight = 100; // px for bars
 
-  readonly chartBars = computed(() => {
+  readonly history14Totals = computed(() => {
+    const s = this.summary();
+    if (!s || !s.history || s.history.length === 0) {
+      return { logins: 0, cacheHits: 0, apiCalls: 0, avgHitRatio: 100, apiErrors: 0 };
+    }
+    const logins = s.history.reduce((acc, h) => acc + (h.logins || 0), 0);
+    const cacheHits = s.history.reduce((acc, h) => acc + (h.cacheHits || 0), 0);
+    const apiCalls = s.history.reduce((acc, h) => acc + (h.totalApiCalls || 0), 0);
+    const apiErrors = s.history.reduce((acc, h) => acc + (h.tmdbErrors || 0) + (h.omdbErrors || 0), 0);
+    const totalRequests = cacheHits + apiCalls;
+    const avgHitRatio = totalRequests > 0 ? Math.round((cacheHits / totalRequests) * 100) : 100;
+    return { logins, cacheHits, apiCalls, avgHitRatio, apiErrors };
+  });
+
+  readonly loginChartBars = computed(() => {
     const s = this.summary();
     if (!s || !s.history || s.history.length === 0) return [];
+    const maxVal = Math.max(...s.history.map((h) => Math.max(h.logins || 0, 1)));
+    return s.history.map((h) => ({
+      ...h,
+      dayLabel: h.date.substring(5),
+      height: Math.max(Math.round(((h.logins || 0) / maxVal) * this.maxChartHeight), (h.logins > 0 ? 6 : 2)),
+    }));
+  });
 
-    const maxVal = Math.max(
-      ...s.history.map((h) => Math.max(h.logins, h.cacheHits, h.totalApiCalls, 1))
-    );
+  readonly cacheChartBars = computed(() => {
+    const s = this.summary();
+    if (!s || !s.history || s.history.length === 0) return [];
+    const maxVal = Math.max(...s.history.map((h) => Math.max(h.cacheHits || 0, 1)));
+    return s.history.map((h) => ({
+      ...h,
+      dayLabel: h.date.substring(5),
+      height: Math.max(Math.round(((h.cacheHits || 0) / maxVal) * this.maxChartHeight), (h.cacheHits > 0 ? 6 : 2)),
+    }));
+  });
 
-    return s.history.map((h) => {
-      const loginHeight = Math.max(Math.round((h.logins / maxVal) * this.maxChartHeight), 2);
-      const cacheHeight = Math.max(Math.round((h.cacheHits / maxVal) * this.maxChartHeight), 2);
-      const apiHeight = Math.max(Math.round((h.totalApiCalls / maxVal) * this.maxChartHeight), 2);
-
-      const dayLabel = h.date.substring(5); // MM-DD
-      return {
-        ...h,
-        dayLabel,
-        loginHeight,
-        cacheHeight,
-        apiHeight,
-      };
-    });
+  readonly apiChartBars = computed(() => {
+    const s = this.summary();
+    if (!s || !s.history || s.history.length === 0) return [];
+    const maxVal = Math.max(...s.history.map((h) => Math.max(h.totalApiCalls || 0, 1)));
+    return s.history.map((h) => ({
+      ...h,
+      dayLabel: h.date.substring(5),
+      height: Math.max(Math.round(((h.totalApiCalls || 0) / maxVal) * this.maxChartHeight), (h.totalApiCalls > 0 ? 6 : 2)),
+    }));
   });
 
   ngOnInit(): void {
