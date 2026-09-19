@@ -308,14 +308,15 @@ export class TelemetryService {
   }
 
   /**
-   * Retrieve today's KPI metrics and past 14-day history
+   * Retrieve today's KPI metrics and past variable-day history (default 14)
    */
-  async getDashboardSummary(): Promise<{
+  async getDashboardSummary(days = 14): Promise<{
     today: DailyMetrics;
     liveLogins: number;
     activeSessions: ActiveSession[];
     history: DailyMetrics[];
   }> {
+    const numDays = Math.min(Math.max(Number(days) || 14, 7), 60);
     const now = new Date();
     const nowEpoch = Math.floor(now.getTime() / 1000);
     const { day: todayKey } = this.getDateKeys();
@@ -342,56 +343,60 @@ export class TelemetryService {
       this.logger.warn('Failed to query active sessions:', err);
     }
 
-    // 2. Fetch past 14 days of metrics
-    const history: DailyMetrics[] = [];
-    for (let i = 13; i >= 0; i--) {
+    // 2. Fetch past requested days of metrics in parallel
+    const dateStrings: string[] = [];
+    for (let i = numDays - 1; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 86400 * 1000);
-      const dateStr = d.toISOString().split('T')[0];
-
-      try {
-        const item = await this.dynamoDb.getItem<any>(this.dynamoDb.telemetryTable, {
-          pk: `DAILY#${dateStr}`,
-          sk: 'METRICS',
-        });
-
-        const logins = item?.logins || 0;
-        const loginErrors = item?.loginErrors || 0;
-        const cacheHits = item?.cacheHits || 0;
-        const tmdbCalls = item?.tmdbCalls || 0;
-        const tmdbErrors = item?.tmdbErrors || 0;
-        const omdbCalls = item?.omdbCalls || 0;
-        const omdbErrors = item?.omdbErrors || 0;
-        const totalApiCalls = tmdbCalls + omdbCalls;
-        const totalRequests = cacheHits + totalApiCalls;
-        const cacheHitRatio = totalRequests > 0 ? (cacheHits / totalRequests) * 100 : 100;
-
-        history.push({
-          date: dateStr,
-          logins,
-          loginErrors,
-          cacheHits,
-          tmdbCalls,
-          tmdbErrors,
-          omdbCalls,
-          omdbErrors,
-          totalApiCalls,
-          cacheHitRatio: Math.round(cacheHitRatio * 10) / 10,
-        });
-      } catch (err) {
-        history.push({
-          date: dateStr,
-          logins: 0,
-          loginErrors: 0,
-          cacheHits: 0,
-          tmdbCalls: 0,
-          tmdbErrors: 0,
-          omdbCalls: 0,
-          omdbErrors: 0,
-          totalApiCalls: 0,
-          cacheHitRatio: 100,
-        });
-      }
+      dateStrings.push(d.toISOString().split('T')[0]);
     }
+
+    const history = await Promise.all(
+      dateStrings.map(async (dateStr) => {
+        try {
+          const item = await this.dynamoDb.getItem<any>(this.dynamoDb.telemetryTable, {
+            pk: `DAILY#${dateStr}`,
+            sk: 'METRICS',
+          });
+
+          const logins = item?.logins || 0;
+          const loginErrors = item?.loginErrors || 0;
+          const cacheHits = item?.cacheHits || 0;
+          const tmdbCalls = item?.tmdbCalls || 0;
+          const tmdbErrors = item?.tmdbErrors || 0;
+          const omdbCalls = item?.omdbCalls || 0;
+          const omdbErrors = item?.omdbErrors || 0;
+          const totalApiCalls = tmdbCalls + omdbCalls;
+          const totalRequests = cacheHits + totalApiCalls;
+          const cacheHitRatio = totalRequests > 0 ? (cacheHits / totalRequests) * 100 : 100;
+
+          return {
+            date: dateStr,
+            logins,
+            loginErrors,
+            cacheHits,
+            tmdbCalls,
+            tmdbErrors,
+            omdbCalls,
+            omdbErrors,
+            totalApiCalls,
+            cacheHitRatio: Math.round(cacheHitRatio * 10) / 10,
+          };
+        } catch (err) {
+          return {
+            date: dateStr,
+            logins: 0,
+            loginErrors: 0,
+            cacheHits: 0,
+            tmdbCalls: 0,
+            tmdbErrors: 0,
+            omdbCalls: 0,
+            omdbErrors: 0,
+            totalApiCalls: 0,
+            cacheHitRatio: 100,
+          };
+        }
+      })
+    );
 
     const today = history[history.length - 1] || {
       date: todayKey,

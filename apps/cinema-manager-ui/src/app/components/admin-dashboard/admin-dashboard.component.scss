@@ -347,15 +347,20 @@
 }
 
 /* Individual 14-Day Charts */
+/* Individual Telemetry Trends Area Charts */
 .individual-charts-container {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: 100%;
+  min-width: 0;
 
   .section-header-block {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
 
     .section-title {
       font-size: 1.25rem;
@@ -374,8 +379,10 @@
 
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
+  width: 100%;
+  min-width: 0;
 }
 
 .chart-card {
@@ -387,7 +394,10 @@
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 14px;
   backdrop-filter: blur(8px);
+  min-width: 0;
+  overflow: hidden;
   transition: transform 0.2s, border-color 0.2s;
+  position: relative;
 
   &:hover {
     transform: translateY(-2px);
@@ -416,13 +426,14 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   gap: 12px;
 
   .title-with-icon {
     display: flex;
     align-items: center;
     gap: 10px;
+    min-width: 0;
 
     .chart-icon {
       font-size: 26px;
@@ -441,11 +452,15 @@
       color: #ffffff;
       margin: 0;
       line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .chart-card-subtitle {
       font-size: 0.75rem;
       color: #64748b;
+      white-space: nowrap;
     }
   }
 
@@ -493,89 +508,146 @@
   }
 }
 
-.chart-container {
-  overflow-x: auto;
-  padding-top: 8px;
+/* SVG Area Chart Container */
+.svg-chart-container {
+  position: relative;
+  width: 100%;
+  height: 130px;
+  margin-top: 4px;
+  cursor: crosshair;
 
-  &::-webkit-scrollbar {
-    height: 4px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 2px;
-  }
-}
+  .trend-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    overflow: visible;
 
-.chart-bars-wrap {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  height: 140px;
-  min-width: 320px;
-  gap: 6px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.chart-bar-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-
-  &:hover {
-    .single-bar-track .bar {
-      filter: brightness(1.25);
-      transform: scaleY(1.05);
+    .chart-baseline {
+      stroke: rgba(255, 255, 255, 0.08);
+      stroke-width: 1;
+      stroke-dasharray: 4 4;
     }
-    .col-date {
-      color: #cbd5e1;
+
+    .area-path {
+      transition: d 0.25s ease-out;
+    }
+
+    .trend-line {
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: d 0.25s ease-out;
+
+      &.line-crimson {
+        stroke: #ff4d58;
+        filter: drop-shadow(0 0 6px rgba(229, 9, 20, 0.6));
+      }
+
+      &.line-emerald {
+        stroke: #34d399;
+        filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.6));
+      }
+
+      &.line-amber {
+        stroke: #fbbf24;
+        filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.6));
+      }
+    }
+
+    .scrubber-line {
+      stroke: rgba(255, 255, 255, 0.35);
+      stroke-width: 1.5;
+      stroke-dasharray: 3 3;
+    }
+
+    .scrubber-point {
+      stroke: #ffffff;
+      stroke-width: 2.5;
+      transition: transform 0.1s ease;
+
+      &.point-crimson {
+        fill: #e50914;
+        filter: drop-shadow(0 0 8px #ff4d58);
+      }
+
+      &.point-emerald {
+        fill: #10b981;
+        filter: drop-shadow(0 0 8px #34d399);
+      }
+
+      &.point-amber {
+        fill: #f59e0b;
+        filter: drop-shadow(0 0 8px #fbbf24);
+      }
+    }
+  }
+
+  /* Floating Interactive Tooltip */
+  .chart-tooltip {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 6px;
+    padding: 6px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+    z-index: 20;
+    white-space: nowrap;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+
+    .tooltip-date {
+      font-size: 0.7rem;
+      color: #94a3b8;
       font-weight: 600;
     }
-  }
 
-  .single-bar-track {
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    width: 100%;
-    height: 110px;
+    .tooltip-val {
+      font-size: 0.85rem;
+      color: #ffffff;
+      font-weight: 800;
+      margin-top: 1px;
+    }
 
-    .bar {
-      width: 12px;
-      min-width: 6px;
-      border-radius: 3px 3px 0 0;
-      transition: transform 0.15s, filter 0.15s, height 0.3s;
+    .tooltip-sub {
+      font-size: 0.7rem;
+      color: #64748b;
+      margin-top: 1px;
 
-      &.bar-crimson {
-        background: linear-gradient(180deg, #ff4d58 0%, #e50914 100%);
-        box-shadow: 0 0 6px rgba(229, 9, 20, 0.3);
-      }
-
-      &.bar-emerald {
-        background: linear-gradient(180deg, #34d399 0%, #10b981 100%);
-        box-shadow: 0 0 6px rgba(16, 185, 129, 0.3);
-      }
-
-      &.bar-amber {
-        background: linear-gradient(180deg, #fbbf24 0%, #d97706 100%);
-        box-shadow: 0 0 6px rgba(245, 158, 11, 0.3);
-      }
-
-      &.has-error {
-        box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
-        border: 1px solid #ef4444;
+      &.text-warn {
+        color: #f87171;
+        font-weight: 600;
       }
     }
   }
+}
 
-  .col-date {
+/* Clean Milestone Date Ticks */
+.milestones-row {
+  position: relative;
+  width: 100%;
+  height: 20px;
+  margin-top: 4px;
+
+  .milestone-tick {
+    position: absolute;
+    transform: translateX(-50%);
     font-size: 0.68rem;
+    font-weight: 600;
     color: #64748b;
     white-space: nowrap;
-    transition: color 0.15s;
+
+    &:first-child {
+      transform: translateX(0);
+    }
+
+    &:last-child {
+      transform: translateX(-100%);
+    }
   }
 }
 
@@ -583,8 +655,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 12px;
+  margin-top: 10px;
   padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
   font-size: 0.76rem;
   color: #94a3b8;
 
@@ -989,6 +1062,24 @@
   .dashboard-body {
     padding: 20px 16px;
     gap: 20px;
+  }
+
+  .individual-charts-container .section-header-block {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+
+    .history-period-pills {
+      width: 100%;
+      justify-content: space-between;
+
+      .pill-btn {
+        flex: 1;
+        text-align: center;
+        padding: 6px 8px;
+        font-size: 0.78rem;
+      }
+    }
   }
 
   .leaderboard-toolbar {
