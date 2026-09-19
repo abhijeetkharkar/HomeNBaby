@@ -7,9 +7,9 @@
         <span class="brand-name">CINEMA MANAGER</span>
         <span class="admin-tag">ADMIN OBSERVABILITY</span>
       </div>
-      <div class="admin-user-pill">
+      <div class="admin-user-pill" [matTooltip]="auth.currentUser()?.email || ''">
         <mat-icon class="crown-icon">workspace_premium</mat-icon>
-        <span>{{ auth.currentUser()?.email }}</span>
+        <span class="email-text">{{ auth.currentUser()?.email }}</span>
       </div>
     </div>
 
@@ -147,46 +147,137 @@
       </div>
     </section>
 
-    <!-- 2. 14-Day Activity & Telemetry Trends -->
-    <section class="section-card chart-section">
-      <div class="section-title-row">
-        <div>
-          <h2 class="section-title">14-Day Activity & Request History</h2>
-          <p class="section-desc">Daily logins, DynamoDB cache hits, and external API calls</p>
-        </div>
-        <div class="chart-legend">
-          <span class="legend-item"><span class="legend-box box-crimson"></span> Logins</span>
-          <span class="legend-item"><span class="legend-box box-emerald"></span> Cache Hits</span>
-          <span class="legend-item"><span class="legend-box box-amber"></span> External API Calls</span>
-        </div>
+    <!-- 2. Individual 14-Day Activity & Telemetry Trends Grid -->
+    <section class="individual-charts-container">
+      <div class="section-header-block">
+        <h2 class="section-title">14-Day Telemetry Trends</h2>
+        <p class="section-desc">Independent daily timelines calibrated to each operational metric</p>
       </div>
 
-      <!-- Interactive SVG Trend Chart -->
-      <div class="chart-container">
-        <div class="chart-bars-wrap">
-          <div
-            class="chart-bar-col"
-            *ngFor="let col of chartBars()"
-            [matTooltip]="col.date + '\nLogins: ' + col.logins + '\nCache Hits: ' + col.cacheHits + '\nAPI Calls: ' + col.totalApiCalls"
-          >
-            <div class="bars-stack">
-              <!-- API Calls -->
-              <div
-                class="bar bar-amber"
-                [style.height.px]="col.apiHeight"
-              ></div>
-              <!-- Cache Hits -->
-              <div
-                class="bar bar-emerald"
-                [style.height.px]="col.cacheHeight"
-              ></div>
-              <!-- Logins -->
-              <div
-                class="bar bar-crimson"
-                [style.height.px]="col.loginHeight"
-              ></div>
+      <div class="charts-grid">
+        <!-- 1. Logins Chart -->
+        <div class="section-card chart-card card-crimson">
+          <div class="chart-card-header">
+            <div class="title-with-icon">
+              <mat-icon class="chart-icon icon-crimson">how_to_reg</mat-icon>
+              <div>
+                <h3 class="chart-card-title">User Logins (14 Days)</h3>
+                <span class="chart-card-subtitle">Daily user authentications</span>
+              </div>
             </div>
-            <span class="col-date">{{ col.dayLabel }}</span>
+            <div class="chart-stat-badge badge-crimson">
+              <span class="stat-num">{{ history14Totals().logins }}</span>
+              <span class="stat-lbl">14d Total</span>
+            </div>
+          </div>
+
+          <div class="chart-container">
+            <div class="chart-bars-wrap">
+              <div
+                class="chart-bar-col"
+                *ngFor="let col of loginChartBars()"
+                [matTooltip]="col.date + '\nLogins: ' + col.logins + '\nAuth Errors: ' + col.loginErrors"
+              >
+                <div class="single-bar-track">
+                  <div
+                    class="bar bar-crimson"
+                    [style.height.px]="col.height"
+                    [class.has-error]="col.loginErrors > 0"
+                  ></div>
+                </div>
+                <span class="col-date">{{ col.dayLabel }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-card-footer">
+            <span class="legend-item"><span class="legend-box box-crimson"></span> Daily Logins</span>
+            <span class="footer-stat" *ngIf="history14Totals().logins > 0">
+              Peak: {{ summary()?.today?.logins || 0 }} today
+            </span>
+          </div>
+        </div>
+
+        <!-- 2. Master Cache Hits Chart -->
+        <div class="section-card chart-card card-emerald">
+          <div class="chart-card-header">
+            <div class="title-with-icon">
+              <mat-icon class="chart-icon icon-emerald">bolt</mat-icon>
+              <div>
+                <h3 class="chart-card-title">Master Cache Hits (14 Days)</h3>
+                <span class="chart-card-subtitle">DynamoDB movie cache hits</span>
+              </div>
+            </div>
+            <div class="chart-stat-badge badge-emerald">
+              <span class="stat-num">{{ history14Totals().cacheHits }}</span>
+              <span class="stat-lbl">14d Hits ({{ history14Totals().avgHitRatio }}% avg)</span>
+            </div>
+          </div>
+
+          <div class="chart-container">
+            <div class="chart-bars-wrap">
+              <div
+                class="chart-bar-col"
+                *ngFor="let col of cacheChartBars()"
+                [matTooltip]="col.date + '\nCache Hits: ' + col.cacheHits + '\nHit Ratio: ' + col.cacheHitRatio + '%'"
+              >
+                <div class="single-bar-track">
+                  <div
+                    class="bar bar-emerald"
+                    [style.height.px]="col.height"
+                  ></div>
+                </div>
+                <span class="col-date">{{ col.dayLabel }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-card-footer">
+            <span class="legend-item"><span class="legend-box box-emerald"></span> Cache Hits</span>
+            <span class="footer-stat">{{ history14Totals().avgHitRatio }}% 14d efficiency</span>
+          </div>
+        </div>
+
+        <!-- 3. External API Requests Chart -->
+        <div class="section-card chart-card card-amber">
+          <div class="chart-card-header">
+            <div class="title-with-icon">
+              <mat-icon class="chart-icon icon-amber">cloud_sync</mat-icon>
+              <div>
+                <h3 class="chart-card-title">External API Requests (14 Days)</h3>
+                <span class="chart-card-subtitle">TMDB & OMDB calls</span>
+              </div>
+            </div>
+            <div class="chart-stat-badge badge-amber">
+              <span class="stat-num">{{ history14Totals().apiCalls }}</span>
+              <span class="stat-lbl">14d Calls ({{ history14Totals().apiErrors }} errors)</span>
+            </div>
+          </div>
+
+          <div class="chart-container">
+            <div class="chart-bars-wrap">
+              <div
+                class="chart-bar-col"
+                *ngFor="let col of apiChartBars()"
+                [matTooltip]="col.date + '\nAPI Calls: ' + col.totalApiCalls + '\nTMDB: ' + col.tmdbCalls + ' (' + col.tmdbErrors + ' err)\nOMDB: ' + col.omdbCalls + ' (' + col.omdbErrors + ' err)'"
+              >
+                <div class="single-bar-track">
+                  <div
+                    class="bar bar-amber"
+                    [style.height.px]="col.height"
+                    [class.has-error]="col.tmdbErrors > 0 || col.omdbErrors > 0"
+                  ></div>
+                </div>
+                <span class="col-date">{{ col.dayLabel }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-card-footer">
+            <span class="legend-item"><span class="legend-box box-amber"></span> API Calls</span>
+            <span class="footer-stat" [class.text-warn]="history14Totals().apiErrors > 0">
+              {{ history14Totals().apiErrors }} errors logged
+            </span>
           </div>
         </div>
       </div>
