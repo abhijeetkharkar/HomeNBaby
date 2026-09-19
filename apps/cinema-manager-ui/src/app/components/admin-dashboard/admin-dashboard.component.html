@@ -147,11 +147,43 @@
       </div>
     </section>
 
-    <!-- 2. Individual 14-Day Activity & Telemetry Trends Grid -->
+    <!-- 2. Individual Telemetry Trends Area Charts Grid -->
     <section class="individual-charts-container">
       <div class="section-header-block">
-        <h2 class="section-title">14-Day Telemetry Trends</h2>
-        <p class="section-desc">Independent daily timelines calibrated to each operational metric</p>
+        <div>
+          <h2 class="section-title">Telemetry Trends</h2>
+          <p class="section-desc">Continuous daily trends calibrated to each operational metric</p>
+        </div>
+        <div class="period-pills history-period-pills">
+          <button
+            class="pill-btn"
+            [class.active]="selectedHistoryDays() === 7"
+            (click)="setHistoryDays(7)"
+          >
+            7 Days
+          </button>
+          <button
+            class="pill-btn"
+            [class.active]="selectedHistoryDays() === 14"
+            (click)="setHistoryDays(14)"
+          >
+            14 Days
+          </button>
+          <button
+            class="pill-btn"
+            [class.active]="selectedHistoryDays() === 30"
+            (click)="setHistoryDays(30)"
+          >
+            1 Month
+          </button>
+          <button
+            class="pill-btn"
+            [class.active]="selectedHistoryDays() === 60"
+            (click)="setHistoryDays(60)"
+          >
+            2 Months
+          </button>
+        </div>
       </div>
 
       <div class="charts-grid">
@@ -161,38 +193,98 @@
             <div class="title-with-icon">
               <mat-icon class="chart-icon icon-crimson">how_to_reg</mat-icon>
               <div>
-                <h3 class="chart-card-title">User Logins (14 Days)</h3>
-                <span class="chart-card-subtitle">Daily user authentications</span>
+                <h3 class="chart-card-title">User Logins ({{ getHistoryPeriodLabel() }})</h3>
+                <span class="chart-card-subtitle">Daily authentications</span>
               </div>
             </div>
             <div class="chart-stat-badge badge-crimson">
-              <span class="stat-num">{{ history14Totals().logins }}</span>
-              <span class="stat-lbl">14d Total</span>
+              <span class="stat-num">{{ historyTotals().logins }}</span>
+              <span class="stat-lbl">{{ getHistoryBadgeLabel() }}</span>
             </div>
           </div>
 
-          <div class="chart-container">
-            <div class="chart-bars-wrap">
-              <div
-                class="chart-bar-col"
-                *ngFor="let col of loginChartBars()"
-                [matTooltip]="col.date + '\nLogins: ' + col.logins + '\nAuth Errors: ' + col.loginErrors"
-              >
-                <div class="single-bar-track">
-                  <div
-                    class="bar bar-crimson"
-                    [style.height.px]="col.height"
-                    [class.has-error]="col.loginErrors > 0"
-                  ></div>
-                </div>
-                <span class="col-date">{{ col.dayLabel }}</span>
-              </div>
+          <div
+            class="svg-chart-container"
+            (mousemove)="onChartMouseMove('login', $event, loginChartData().points)"
+            (mouseleave)="onChartMouseLeave()"
+          >
+            <svg
+              viewBox="0 0 500 130"
+              class="trend-svg"
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <linearGradient id="loginGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#e50914" stop-opacity="0.38" />
+                  <stop offset="100%" stop-color="#e50914" stop-opacity="0.01" />
+                </linearGradient>
+              </defs>
+
+              <!-- Subtle Grid Base Line -->
+              <line x1="14" y1="114" x2="486" y2="114" class="chart-baseline" />
+
+              <!-- Gradient Area -->
+              <path
+                *ngIf="loginChartData().areaPath"
+                [attr.d]="loginChartData().areaPath"
+                fill="url(#loginGrad)"
+                class="area-path"
+              />
+
+              <!-- Trend Line -->
+              <path
+                *ngIf="loginChartData().linePath"
+                [attr.d]="loginChartData().linePath"
+                fill="none"
+                class="trend-line line-crimson"
+              />
+
+              <!-- Interactive Scrubber -->
+              <g *ngIf="activeHover()?.chart === 'login' && activeHover()?.point as p">
+                <line
+                  [attr.x1]="p.x"
+                  y1="14"
+                  [attr.x2]="p.x"
+                  y2="114"
+                  class="scrubber-line"
+                />
+                <circle
+                  [attr.cx]="p.x"
+                  [attr.cy]="p.y"
+                  r="5"
+                  class="scrubber-point point-crimson"
+                />
+              </g>
+            </svg>
+
+            <!-- Floating Tooltip on Hover -->
+            <div
+              class="chart-tooltip"
+              *ngIf="activeHover()?.chart === 'login' && activeHover()?.point as p"
+              [style.left.%]="p.x / 5"
+            >
+              <span class="tooltip-date">{{ p.date }}</span>
+              <span class="tooltip-val">{{ p.value }} logins</span>
+              <span class="tooltip-sub text-warn" *ngIf="p.data.loginErrors > 0">
+                {{ p.data.loginErrors }} auth error(s)
+              </span>
             </div>
+          </div>
+
+          <!-- Clean Milestone Dates on X-Axis -->
+          <div class="milestones-row">
+            <span
+              class="milestone-tick"
+              *ngFor="let m of chartMilestones()"
+              [style.left.%]="m.pct"
+            >
+              {{ m.label }}
+            </span>
           </div>
 
           <div class="chart-card-footer">
             <span class="legend-item"><span class="legend-box box-crimson"></span> Daily Logins</span>
-            <span class="footer-stat" *ngIf="history14Totals().logins > 0">
+            <span class="footer-stat" *ngIf="historyTotals().logins > 0">
               Peak: {{ summary()?.today?.logins || 0 }} today
             </span>
           </div>
@@ -204,37 +296,96 @@
             <div class="title-with-icon">
               <mat-icon class="chart-icon icon-emerald">bolt</mat-icon>
               <div>
-                <h3 class="chart-card-title">Master Cache Hits (14 Days)</h3>
-                <span class="chart-card-subtitle">DynamoDB movie cache hits</span>
+                <h3 class="chart-card-title">Master Cache Hits ({{ getHistoryPeriodLabel() }})</h3>
+                <span class="chart-card-subtitle">DynamoDB movie hits</span>
               </div>
             </div>
             <div class="chart-stat-badge badge-emerald">
-              <span class="stat-num">{{ history14Totals().cacheHits }}</span>
-              <span class="stat-lbl">14d Hits ({{ history14Totals().avgHitRatio }}% avg)</span>
+              <span class="stat-num">{{ historyTotals().cacheHits }}</span>
+              <span class="stat-lbl">{{ getHistoryBadgeLabel() }} ({{ historyTotals().avgHitRatio }}%)</span>
             </div>
           </div>
 
-          <div class="chart-container">
-            <div class="chart-bars-wrap">
-              <div
-                class="chart-bar-col"
-                *ngFor="let col of cacheChartBars()"
-                [matTooltip]="col.date + '\nCache Hits: ' + col.cacheHits + '\nHit Ratio: ' + col.cacheHitRatio + '%'"
-              >
-                <div class="single-bar-track">
-                  <div
-                    class="bar bar-emerald"
-                    [style.height.px]="col.height"
-                  ></div>
-                </div>
-                <span class="col-date">{{ col.dayLabel }}</span>
-              </div>
+          <div
+            class="svg-chart-container"
+            (mousemove)="onChartMouseMove('cache', $event, cacheChartData().points)"
+            (mouseleave)="onChartMouseLeave()"
+          >
+            <svg
+              viewBox="0 0 500 130"
+              class="trend-svg"
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <linearGradient id="cacheGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#10b981" stop-opacity="0.38" />
+                  <stop offset="100%" stop-color="#10b981" stop-opacity="0.01" />
+                </linearGradient>
+              </defs>
+
+              <!-- Subtle Grid Base Line -->
+              <line x1="14" y1="114" x2="486" y2="114" class="chart-baseline" />
+
+              <!-- Gradient Area -->
+              <path
+                *ngIf="cacheChartData().areaPath"
+                [attr.d]="cacheChartData().areaPath"
+                fill="url(#cacheGrad)"
+                class="area-path"
+              />
+
+              <!-- Trend Line -->
+              <path
+                *ngIf="cacheChartData().linePath"
+                [attr.d]="cacheChartData().linePath"
+                fill="none"
+                class="trend-line line-emerald"
+              />
+
+              <!-- Interactive Scrubber -->
+              <g *ngIf="activeHover()?.chart === 'cache' && activeHover()?.point as p">
+                <line
+                  [attr.x1]="p.x"
+                  y1="14"
+                  [attr.x2]="p.x"
+                  y2="114"
+                  class="scrubber-line"
+                />
+                <circle
+                  [attr.cx]="p.x"
+                  [attr.cy]="p.y"
+                  r="5"
+                  class="scrubber-point point-emerald"
+                />
+              </g>
+            </svg>
+
+            <!-- Floating Tooltip on Hover -->
+            <div
+              class="chart-tooltip"
+              *ngIf="activeHover()?.chart === 'cache' && activeHover()?.point as p"
+              [style.left.%]="p.x / 5"
+            >
+              <span class="tooltip-date">{{ p.date }}</span>
+              <span class="tooltip-val">{{ p.value }} cache hits</span>
+              <span class="tooltip-sub">{{ p.data.cacheHitRatio }}% hit ratio</span>
             </div>
+          </div>
+
+          <!-- Clean Milestone Dates on X-Axis -->
+          <div class="milestones-row">
+            <span
+              class="milestone-tick"
+              *ngFor="let m of chartMilestones()"
+              [style.left.%]="m.pct"
+            >
+              {{ m.label }}
+            </span>
           </div>
 
           <div class="chart-card-footer">
             <span class="legend-item"><span class="legend-box box-emerald"></span> Cache Hits</span>
-            <span class="footer-stat">{{ history14Totals().avgHitRatio }}% 14d efficiency</span>
+            <span class="footer-stat">{{ historyTotals().avgHitRatio }}% avg efficiency</span>
           </div>
         </div>
 
@@ -244,39 +395,100 @@
             <div class="title-with-icon">
               <mat-icon class="chart-icon icon-amber">cloud_sync</mat-icon>
               <div>
-                <h3 class="chart-card-title">External API Requests (14 Days)</h3>
+                <h3 class="chart-card-title">External API Requests ({{ getHistoryPeriodLabel() }})</h3>
                 <span class="chart-card-subtitle">TMDB & OMDB calls</span>
               </div>
             </div>
             <div class="chart-stat-badge badge-amber">
-              <span class="stat-num">{{ history14Totals().apiCalls }}</span>
-              <span class="stat-lbl">14d Calls ({{ history14Totals().apiErrors }} errors)</span>
+              <span class="stat-num">{{ historyTotals().apiCalls }}</span>
+              <span class="stat-lbl">{{ getHistoryBadgeLabel() }} ({{ historyTotals().apiErrors }} err)</span>
             </div>
           </div>
 
-          <div class="chart-container">
-            <div class="chart-bars-wrap">
-              <div
-                class="chart-bar-col"
-                *ngFor="let col of apiChartBars()"
-                [matTooltip]="col.date + '\nAPI Calls: ' + col.totalApiCalls + '\nTMDB: ' + col.tmdbCalls + ' (' + col.tmdbErrors + ' err)\nOMDB: ' + col.omdbCalls + ' (' + col.omdbErrors + ' err)'"
-              >
-                <div class="single-bar-track">
-                  <div
-                    class="bar bar-amber"
-                    [style.height.px]="col.height"
-                    [class.has-error]="col.tmdbErrors > 0 || col.omdbErrors > 0"
-                  ></div>
-                </div>
-                <span class="col-date">{{ col.dayLabel }}</span>
-              </div>
+          <div
+            class="svg-chart-container"
+            (mousemove)="onChartMouseMove('api', $event, apiChartData().points)"
+            (mouseleave)="onChartMouseLeave()"
+          >
+            <svg
+              viewBox="0 0 500 130"
+              class="trend-svg"
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <linearGradient id="apiGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.38" />
+                  <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.01" />
+                </linearGradient>
+              </defs>
+
+              <!-- Subtle Grid Base Line -->
+              <line x1="14" y1="114" x2="486" y2="114" class="chart-baseline" />
+
+              <!-- Gradient Area -->
+              <path
+                *ngIf="apiChartData().areaPath"
+                [attr.d]="apiChartData().areaPath"
+                fill="url(#apiGrad)"
+                class="area-path"
+              />
+
+              <!-- Trend Line -->
+              <path
+                *ngIf="apiChartData().linePath"
+                [attr.d]="apiChartData().linePath"
+                fill="none"
+                class="trend-line line-amber"
+              />
+
+              <!-- Interactive Scrubber -->
+              <g *ngIf="activeHover()?.chart === 'api' && activeHover()?.point as p">
+                <line
+                  [attr.x1]="p.x"
+                  y1="14"
+                  [attr.x2]="p.x"
+                  y2="114"
+                  class="scrubber-line"
+                />
+                <circle
+                  [attr.cx]="p.x"
+                  [attr.cy]="p.y"
+                  r="5"
+                  class="scrubber-point point-amber"
+                />
+              </g>
+            </svg>
+
+            <!-- Floating Tooltip on Hover -->
+            <div
+              class="chart-tooltip"
+              *ngIf="activeHover()?.chart === 'api' && activeHover()?.point as p"
+              [style.left.%]="p.x / 5"
+            >
+              <span class="tooltip-date">{{ p.date }}</span>
+              <span class="tooltip-val">{{ p.value }} API calls</span>
+              <span class="tooltip-sub">TMDB: {{ p.data.tmdbCalls }}, OMDB: {{ p.data.omdbCalls }}</span>
+              <span class="tooltip-sub text-warn" *ngIf="p.data.tmdbErrors > 0 || p.data.omdbErrors > 0">
+                Errors: {{ p.data.tmdbErrors + p.data.omdbErrors }}
+              </span>
             </div>
+          </div>
+
+          <!-- Clean Milestone Dates on X-Axis -->
+          <div class="milestones-row">
+            <span
+              class="milestone-tick"
+              *ngFor="let m of chartMilestones()"
+              [style.left.%]="m.pct"
+            >
+              {{ m.label }}
+            </span>
           </div>
 
           <div class="chart-card-footer">
             <span class="legend-item"><span class="legend-box box-amber"></span> API Calls</span>
-            <span class="footer-stat" [class.text-warn]="history14Totals().apiErrors > 0">
-              {{ history14Totals().apiErrors }} errors logged
+            <span class="footer-stat" [class.text-warn]="historyTotals().apiErrors > 0">
+              {{ historyTotals().apiErrors }} errors logged
             </span>
           </div>
         </div>
