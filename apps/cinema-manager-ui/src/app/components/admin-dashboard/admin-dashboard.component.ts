@@ -189,15 +189,6 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  getHistoryPeriodLabel(): string {
-    const d = this.selectedHistoryDays();
-    if (d === 7) return '7 Days';
-    if (d === 14) return '14 Days';
-    if (d === 30) return '1 Month';
-    if (d === 60) return '2 Months';
-    return `${d} Days`;
-  }
-
   getHistoryBadgeLabel(): string {
     const d = this.selectedHistoryDays();
     if (d === 7) return '7d Total';
