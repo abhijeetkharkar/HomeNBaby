@@ -68,11 +68,12 @@ export class TelemetryService {
     });
   }
 
-  async getDashboardSummary(): Promise<DashboardSummaryResponse> {
+  async getDashboardSummary(days = 14): Promise<DashboardSummaryResponse> {
     const headers = await this.getAuthHeaders();
     return firstValueFrom(
       this.http.get<DashboardSummaryResponse>(`${this.apiUrl}/admin/stats`, {
         headers,
+        params: { days: days.toString() },
       })
     );
   }

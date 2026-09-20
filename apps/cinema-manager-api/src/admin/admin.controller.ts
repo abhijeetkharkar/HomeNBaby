@@ -10,8 +10,9 @@ export class AdminController {
   ) {}
 
   @Get('stats')
-  async getStats() {
-    return this.telemetryService.getDashboardSummary();
+  async getStats(@Query('days') days?: string) {
+    const numDays = days ? Math.min(Math.max(Number(days) || 14, 7), 60) : 14;
+    return this.telemetryService.getDashboardSummary(numDays);
   }
 
   @Get('leaderboard/views')
