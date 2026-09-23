@@ -25,6 +25,14 @@ export interface PlantDef {
   lightRequirements?: string;
   /** Flag potentially problematic items */
   warning?: string;
+  /** Self-watering pot compatibility (for indoor & outdoor-potted plants) */
+  selfWatering?: 'ideal' | 'caution' | 'never';
+  /** Practical guidance or precautions for self-watering pots */
+  selfWateringNote?: string;
+  /** Required soil mix composition */
+  soilType?: string;
+  /** Guidance on decorative pebbles / top dressing */
+  pebbleRule?: string;
 }
 
 export const PLANTS: PlantDef[] = [
@@ -43,6 +51,10 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'Schultz (10-15-10)',
     altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Allow top 2-3 inches of soil to dry out between waterings', 'Prone to root rot if overwatered', 'Turn frequently for even growth'],
+    selfWatering: 'caution',
+    selfWateringNote: 'Use only with coarse, chunky bark mix. Let reservoir dry out and top 2–3" dry between refills.',
+    soilType: 'Well-draining potting mix with 30% perlite and orchid bark',
+    pebbleRule: 'Avoid heavy pebbles (traps moisture and suffocates base). Breathable pumice or bare soil is best.',
   },
   {
     id: 'prayer-plant',
@@ -59,6 +71,10 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'Espoma Indoor! Liquid Plant Food',
     altFertilizers: ['AgroThrive General'],
     notes: ['Highly sensitive to tap water salts and synthetic fertilizers — use distilled/filtered water', 'Needs high humidity — use humidifier or pebble tray in AC environments', 'Leaves fold up at night like praying hands'],
+    selfWatering: 'ideal',
+    selfWateringNote: 'Thrives on consistent gentle moisture. Use distilled or filtered water to prevent leaf tip burn.',
+    soilType: 'Moisture-retentive, airy mix: 2 parts peat/coco coir, 1 part perlite, 1 part potting soil',
+    pebbleRule: 'Pebbles OK as humidity tray under pot; avoid sealing top soil with dense decorative rocks.',
   },
   {
     id: 'baby-rubber-plant',
@@ -74,6 +90,10 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'Schultz (10-15-10)',
     altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Succulent-like leaves store water — err dry', 'Stop fertilizing Oct–Feb', 'Never let sit in standing water'],
+    selfWatering: 'never',
+    selfWateringNote: 'Semi-succulent foliage stores water. Constant bottom moisture causes stem collapse and root rot.',
+    soilType: 'Fast-draining succulent/cactus mix or 50/50 potting mix and perlite',
+    pebbleRule: 'Strictly avoid top pebbles. Soil surface must evaporate freely to protect fleshy stems.',
   },
   {
     id: 'cream-allusion-arrowhead',
@@ -88,6 +108,10 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'Schultz (10-15-10)',
     altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Keep consistently moist — never soggy', 'Toxic to pets & humans', 'Brown tips = dry air; needs humidity'],
+    selfWatering: 'ideal',
+    selfWateringNote: 'Loves steady wicking moisture. Ensure mix contains ample perlite so root zone stays aerated.',
+    soilType: 'Rich, aerated tropical mix: potting soil, perlite, and peat moss (60/20/20)',
+    pebbleRule: 'Light porous pumice or leca top dressing is fine; avoid cemented or heavy solid pebble layers.',
   },
   {
     id: 'dracaena-compacta',
@@ -102,6 +126,10 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'Schultz (10-15-10)',
     altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Toxic to cats & dogs', 'Very sensitive to fluoride/chlorine — use filtered water', 'Brown tips usually = water quality, not fertilizer'],
+    selfWatering: 'never',
+    selfWateringNote: 'Prone to cane and root rot if lower root ball stays perpetually damp. Needs distinct dry cycle.',
+    soilType: 'Standard potting soil with 30% perlite or pumice for swift drainage',
+    pebbleRule: 'Avoid top pebbles. Trapped surface moisture quickly causes lower trunk rot.',
   },
   {
     id: 'ficus-burgundy',
@@ -116,6 +144,10 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'Schultz (10-15-10)',
     altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Do not move frequently — drops leaves when stressed', 'Deep color fades in low light', 'Milky sap is a skin irritant'],
+    selfWatering: 'caution',
+    selfWateringNote: 'Tolerates self-watering ONLY with very chunky mix (bark + perlite). Standard pots with dry cycles are safer.',
+    soilType: 'Chunky aroid/ficus mix: premium potting soil, pine bark, perlite, and coarse sand',
+    pebbleRule: 'Skip pebbles. Soil surface needs air exchange to dry 2–3 inches down.',
   },
   {
     id: 'inchplant',
@@ -131,6 +163,10 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'Schultz (10-15-10)',
     altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Fast grower — benefits from more frequent feeding', 'Pinch tips for bushy growth', 'Mildly toxic to pets'],
+    selfWatering: 'ideal',
+    selfWateringNote: 'Vigorous, thirsty grower. Handles self-watering very well; let reservoir empty briefly between refills.',
+    soilType: 'Lightweight all-purpose potting mix with 25% perlite',
+    pebbleRule: 'Thin layer of pumice or bare soil. Heavy decorative stones can rot trailing stems at soil contact.',
   },
   {
     id: 'monstera-adansonii',
@@ -145,6 +181,10 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'Schultz (10-15-10)',
     altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Loves humidity — mist or pebble tray in Austin summer', 'Provide moss pole for best growth', 'Toxic to pets'],
+    selfWatering: 'caution',
+    selfWateringNote: 'Aroid roots require high oxygen. Use chunky bark mix; avoid dense waterlogged peat.',
+    soilType: 'Chunky aroid mix: 40% orchid bark, 30% coco coir/peat, 20% perlite, 10% worm castings',
+    pebbleRule: 'No top pebbles. Soil surface must aerate freely to prevent fungus gnats and root rot.',
   },
   {
     id: 'nerve-plant',
@@ -159,6 +199,10 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'Schultz (10-15-10)',
     altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Never let soil dry out completely', 'Will dramatically wilt when thirsty but recovers quickly', 'Bottom-watering recommended'],
+    selfWatering: 'ideal',
+    selfWateringNote: 'Excellent candidate! Continuous wicking moisture stops sudden fainting/wilting spells completely.',
+    soilType: 'Peat-based potting mix with 20% perlite for aeration',
+    pebbleRule: 'Fine porous gravel or pumice is fine; keep soil surface breathable.',
   },
   {
     id: 'snake-plant',
@@ -174,6 +218,10 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'Schultz (10-15-10)',
     altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Allow soil to dry COMPLETELY between waterings', 'Toxic to pets', 'Never water into the crown — pour at base only', 'Can get by with just 1–2 feedings per year'],
+    selfWatering: 'never',
+    selfWateringNote: 'Succulent rhizomes rot rapidly in self-watering pots. Needs complete dry-out periods between waterings.',
+    soilType: 'Gritty cactus & succulent mix (50% inorganic pumice/perlite, 50% potting soil)',
+    pebbleRule: 'Strictly avoid decorative river pebbles. Trapped humidity under pebbles suffocates rhizomes.',
   },
   {
     id: 'spider-plant',
@@ -189,6 +237,10 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'Schultz (10-15-10)',
     altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Pet safe 🐾', 'Sensitive to fluoride — use filtered water', 'Too much fertilizer causes more brown tips than too little'],
+    selfWatering: 'caution',
+    selfWateringNote: 'Tuberous roots store significant moisture. Allow reservoir to run dry for several days between refills.',
+    soilType: 'Well-draining all-purpose potting soil with 20% perlite',
+    pebbleRule: 'Bare soil preferred. Heavy stones trap moisture against fleshy tubers and promote root rot.',
   },
   {
     id: 'zz-plant',
@@ -203,6 +255,10 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'Schultz (10-15-10)',
     altFertilizers: ['Espoma Indoor! Liquid Plant Food'],
     notes: ['Toxic if ingested — wear gloves when handling', 'Stores water in rhizomes — drought is better than overwatering', 'Very slow grower — less is more'],
+    selfWatering: 'never',
+    selfWateringNote: 'Bulbous rhizomes store months of water. Self-watering reservoirs cause fatal anaerobic root and rhizome rot.',
+    soilType: 'Fast-draining gritty mix: 50% succulent soil, 30% pumice/perlite, 20% coarse sand',
+    pebbleRule: 'Strictly avoid decorative pebbles. White or river pebbles act as a vapor barrier that smothers soil and rots rhizomes.',
   },
   {
     id: 'heartleaf-philodendron',
@@ -222,6 +278,10 @@ export const PLANTS: PlantDef[] = [
       'Trailing vine — great for hanging planters or climbing moss poles',
       'Allow top 1–2 inches of soil to dry out between waterings',
     ],
+    selfWatering: 'ideal',
+    selfWateringNote: 'Adapts wonderfully to self-watering. Ensure potting mix has plenty of perlite for root oxygenation.',
+    soilType: 'Rich, well-draining houseplant potting mix with 30% perlite and orchid bark',
+    pebbleRule: 'Light breathable top dressing OK, but bare soil is best to monitor moisture levels.',
   },
   {
     id: 'fatsia-fusion',
@@ -240,6 +300,10 @@ export const PLANTS: PlantDef[] = [
       'Pet safe 🐾 (non-toxic to cats & dogs)',
       'Keep soil consistently moist (never waterlogged); wipe leaves periodically',
     ],
+    selfWatering: 'caution',
+    selfWateringNote: 'Loves steady humidity, but cool room temps slow drying. Let reservoir run dry 2–3 days before refilling.',
+    soilType: 'Rich, fertile, well-draining loamy potting soil with 25% perlite',
+    pebbleRule: 'Avoid heavy pebble top-dressing. Keep top layer airy to prevent stem collar rot.',
   },
   {
     id: 'kings-choice-ivy',
@@ -259,6 +323,10 @@ export const PLANTS: PlantDef[] = [
       'Prefers cooler indoor temps and higher humidity; mist regularly to prevent spider mites',
       'Pinch growing tips to encourage bushy growth',
     ],
+    selfWatering: 'caution',
+    selfWateringNote: 'Roots dislike stagnant water. Use a light, fast-draining mix and let reservoir dry out between fillings.',
+    soilType: 'Standard potting soil with 30% perlite or coarse sand for sharp drainage',
+    pebbleRule: 'Bare soil is best. Decorative stones trap dampness around delicate trailing stems.',
   },
   {
     id: 'frankie-fittonia',
@@ -278,6 +346,10 @@ export const PLANTS: PlantDef[] = [
       'Keep soil consistently moist (never waterlogged); loves humidity',
       'Pet safe 🐾 (non-toxic to cats & dogs)',
     ],
+    selfWatering: 'ideal',
+    selfWateringNote: 'High humidity lover. Self-watering wicks gentle moisture continuously to keep pink foliage crisp and vibrant.',
+    soilType: 'High-organic, moisture-retentive peat/coco mix with 25% perlite',
+    pebbleRule: 'Pebble tray under pot is great for ambient humidity; avoid heavy rocks on top of soil.',
   },
 
   // ── OUTDOOR GARDEN (no watering) ─────────────────────────────────────────
@@ -295,6 +367,7 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'Espoma Garden-tone',
     altFertilizers: ['Bone meal'],
     notes: ['Cool-season — August is right time for Austin fall harvest 🎉', 'DO NOT over-fertilize with nitrogen (leafy tops, tiny roots)', 'Pre-amended soil may be sufficient'],
+    soilType: 'Loose, well-aerated sandy loam free of rocks and heavy clay (pH 6.0–7.0)',
   },
   {
     id: 'carrots',
@@ -310,6 +383,7 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'Bone meal',
     altFertilizers: ['Bone meal'],
     notes: ['Cool-season — August sowing correct for Austin fall', 'Avoid high-N (promotes tops, not roots)', 'Takes 70–80 days to maturity'],
+    soilType: 'Deep, stone-free loose sandy soil or well-tilled raised bed mix (pH 6.0–6.8)',
   },
   {
     id: 'cucumbers',
@@ -327,6 +401,7 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'AgroThrive General',
     altFertilizers: ['Espoma Garden-tone'],
     notes: ['Heavy feeder — consistent nutrition throughout season', 'Switch to P+K focus at flowering', 'Uneven watering causes bitter cucumbers'],
+    soilType: 'Rich, warm, well-draining garden loam amended with aged compost (pH 6.0–6.8)',
   },
   {
     id: 'bottle-gourd',
@@ -344,6 +419,7 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'AgroThrive General',
     altFertilizers: ['Espoma Garden-tone'],
     notes: ['Heavy feeder cucurbit', 'Mid-Aug: in fruiting — prioritize P+K over N', 'Excessive N = lush vines but poor fruit set'],
+    soilType: 'Deep, fertile, moisture-retentive garden soil rich in compost and organic matter',
   },
   {
     id: 'sponge-gourd',
@@ -355,6 +431,7 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays: [14, 21],
     fertRecommendation: 'AgroThrive General',
     notes: ['Heat-loving — thrives in Austin summer', 'Mid-Aug: switch to lower-N, higher P+K'],
+    soilType: 'Fertile, well-drained loamy garden soil with generous compost (pH 6.0–7.0)',
   },
   {
     id: 'ridge-gourd',
@@ -366,6 +443,7 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays: [14, 21],
     fertRecommendation: 'AgroThrive General',
     notes: ['Same care as other gourds', 'Harvest often to encourage continued fruiting'],
+    soilType: 'Well-draining, rich sandy loam enriched with organic compost',
   },
   {
     id: 'eggplant',
@@ -383,6 +461,7 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'AgroThrive General',
     altFertilizers: ['Espoma Garden-tone', 'Epsom salt'],
     notes: ['Heavy feeder', 'Do NOT fertilize wilting plants — water first', 'Mid-Aug: P+K focus for active fruiting'],
+    soilType: 'Deep, fertile, well-draining loamy soil enriched with organic compost (pH 5.5–6.8)',
   },
   {
     id: 'tomatoes',
@@ -400,6 +479,7 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'AgroThrive General',
     altFertilizers: ['Espoma Garden-tone', 'Epsom salt'],
     notes: ['Aug: likely in summer slump — reduce feeding in 100°F+ heat', 'Resume heavy feeding in Sept when temps drop', 'Epsom salt'],
+    soilType: 'Rich, loamy garden bed soil amended with compost, worm castings, and bone meal (pH 6.2–6.8)',
   },
   {
     id: 'bell-peppers',
@@ -417,6 +497,7 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'AgroThrive General',
     altFertilizers: ['Espoma Garden-tone', 'Epsom salt'],
     notes: ['More heat-tolerant than tomatoes', 'Mid-Aug: in fruiting — P+K focus'],
+    soilType: 'Well-drained, nutrient-rich garden loam with organic compost (pH 6.2–7.0)',
   },
   {
     id: 'thai-chillies',
@@ -434,6 +515,7 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'AgroThrive General',
     altFertilizers: ['Espoma Garden-tone', 'Epsom salt'],
     notes: ['Very heat tolerant — thriving in Austin summer', 'Lighter feeder than bell peppers'],
+    soilType: 'Well-drained sandy loam amended with aged compost and organic matter',
   },
   {
     id: 'okra',
@@ -445,6 +527,7 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays: [21, 28],
     fertRecommendation: 'Espoma Garden-tone',
     notes: ['LOVES Austin summer heat 🌞', 'Moderate feeder — avoid excess N', 'Harvest every 2–3 days to keep producing'],
+    soilType: 'Adaptable; prefers fertile, well-draining garden loam or amended native soil (pH 6.0–7.5)',
   },
   {
     id: 'watermelon',
@@ -462,6 +545,7 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'AgroThrive General',
     altFertilizers: ['Espoma Garden-tone'],
     notes: ['Reduce N, increase K as fruit swells for sweetness', 'Mid-Aug: spring plants likely nearing harvest'],
+    soilType: 'Warm, sandy loam rich in organic matter with excellent deep drainage (pH 6.0–6.8)',
   },
 
   // ── OUTDOOR POTTED (no watering) ──────────────────────────────────────────
@@ -479,6 +563,10 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays: [10, 14],
     fertRecommendation: 'Bone meal',
     notes: ['High-N = beautiful vines, no tubers — AVOID', 'STOP fertilizing 3–4 weeks before harvest', 'Takes 100–120 days to mature'],
+    selfWatering: 'caution',
+    selfWateringNote: 'High summer water consumption, but tubers rot in waterlogged soil. Let reservoir dry between refills.',
+    soilType: 'Loose, well-aerated potting mix with 30% perlite or coarse sand',
+    pebbleRule: 'Organic straw or bark mulch is better than rocks to insulate roots from Texas heat.',
   },
   {
     id: 'potatoes',
@@ -494,6 +582,10 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays: [14, 28],
     fertRecommendation: 'Bone meal',
     notes: ['Avoid high-N — causes leafy growth, small tubers', 'Stop fertilizing when foliage yellows (harvest time)', 'Epsom salt'],
+    selfWatering: 'never',
+    selfWateringNote: 'Tubers rot very quickly in standing water or perpetual bottom-wicked moisture.',
+    soilType: 'Fluffy, slightly acidic potting mix (peat, compost, perlite) easy to hill up',
+    pebbleRule: 'No pebbles. Use clean straw or pine mulch for hilling up as stems grow.',
   },
   {
     id: 'moringa',
@@ -505,6 +597,10 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays: [28, 30],
     fertRecommendation: 'Espoma Garden-tone',
     notes: ['Loves Austin heat — thrives in summer', 'Light feeder — do not over-fertilize', 'Prune regularly for bushy, harvestable growth', 'Stop in fall'],
+    selfWatering: 'never',
+    selfWateringNote: 'Deep tuberous taproot rots easily in continuous water. Needs deep drying between thorough drenchings.',
+    soilType: 'Extremely sharp-draining, gritty potting mix (40% perlite/coarse sand, 60% potting soil)',
+    pebbleRule: 'No dense top pebbles. Dark stones overheat the taproot in Texas sun; light bark mulch is safer.',
   },
   {
     id: 'orange-seedling',
@@ -517,6 +613,10 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'Schultz (10-15-10)',
     notes: ['Only 9 inches tall — ¼ strength MAX, never full strength', 'Will not fruit for 5–10+ years from seed', 'Stop fertilizing Nov–Feb'],
     warning: 'Very young seedling — use ¼ strength only to avoid root burn',
+    selfWatering: 'never',
+    selfWateringNote: 'Citrus roots demand high aeration. Saturated sub-irrigation causes rapid root suffocation.',
+    soilType: 'Citrus/cactus potting mix with extra perlite or bark for fast drainage',
+    pebbleRule: 'Bare soil or light cedar mulch kept 2 inches away from trunk.',
   },
   {
     id: 'sage',
@@ -532,6 +632,10 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays: [28, 30],
     fertRecommendation: 'Espoma Garden-tone',
     notes: ['Very light feeder — over-fertilizing reduces aroma & flavor', 'Semi-drought tolerant', 'Austin Aug: may be stressed in peak heat — give afternoon shade'],
+    selfWatering: 'never',
+    selfWateringNote: 'Mediterranean herb adapted to arid conditions. Wet root zones will kill it within weeks.',
+    soilType: 'Gritty, lean potting mix with 40% coarse sand/pumice/perlite',
+    pebbleRule: 'Porous light-colored gravel is fine, but avoid moisture-holding river pebbles or dense mulch.',
   },
   {
     id: 'mint',
@@ -543,6 +647,10 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays: [28, 30],
     fertRecommendation: 'AgroThrive General',
     notes: ['Keep in container to prevent spreading', 'Harvest frequently to prevent bolting', 'Mid-day wilting is normal — not fertilizer issue'],
+    selfWatering: 'ideal',
+    selfWateringNote: 'Loves steady moisture! Self-watering prevents severe mid-day wilt during hot Texas summers.',
+    soilType: 'Standard moisture-retaining potting mix rich in organic compost',
+    pebbleRule: 'Bare soil or light compost mulch; mint spreads via runners so pebbles hinder growth.',
   },
   {
     id: 'curry-leaf',
@@ -554,6 +662,10 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays: [28, 42],
     fertRecommendation: 'Blood meal',
     notes: ['Nitrogen-loving foliage plant', 'Loves Austin summer heat — thrives now 🌞', 'Bring indoors below 40°F', 'Harvest often for bushy growth'],
+    selfWatering: 'never',
+    selfWateringNote: 'Highly sensitive to waterlogging and root rot. Must dry out between waterings.',
+    soilType: 'Rich, well-draining potting soil with 30% perlite/coarse sand and compost',
+    pebbleRule: 'Avoid heavy pebbles. A thin layer of pine bark mulch protects from heat without smothering.',
   },
   {
     id: 'turmeric',
@@ -565,6 +677,10 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays: [14, 21],
     fertRecommendation: 'AgroThrive General',
     notes: ['Heavy feeder — consistent regular fertilization needed', 'Goes dormant in winter — foliage dies back naturally', 'Do not harvest until foliage dies back (8–10 months)'],
+    selfWatering: 'caution',
+    selfWateringNote: 'Thirsty during peak vegetative heat, but rhizomes rot easily if water stagnates in cooler months.',
+    soilType: 'Loose, rich, well-draining loamy potting soil amended with compost',
+    pebbleRule: 'Light shredded leaf/straw mulch to keep soil cool; avoid heavy decorative stones.',
   },
   {
     id: 'ginger',
@@ -582,6 +698,10 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays2: [28, 30],
     fertRecommendation2: 'Epsom salt',
     notes: ['Heavy K and Mg user — Epsom salt', 'Prefers filtered light / afternoon shade', 'Goes dormant in fall — harvest rhizomes then'],
+    selfWatering: 'caution',
+    selfWateringNote: 'Requires steady moisture in summer, but reservoir must be emptied in late fall as plant goes dormant.',
+    soilType: 'Rich, fertile potting soil with compost and 20% perlite',
+    pebbleRule: 'Light pine straw or wood mulch keeps rhizomes sheltered; no dense stones.',
   },
   {
     id: 'aloe-vera',
@@ -596,6 +716,10 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays: [28, 30],
     fertRecommendation: 'Schultz (10-15-10)',
     notes: ['VERY light feeder — some growers fertilize only 1–2x per YEAR', 'Over-fertilizing causes more harm than under', 'Let soil dry completely between waterings'],
+    selfWatering: 'never',
+    selfWateringNote: 'Desert succulent. Constant reservoir water guarantees root rot and mushy, rotting leaves.',
+    soilType: 'Sharp-draining cactus & succulent mix (50% inorganic grit/perlite/pumice)',
+    pebbleRule: 'Pure dry pumice or lava rock top dressing is acceptable; strictly avoid dense sealed pebbles.',
   },
   {
     id: 'tulsi',
@@ -607,6 +731,10 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays: [28, 30],
     fertRecommendation: 'AgroThrive General',
     notes: ['Thriving in Austin summer heat 🌞', 'Pinch flowers to extend leaf production', 'Less is more — over-feeding reduces medicinal fragrance', 'Annual in Austin — will die at first frost'],
+    selfWatering: 'caution',
+    selfWateringNote: 'High water needs in Austin summer, but roots demand good aeration. Use perlite-rich mix if self-watering.',
+    soilType: 'Fertile, well-draining potting soil with 25% perlite and compost',
+    pebbleRule: 'Thin layer of light mulch in summer heat; keep clear of main stem base.',
   },
   {
     id: 'geranium',
@@ -621,6 +749,10 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays: [14, 21],
     fertRecommendation: 'Schultz (10-15-10)',
     notes: ['May semi-rest in extreme Austin heat — reduce/pause during 100°F+ weeks', 'Deadhead spent flowers for new blooms'],
+    selfWatering: 'never',
+    selfWateringNote: 'Prone to edema and black stem rot under perpetual bottom watering.',
+    soilType: 'Light, well-draining potting mix with perlite or coarse vermiculite',
+    pebbleRule: 'Bare soil is best. Avoid top pebbles to prevent fungal stem issues.',
   },
   {
     id: 'pentas',
@@ -635,6 +767,10 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays: [14, 21],
     fertRecommendation: 'Schultz (10-15-10)',
     notes: ['Loves Austin summer heat — peak performance now 🌞', 'Excellent butterfly & hummingbird attractor', 'Deadhead to prolong blooming'],
+    selfWatering: 'ideal',
+    selfWateringNote: 'Loves steady moisture in Texas summer heat; self-watering sustains nonstop blooms.',
+    soilType: 'Rich, well-draining potting mix with organic compost',
+    pebbleRule: 'Light shredded bark mulch to retain moisture; avoid heavy stone layers.',
   },
   {
     id: 'mexican-heather',
@@ -649,6 +785,10 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays: [14, 21],
     fertRecommendation: 'Schultz (10-15-10)',
     notes: ['Thrives in Central Texas heat. Best in morning sun, afternoon shade during peak summer.'],
+    selfWatering: 'ideal',
+    selfWateringNote: 'Thrives on consistent moisture during hot Texas summers to maintain dense foliage and flowers.',
+    soilType: 'Fertile, well-draining potting soil amended with compost',
+    pebbleRule: 'Light bark mulch helps retain surface moisture in full sun.',
   },
   {
     id: 'queen-of-the-night',
@@ -662,6 +802,10 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays: [28, 42],
     fertRecommendation: 'Schultz (10-15-10)',
     notes: ['Needs bright, filtered shade (porch). Do not let it sit in standing water.'],
+    selfWatering: 'never',
+    selfWateringNote: 'Epiphytic cactus! In nature grows on tree bark. Saturated sub-irrigation quickly rots stems and roots.',
+    soilType: 'Very chunky epiphytic mix: 50% orchid bark, 30% perlite, 20% potting soil',
+    pebbleRule: 'NO decorative pebbles. Epiphytic roots require rapid surface air circulation.',
   },
   {
     id: 'snake-plant-porch',
@@ -673,6 +817,10 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays: [28, 30],
     fertRecommendation: 'Schultz (10-15-10)',
     notes: ['Keep in dappled shade or morning sun only. Protect from scorching midday sun.'],
+    selfWatering: 'never',
+    selfWateringNote: 'Porch shade reduces evaporation; self-watering reservoir will rot succulent rhizomes rapidly.',
+    soilType: 'Gritty cactus & succulent soil (50% perlite/pumice, 50% potting mix)',
+    pebbleRule: 'Avoid decorative river pebbles. Trapped moisture under pebbles leads to base rot.',
   },
   {
     id: 'gold-dust-dracaena',
@@ -687,6 +835,10 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays: [28, 30],
     fertRecommendation: 'AgroThrive General',
     notes: ['Keep in bright indirect light/shade on covered patio. Avoid direct harsh sun.'],
+    selfWatering: 'caution',
+    selfWateringNote: 'Tolerates mild moisture but hates soggy soil. Ensure gritty aerated mix and allow reservoir to dry.',
+    soilType: 'Well-draining potting mix with 30% perlite or pumice',
+    pebbleRule: 'Keep soil surface open to air; avoid thick stone coverings.',
   },
   {
     id: 'lantana',
@@ -703,6 +855,10 @@ export const PLANTS: PlantDef[] = [
     fertRecommendation: 'Espoma Garden-tone',
     notes: ['TOXIC to pets and livestock', 'Over-fertilizing causes lots of leaves, almost NO flowers', 'Lean soil = more blooms'],
     warning: 'Toxic to pets & livestock — keep away from animals',
+    selfWatering: 'never',
+    selfWateringNote: 'Extremely drought-hardy. Constant moisture causes root rot, leggy growth, and severely reduces blooming.',
+    soilType: 'Lean, well-draining sandy potting mix',
+    pebbleRule: 'Light gravel or bare soil is fine; does not need moisture-retentive topping.',
   },
   {
     id: 'hibiscus',
@@ -719,6 +875,10 @@ export const PLANTS: PlantDef[] = [
     fertFreqDays2: [28, 30],
     fertRecommendation2: 'Epsom salt',
     notes: ['NEVER fertilize wilted/dry hibiscus — water 24 hrs before', 'Heaviest feeder among ornamentals', 'Flush soil with plain water monthly to prevent salt buildup', 'Epsom salt'],
+    selfWatering: 'ideal',
+    selfWateringNote: 'Massive water consumer in Austin heat. Self-watering prevents bud drop and midday wilt.',
+    soilType: 'Rich, slightly acidic, well-draining potting soil with compost and perlite',
+    pebbleRule: '1-inch organic bark mulch helps prevent reservoir overheating in direct sun.',
   },
   {
     id: 'rosemary',
@@ -740,6 +900,10 @@ export const PLANTS: PlantDef[] = [
       'Light feeder — over-fertilizing reduces aroma and flavor concentration',
       'Perennial evergreen herb — harvest fresh sprigs year-round',
     ],
+    selfWatering: 'never',
+    selfWateringNote: 'Native to dry Mediterranean cliffs. Saturated bottom wicking causes fatal fungal root rot.',
+    soilType: 'Gritty, alkaline, extremely well-draining mix (50% potting soil, 50% sand/perlite/pumice)',
+    pebbleRule: 'Coarse breathable gravel top dressing is fine, but never seal with dense or glazed pebbles.',
   },
   {
     id: 'cauliflower',
@@ -761,6 +925,10 @@ export const PLANTS: PlantDef[] = [
       'Cool-season brassica — thrives in Austin fall/winter (Sept–Feb)',
       'Uneven watering causes loose "ricey" or separated buttons',
     ],
+    selfWatering: 'ideal',
+    selfWateringNote: 'Consistent moisture is critical to avoid buttoning or loose curds. Excellent for sub-irrigation planters.',
+    soilType: 'Rich, moisture-retentive potting mix heavily amended with compost and worm castings',
+    pebbleRule: 'Clean organic straw or light mulch around base helps retain moisture and cool roots.',
   },
 ];
 

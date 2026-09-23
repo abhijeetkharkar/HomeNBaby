@@ -71,8 +71,15 @@ export function PlantCard({ plant, lastWater, lastFert, lastFert2, onLog }: Prop
             </div>
           )}
           
-          {plant.warning && (
-            <div className="front-warning-top">⚠️ Toxic to pets</div>
+          {(plant.warning || (plant.group !== 'outdoor-garden' && plant.selfWatering === 'never')) && (
+            <div className="front-badges-container">
+              {plant.warning && (
+                <div className="front-warning-top">⚠️ {plant.warning.replace(/^⚠️\s*/, '')}</div>
+              )}
+              {plant.group !== 'outdoor-garden' && plant.selfWatering === 'never' && (
+                <div className="front-warning-top front-no-self-water-top">⚠️ No Self-Watering</div>
+              )}
+            </div>
           )}
           
           <div className="front-info-panel">
@@ -173,6 +180,36 @@ export function PlantCard({ plant, lastWater, lastFert, lastFert2, onLog }: Prop
                 <div className="meta-item full-width">
                   <span className="meta-label">⏱️ Seed to Harvest</span>
                   <span className="meta-val">{plant.seedToFruitTime}</span>
+                </div>
+              )}
+
+              {plant.group !== 'outdoor-garden' && plant.selfWatering && (
+                <div className="meta-item full-width">
+                  <span className="meta-label">🪴 Pot Type</span>
+                  <div className="meta-val-block">
+                    <span className={`meta-pill meta-pill-${plant.selfWatering}`}>
+                      {plant.selfWatering === 'never' && '⛔ Standard Pot Only (No Self-Water)'}
+                      {plant.selfWatering === 'caution' && '⚠️ Caution with Self-Watering'}
+                      {plant.selfWatering === 'ideal' && '✅ Great for Self-Watering'}
+                    </span>
+                    {plant.selfWateringNote && (
+                      <span className="meta-subtext">{plant.selfWateringNote}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {plant.soilType && (
+                <div className="meta-item full-width">
+                  <span className="meta-label">🌱 Soil Mix</span>
+                  <span className="meta-val">{plant.soilType}</span>
+                </div>
+              )}
+
+              {plant.group !== 'outdoor-garden' && plant.pebbleRule && (
+                <div className="meta-item full-width">
+                  <span className="meta-label">🪨 Pebbles / Top Dressing</span>
+                  <span className="meta-val">{plant.pebbleRule}</span>
                 </div>
               )}
 
