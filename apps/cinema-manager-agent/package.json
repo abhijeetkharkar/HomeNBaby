@@ -15,17 +15,16 @@
   },
   "dependencies": {
     "chokidar": "^3.5.3",
-    "node-windows": "^1.0.0-beta.8",
-    "node-fetch": "^3.3.2",
-    "fs-extra": "^11.1.1"
+    "fs-extra": "^11.1.1",
+    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
-    "@types/node": "^20.8.0",
-    "@types/node-windows": "^0.1.6",
-    "@types/node-fetch": "^2.6.6",
     "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.8.0",
+    "@types/node-fetch": "^2.6.6",
     "electron": "^27.0.0",
     "electron-builder": "^24.6.4",
+    "resedit": "^3.1.0",
     "ts-node": "^10.9.1",
     "typescript": "^5.2.2"
   },

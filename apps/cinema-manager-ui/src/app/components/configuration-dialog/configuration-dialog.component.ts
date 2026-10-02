@@ -62,9 +62,12 @@ export class ConfigurationDialog implements OnInit {
   addPath(): void {
     if (!this.newPath.trim()) return;
     this.isLoading = true;
-    this.apiService.addLookupPath(this.newPath.trim()).subscribe({
+    const pathToAdd = this.newPath.trim();
+    this.apiService.addLookupPath(pathToAdd).subscribe({
       next: (created) => {
         this.lookupPaths.push(created);
+        const allPaths = this.lookupPaths.map((p) => p.path);
+        this.apiService.updateLocalAgentPaths(allPaths);
         this.newPath = '';
         this.isLoading = false;
         this.successMessage = 'Folder path added successfully';
@@ -81,6 +84,8 @@ export class ConfigurationDialog implements OnInit {
     this.apiService.deleteLookupPath(id).subscribe({
       next: () => {
         this.lookupPaths = this.lookupPaths.filter((p) => p.id !== id);
+        const allPaths = this.lookupPaths.map((p) => p.path);
+        this.apiService.updateLocalAgentPaths(allPaths);
       },
       error: (err) => {
         this.errorMessage = 'Failed to delete path. ' + err.message;

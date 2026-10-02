@@ -19,6 +19,7 @@ describe('CinemaGalleryComponent', () => {
       checkLocalDevice: jest.fn().mockResolvedValue({
         status: 'ok',
         agent: 'cinema-agent',
+        isPaired: true,
         agentId: 'agent-test',
         agentName: 'Test Media PC',
         hostname: 'localhost',
@@ -83,6 +84,57 @@ describe('CinemaGalleryComponent', () => {
     component.onSearchChange();
 
     expect(component.displayedCinemas.length).toBe(1);
+    fixture.destroy();
+  });
+
+  it('should paginate cinemas with default 10 per page and navigate pages', async () => {
+    const fixture = TestBed.createComponent(CinemaGalleryComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const component = fixture.componentInstance;
+
+    const testMovies: any[] = [];
+    for (let i = 1; i <= 35; i++) {
+      testMovies.push({
+        id: i,
+        title: `Movie ${i}`,
+        path: `C:\\Videos\\Movie${i}.mp4`,
+      });
+    }
+    component.allCinemas = testMovies;
+    component.applyFilterAndSort();
+
+    expect(component.pageSize).toBe(10);
+    expect(component.displayedCinemas.length).toBe(35);
+    expect(component.totalPages).toBe(4);
+    expect(component.paginatedCinemas.length).toBe(10);
+    expect(component.paginatedCinemas[0].title).toBe('Movie 1');
+
+    // Next page
+    component.nextPage();
+    expect(component.pageIndex).toBe(1);
+    expect(component.paginatedCinemas.length).toBe(10);
+    expect(component.paginatedCinemas[0].title).toBe('Movie 11');
+
+    // Go to last page (index 3)
+    component.goToPage(3);
+    expect(component.pageIndex).toBe(3);
+    expect(component.paginatedCinemas.length).toBe(5);
+    expect(component.paginatedCinemas[0].title).toBe('Movie 31');
+
+    // Prev page
+    component.prevPage();
+    expect(component.pageIndex).toBe(2);
+    expect(component.paginatedCinemas.length).toBe(10);
+    expect(component.paginatedCinemas[0].title).toBe('Movie 21');
+
+    // Change page size to 20
+    component.onPageSizeChange(20);
+    expect(component.pageSize).toBe(20);
+    expect(component.pageIndex).toBe(0);
+    expect(component.paginatedCinemas.length).toBe(20);
+    expect(component.totalPages).toBe(2);
+
     fixture.destroy();
   });
 });

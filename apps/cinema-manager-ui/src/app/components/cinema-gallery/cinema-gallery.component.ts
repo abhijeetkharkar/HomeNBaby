@@ -9,6 +9,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { Cinema } from '@cinema-manager/models';
 import { CinemaManagerApiService, DeviceInfo } from '../../services/cinema-manager-api.service';
+import { AuthService } from '../../services/auth.service';
 import { CinemaComponent } from '../cinema/cinema.component';
 import { ConfigurationDialog } from '../configuration-dialog/configuration-dialog.component';
 
@@ -31,11 +32,17 @@ import { ConfigurationDialog } from '../configuration-dialog/configuration-dialo
 })
 export class CinemaGalleryComponent implements OnInit, OnDestroy {
   private readonly cinemaApiService = inject(CinemaManagerApiService);
+  private readonly authService = inject(AuthService, { optional: true });
   private readonly dialog = inject(MatDialog);
   private readonly ngZone = inject(NgZone);
+  private isPairingInProgress = false;
 
   allCinemas: Cinema[] = [];
   displayedCinemas: Cinema[] = [];
+  paginatedCinemas: Cinema[] = [];
+  pageSize = 10;
+  pageIndex = 0;
+  pageSizeOptions = [10, 20, 50, 100];
   isLoading = false;
   isCheckingDevice = true;
   isAgentConnected = false;
@@ -146,14 +153,40 @@ export class CinemaGalleryComponent implements OnInit, OnDestroy {
 
     const device = await this.cinemaApiService.checkLocalDevice();
 
-    if (device) {
+    if (device && device.status === 'ok') {
+      if (!device.isPaired && this.authService && !this.isPairingInProgress) {
+        this.isPairingInProgress = true;
+        try {
+          console.log('[CinemaGallery] Unpaired local agent detected. Auto-pairing...');
+          const pairCodeRes = await this.authService.getPairingCode();
+          const lookupPaths = await new Promise<string[]>((resolve) => {
+            this.cinemaApiService.getLookupPaths().subscribe({
+              next: (paths) => resolve(paths.map((p) => p.path)),
+              error: () => resolve([]),
+            });
+          });
+          const pairRes = await this.cinemaApiService.pairLocalAgent(pairCodeRes.code, lookupPaths);
+          if (pairRes.success) {
+            device.isPaired = true;
+            device.agentName = pairRes.agentName || device.agentName;
+            console.log('[CinemaGallery] Successfully auto-paired agent:', device.agentName);
+          } else {
+            console.warn('[CinemaGallery] Auto-pair failed:', pairRes.error);
+          }
+        } catch (err) {
+          console.warn('[CinemaGallery] Could not auto-pair agent:', err);
+        } finally {
+          this.isPairingInProgress = false;
+        }
+      }
+
       const wasConnected = this.isAgentConnected;
-      this.isAgentConnected = true;
+      this.isAgentConnected = device.isPaired === true;
       this.currentDevice = device;
       this.isCheckingDevice = false;
       this.failedPollCount = 0;
 
-      if (!wasConnected || this.allCinemas.length === 0) {
+      if ((!wasConnected || this.allCinemas.length === 0) && device.isPaired) {
         this.loadCinemas();
       }
     } else {
@@ -203,21 +236,25 @@ export class CinemaGalleryComponent implements OnInit, OnDestroy {
   }
 
   onSearchChange(): void {
+    this.pageIndex = 0;
     this.applyFilterAndSort();
   }
 
   clearSearch(): void {
     this.searchQuery = '';
+    this.pageIndex = 0;
     this.applyFilterAndSort();
   }
 
   selectGenre(genre: string): void {
     this.selectedGenre = genre;
+    this.pageIndex = 0;
     this.applyFilterAndSort();
   }
 
   setSort(sort: string): void {
     this.selectedSort = sort;
+    this.pageIndex = 0;
     this.applyFilterAndSort();
   }
 
@@ -254,6 +291,107 @@ export class CinemaGalleryComponent implements OnInit, OnDestroy {
     }
 
     this.displayedCinemas = list;
+    this.updatePagination();
+  }
+
+  get totalPages(): number {
+    return Math.ceil(this.displayedCinemas.length / this.pageSize) || 1;
+  }
+
+  get startIndex(): number {
+    return this.pageIndex * this.pageSize;
+  }
+
+  get endIndex(): number {
+    return Math.min(this.startIndex + this.pageSize, this.displayedCinemas.length);
+  }
+
+  updatePagination(): void {
+    const maxPageIndex = Math.max(0, Math.ceil(this.displayedCinemas.length / this.pageSize) - 1);
+    if (this.pageIndex > maxPageIndex) {
+      this.pageIndex = maxPageIndex;
+    }
+    const startIndex = this.pageIndex * this.pageSize;
+    this.paginatedCinemas = this.displayedCinemas.slice(startIndex, startIndex + this.pageSize);
+  }
+
+  goToPage(index: number): void {
+    if (index < 0 || index >= this.totalPages || index === this.pageIndex) return;
+    this.pageIndex = index;
+    this.updatePagination();
+    this.scrollToTop();
+  }
+
+  prevPage(): void {
+    if (this.pageIndex > 0) {
+      this.goToPage(this.pageIndex - 1);
+    }
+  }
+
+  nextPage(): void {
+    if (this.pageIndex < this.totalPages - 1) {
+      this.goToPage(this.pageIndex + 1);
+    }
+  }
+
+  onPageSizeChange(newSize: any): void {
+    this.pageSize = Number(newSize);
+    this.pageIndex = 0;
+    this.updatePagination();
+    this.scrollToTop();
+  }
+
+  onPageChange(event: { pageIndex: number; pageSize: number }): void {
+    this.pageSize = event.pageSize;
+    this.pageIndex = event.pageIndex;
+    this.updatePagination();
+    this.scrollToTop();
+  }
+
+  private scrollToTop(): void {
+    if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+      try {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch {}
+    }
+  }
+
+  getPageNumbers(): (number | string)[] {
+    const total = this.totalPages;
+    const current = this.pageIndex + 1; // 1-based for display
+
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+
+    const pages: (number | string)[] = [];
+
+    if (current <= 4) {
+      // Near beginning: 1 2 3 4 5 ... total
+      for (let i = 1; i <= 5; i++) {
+        pages.push(i);
+      }
+      pages.push('...');
+      pages.push(total);
+    } else if (current >= total - 3) {
+      // Near end: 1 ... total-4 total-3 total-2 total-1 total
+      pages.push(1);
+      pages.push('...');
+      for (let i = total - 4; i <= total; i++) {
+        pages.push(i);
+      }
+    } else {
+      // In middle: 1 ... current-1 current current+1 ... total
+      pages.push(1);
+      pages.push('...');
+      pages.push(current - 1);
+      pages.push(current);
+      pages.push(current + 1);
+      pages.push('...');
+      pages.push(total);
+    }
+
+    return pages;
   }
 
   deleteCinema(cinema: Cinema): void {

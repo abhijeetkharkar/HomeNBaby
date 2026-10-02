@@ -46,7 +46,7 @@ export class CinemaComponent {
 
   startCinema(): void {
     if (this.cinema.path) {
-      this.cinemaApiService.playVideo(this.cinema.path);
+      this.cinemaApiService.playVideo(this.cinema.path, this.cinema.title);
       this.telemetryService.recordView({
         id: this.cinema.id,
         title: this.cinema.title,

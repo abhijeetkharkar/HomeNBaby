@@ -1,22 +1,7 @@
 {
-  "auth0": {
-    "domain": "your-domain.auth0.com",
-    "clientId": "your-m2m-client-id",
-    "clientSecret": "your-m2m-client-secret",
-    "audience": "https://api.abhijeetkharkar.com/cinema-manager"
-  },
   "api": {
     "baseUrl": "https://api.abhijeetkharkar.com/cinema-manager",
     "timeout": 30000,
     "retryCount": 3
-  },
-  "agent": {
-    "id": "auto-generated-agent-id",
-    "name": "Cinema Agent - Default",
-    "watchPaths": [
-      "C:\\Users\\Public\\Videos",
-      "C:\\Users\\%USERNAME%\\Downloads",
-      "C:\\Users\\%USERNAME%\\Videos"
-    ]
   }
 }

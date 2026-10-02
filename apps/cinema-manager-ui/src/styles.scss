@@ -78,3 +78,51 @@ html, body {
   color: var(--text-primary) !important;
   border: 1px solid var(--border-subtle) !important;
 }
+
+/* Prominent Cinema Toast Notification */
+.cinema-prominent-snackbar {
+  margin-bottom: 2.5rem !important;
+
+  .mdc-snackbar__surface {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+    border: 2px solid var(--accent-primary) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85), 0 0 25px rgba(229, 9, 20, 0.4) !important;
+    padding: 0.85rem 1.75rem !important;
+    min-width: 380px !important;
+    max-width: 90vw !important;
+  }
+
+  .mdc-snackbar__label {
+    font-size: 1.05rem !important;
+    font-weight: 600 !important;
+    color: #ffffff !important;
+    letter-spacing: 0.015em !important;
+  }
+
+  .mdc-snackbar__actions {
+    .mat-mdc-button, .mdc-button {
+      color: #ff4d4d !important;
+      font-weight: 700 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.05em !important;
+
+      &:hover {
+        background-color: rgba(229, 9, 20, 0.15) !important;
+      }
+    }
+  }
+
+  &.cinema-error-snackbar {
+    .mdc-snackbar__surface {
+      border-color: #f59e0b !important;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85), 0 0 25px rgba(245, 158, 11, 0.35) !important;
+    }
+
+    .mdc-snackbar__actions .mat-mdc-button,
+    .mdc-snackbar__actions .mdc-button {
+      color: #f59e0b !important;
+    }
+  }
+}
+

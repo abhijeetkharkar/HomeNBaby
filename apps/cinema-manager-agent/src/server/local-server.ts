@@ -3,27 +3,96 @@ import * as url from 'url';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 
 /**
  * Local lightweight HTTP server running on 127.0.0.1:3334
  * Allows the Cinema Manager Web UI to trigger native local video playback
  * and verify local device identity and watched paths.
  */
+export interface LocalServerOptions {
+  getWatchPaths?: () => string[];
+  getAgentId?: () => string;
+  agentId?: string;
+  agentName?: string;
+  isPaired?: () => boolean;
+  onPair?: (
+    pairingCode: string,
+    watchPaths?: string[]
+  ) => Promise<{ deviceId: string; agentName: string; watchPaths?: string[] }>;
+  onUpdatePaths?: (watchPaths: string[]) => Promise<void> | void;
+}
+
 export class LocalServer {
   private server?: http.Server;
   private readonly port: number = 3334;
   private readonly host: string = '127.0.0.1';
 
+  private readonly getWatchPaths?: () => string[];
+  private readonly getAgentId?: () => string;
+  private readonly agentId?: string;
+  private readonly agentName?: string;
+  private readonly isPaired?: () => boolean;
+  private readonly onPair?: (
+    pairingCode: string,
+    watchPaths?: string[]
+  ) => Promise<{ deviceId: string; agentName: string; watchPaths?: string[] }>;
+  private readonly onUpdatePaths?: (watchPaths: string[]) => Promise<void> | void;
+  private activePaths: string[] = [];
+
   constructor(
-    private readonly getWatchPaths?: () => string[],
-    private readonly agentId?: string,
-    private readonly agentName?: string
-  ) {}
+    getWatchPathsOrOptions?: (() => string[]) | LocalServerOptions,
+    agentId?: string,
+    agentName?: string,
+    isPaired?: () => boolean,
+    onPair?: (
+      pairingCode: string,
+      watchPaths?: string[]
+    ) => Promise<{ deviceId: string; agentName: string; watchPaths?: string[] }>,
+    onUpdatePaths?: (watchPaths: string[]) => Promise<void> | void
+  ) {
+    if (typeof getWatchPathsOrOptions === 'function') {
+      this.getWatchPaths = getWatchPathsOrOptions;
+      this.agentId = agentId;
+      this.agentName = agentName;
+      this.isPaired = isPaired;
+      this.onPair = onPair;
+      this.onUpdatePaths = onUpdatePaths;
+    } else if (getWatchPathsOrOptions) {
+      this.getWatchPaths = getWatchPathsOrOptions.getWatchPaths;
+      this.getAgentId = getWatchPathsOrOptions.getAgentId;
+      this.agentId = getWatchPathsOrOptions.agentId;
+      this.agentName = getWatchPathsOrOptions.agentName;
+      this.isPaired = getWatchPathsOrOptions.isPaired;
+      this.onPair = getWatchPathsOrOptions.onPair;
+      this.onUpdatePaths = getWatchPathsOrOptions.onUpdatePaths;
+    }
+  }
+
+  private parseJsonBody(req: http.IncomingMessage): Promise<any> {
+    return new Promise((resolve, reject) => {
+      let body = '';
+      req.on('data', (chunk) => {
+        body += chunk;
+        if (body.length > 1e6) {
+          req.destroy();
+          reject(new Error('Payload too large'));
+        }
+      });
+      req.on('end', () => {
+        try {
+          resolve(body ? JSON.parse(body) : {});
+        } catch (e) {
+          reject(new Error('Invalid JSON'));
+        }
+      });
+      req.on('error', (err) => reject(err));
+    });
+  }
 
   start(): void {
     try {
-      this.server = http.createServer((req, res) => {
+      this.server = http.createServer(async (req, res) => {
         const origin = req.headers.origin as string;
         const allowedOrigins = [
           'https://cinema.abhijeetkharkar.com',
@@ -50,13 +119,18 @@ export class LocalServer {
 
         const parsedUrl = url.parse(req.url || '', true);
 
-        // /health or /device-info: Returns device identity and authorized watch paths
+        // /health or /device-info: Returns device identity, paired state, and authorized watch paths
         if (parsedUrl.pathname === '/health' || parsedUrl.pathname === '/device-info') {
-          const currentPaths = this.getWatchPaths ? this.getWatchPaths() : [];
+          const livePaths = this.getWatchPaths ? this.getWatchPaths() : [];
+          const currentPaths = livePaths.length > 0 ? livePaths : this.activePaths;
+          const effectiveAgentId = this.getAgentId
+            ? this.getAgentId()
+            : this.agentId || os.hostname();
           const deviceInfo = {
             status: 'ok',
             agent: 'CinemaManagerAgent',
-            agentId: this.agentId || os.hostname(),
+            isPaired: this.isPaired ? this.isPaired() : false,
+            agentId: effectiveAgentId,
             agentName: this.agentName || `Cinema Agent - ${os.hostname()}`,
             hostname: os.hostname(),
             platform: process.platform,
@@ -67,6 +141,62 @@ export class LocalServer {
           return;
         }
 
+        // POST /pair: Direct browser-to-agent pairing endpoint
+        if (parsedUrl.pathname === '/pair' && req.method === 'POST') {
+          try {
+            const body = await this.parseJsonBody(req);
+            const { pairingCode, watchPaths } = body;
+            if (!pairingCode) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: false, error: 'Missing pairingCode' }));
+              return;
+            }
+            if (!this.onPair) {
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: false, error: 'Pairing handler not configured on agent' }));
+              return;
+            }
+
+            console.log(`[LocalServer] Received pairing request from browser for code: ${pairingCode}`);
+            if (watchPaths && Array.isArray(watchPaths)) {
+              this.activePaths = watchPaths;
+            }
+            const result = await this.onPair(pairingCode, watchPaths);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, ...result }));
+          } catch (err: any) {
+            console.error('[LocalServer] Pairing error:', err.message);
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: err.message }));
+          }
+          return;
+        }
+
+        // POST /config/paths: Dynamically update watched media folders
+        if (parsedUrl.pathname === '/config/paths' && req.method === 'POST') {
+          try {
+            const body = await this.parseJsonBody(req);
+            const { watchPaths } = body;
+            if (!Array.isArray(watchPaths)) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: false, error: 'watchPaths must be an array of directory paths' }));
+              return;
+            }
+            this.activePaths = watchPaths;
+            if (this.onUpdatePaths) {
+              await this.onUpdatePaths(watchPaths);
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, watchPaths }));
+          } catch (err: any) {
+            console.error('[LocalServer] Path update error:', err.message);
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: err.message }));
+          }
+          return;
+        }
+
+        // GET /open: Native video player launch
         if (parsedUrl.pathname === '/open') {
           const rawPath = parsedUrl.query.path as string;
           if (!rawPath) {
@@ -75,7 +205,7 @@ export class LocalServer {
             return;
           }
 
-          const decodedPath = decodeURIComponent(rawPath);
+          const decodedPath = decodeURIComponent(rawPath).trim().replace(/^["']|["']$/g, '');
           const currentPaths = this.getWatchPaths ? this.getWatchPaths() : [];
 
           // Sandbox validation: Ensure the path is within one of the authorized watchPaths
@@ -101,17 +231,44 @@ export class LocalServer {
 
           console.log(`Received verified request to launch video: ${decodedPath}`);
 
-          // Launch file with native Windows default player (e.g. VLC / MPC / Windows Media Player)
+          // Explicitly launch VLC Media Player if installed, with graceful system fallback
           if (process.platform === 'win32') {
-            exec(`start "" "${decodedPath}"`, (err) => {
-              if (err) {
-                console.error('Failed to launch video player:', err);
-              } else {
-                console.log(`Launched video player for: ${decodedPath}`);
-              }
-            });
+            const vlcCandidates = [
+              'C:\\Program Files\\VideoLAN\\VLC\\vlc.exe',
+              'C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe',
+              path.join(os.homedir(), 'AppData\\Local\\Programs\\VideoLAN\\VLC\\vlc.exe'),
+            ];
+            const vlcPath = vlcCandidates.find((p) => fs.existsSync(p));
+
+            if (vlcPath) {
+              console.log(`Launching VLC player via Windows Shell: ${vlcPath}`);
+              const escapedVlc = vlcPath.replace(/'/g, "''");
+              const escapedVideo = decodedPath.replace(/'/g, "''");
+              // Use [System.Diagnostics.Process]::Start to pass literal double quotes so paths with spaces are never split
+              const psCmd = `powershell -NoProfile -Command "[System.Diagnostics.Process]::Start('${escapedVlc}', '\\"${escapedVideo}\\"')"`;
+              exec(psCmd, (err) => {
+                if (err) {
+                  console.error('[LocalServer] Failed to launch VLC via Process.Start:', err);
+                  exec(`explorer "${decodedPath}"`);
+                }
+              });
+            } else {
+              console.log(`VLC not found at standard paths, launching via Windows default association: ${decodedPath}`);
+              exec(`explorer "${decodedPath}"`, (err) => {
+                if (err) {
+                  console.error('Failed to launch video player via explorer:', err);
+                }
+              });
+            }
+          } else if (process.platform === 'darwin') {
+            const vlcApp = '/Applications/VLC.app';
+            if (fs.existsSync(vlcApp)) {
+              exec(`open -a "/Applications/VLC.app" "${decodedPath}"`);
+            } else {
+              exec(`open "${decodedPath}"`);
+            }
           } else {
-            exec(`xdg-open "${decodedPath}"`);
+            exec(`vlc "${decodedPath}" || xdg-open "${decodedPath}"`);
           }
 
           res.writeHead(200, { 'Content-Type': 'application/json' });

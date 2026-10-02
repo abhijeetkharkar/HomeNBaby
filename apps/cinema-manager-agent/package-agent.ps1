@@ -31,21 +31,88 @@ Write-Host "[2/3] Compiling standalone Windows .exe..." -ForegroundColor Yellow
 $TargetExe = Join-Path $OutPath "cinema-agent.exe"
 npx --yes pkg $BundleJs --target node18-win-x64 --output $TargetExe
 
+# 3.1 Embed Favicon Icon and set GUI Subsystem (windowless)
+Write-Host "[2.5/3] Embedding favicon icon and configuring windowless subsystem..." -ForegroundColor Yellow
+$FaviconIco = Join-Path $WorkspaceRoot "apps\cinema-manager-ui\public\favicon.ico"
+$PostProcessScript = @"
+const ResEdit = require('resedit');
+const fs = require('fs');
+
+const targetExe = process.argv[2];
+const iconPath = process.argv[3];
+
+if (fs.existsSync(targetExe) && fs.existsSync(iconPath)) {
+  const exeBuffer = fs.readFileSync(targetExe);
+  const exe = ResEdit.NtExecutable.from(exeBuffer);
+  const res = ResEdit.NtExecutableResource.from(exe);
+  // Replace icon with web UI favicon
+  const iconFile = ResEdit.Data.IconFile.from(fs.readFileSync(iconPath));
+  ResEdit.Resource.IconGroupEntry.replaceIconsForResource(
+    res.entries,
+    1,
+    1033,
+    iconFile.icons.map(item => item.data)
+  );
+
+  // Set PE VersionInfo strings so Windows Task Manager shows 'Cinema Manager Agent' instead of 'Node.js JavaScript Runtime'
+  const viList = ResEdit.Resource.VersionInfo.fromEntries(res.entries);
+  let vi = viList[0];
+  if (!vi) {
+    vi = ResEdit.Resource.VersionInfo.createEmpty();
+  }
+  vi.setStringValues({ lang: 1033, codepage: 1200 }, {
+    FileDescription: 'Cinema Manager Agent',
+    ProductName: 'Cinema Manager',
+    CompanyName: 'Abhijeet Kharkar',
+    OriginalFilename: 'cinema-agent.exe',
+    InternalName: 'cinema-agent.exe',
+    LegalCopyright: 'Copyright (c) Abhijeet Kharkar. All rights reserved.'
+  });
+  vi.outputToResourceEntries(res.entries);
+
+  res.outputResource(exe);
+  let updatedBuf = Buffer.from(exe.generate());
+
+  // Set PE Subsystem to 2 (IMAGE_SUBSYSTEM_WINDOWS_GUI) for silent, windowless background run
+  const peOffset = updatedBuf.readUInt32LE(0x3c);
+  const magic = updatedBuf.readUInt16LE(peOffset + 24);
+  const subsystemOffset = peOffset + (magic === 0x20b ? 92 : 68);
+  updatedBuf.writeUInt16LE(2, subsystemOffset);
+
+  fs.writeFileSync(targetExe, updatedBuf);
+  console.log('Successfully embedded favicon icon, updated VersionInfo to "Cinema Manager Agent", and set GUI windowless subsystem!');
+}
+"@
+$PostJs = Join-Path $AppRoot "dist\postprocess-exe.js"
+Set-Content -Path $PostJs -Value $PostProcessScript
+Push-Location $AppRoot
+try {
+    node dist/postprocess-exe.js "$TargetExe" "$FaviconIco"
+} finally {
+    Pop-Location
+    Remove-Item $PostJs -ErrorAction SilentlyContinue
+}
+
 # 4. Copy configuration & helper scripts
 Write-Host "[3/3] Creating configuration and launcher scripts..." -ForegroundColor Yellow
 $ConfigSrc = Join-Path $AppRoot "config\service.json"
 $ConfigDest = Join-Path $OutPath "service.json"
-if (-not (Test-Path $ConfigDest)) {
-    Copy-Item -Path $ConfigSrc -Destination $ConfigDest -Force
-}
+Copy-Item -Path $ConfigSrc -Destination $ConfigDest -Force
 
 # Create install-service.bat
 $InstallBat = @"
 @echo off
 echo ==============================================
-echo Installing Cinema Manager Windows Service...
+echo Installing Cinema Manager Desktop Companion...
 echo ==============================================
 "%~dp0cinema-agent.exe" --install
+start "" "%~dp0cinema-agent.exe"
+echo.
+echo ==============================================
+echo [SUCCESS] Cinema Manager Agent installed!
+echo The agent is running silently in the background
+echo and will start automatically whenever you log in.
+echo ==============================================
 pause
 "@
 Set-Content -Path (Join-Path $OutPath "install-service.bat") -Value $InstallBat
@@ -54,9 +121,13 @@ Set-Content -Path (Join-Path $OutPath "install-service.bat") -Value $InstallBat
 $UninstallBat = @"
 @echo off
 echo ==============================================
-echo Uninstalling Cinema Manager Windows Service...
+echo Uninstalling Cinema Manager Desktop Companion...
 echo ==============================================
 "%~dp0cinema-agent.exe" --uninstall
+echo.
+echo ==============================================
+echo [SUCCESS] Cinema Manager Agent uninstalled.
+echo ==============================================
 pause
 "@
 Set-Content -Path (Join-Path $OutPath "uninstall-service.bat") -Value $UninstallBat
@@ -64,7 +135,7 @@ Set-Content -Path (Join-Path $OutPath "uninstall-service.bat") -Value $Uninstall
 # Create run.bat (Foreground Console Mode)
 $RunBat = @"
 @echo off
-echo Starting Cinema Manager Agent in Console Mode...
+echo Starting Cinema Manager Desktop Companion in Console Mode...
 "%~dp0cinema-agent.exe"
 pause
 "@
@@ -73,26 +144,26 @@ Set-Content -Path (Join-Path $OutPath "run.bat") -Value $RunBat
 # Create README.txt
 $Readme = @"
 ======================================================
-  CINEMA MANAGER AGENT (Standalone Windows Distribution)
+  CINEMA MANAGER AGENT (Desktop Companion)
 ======================================================
 
-HOW TO RUN:
+QUICK START:
 
-1. CONFIGURE FOLDERS:
-   Open 'service.json' in Notepad and update 'watchPaths' with the 
-   folders you want to monitor (e.g. D:\Movies, C:\Users\Downloads).
+1. RUN AS BACKGROUND SERVICE (Recommended):
+   Double-click 'install-service.bat'.
+   The agent will configure auto-start on logon and begin 
+   running quietly in the background.
 
-2. RUN IN CONSOLE (Testing):
-   Double-click 'run.bat' or run 'cinema-agent.exe'.
+2. FOREGROUND / TESTING MODE:
+   Double-click 'run.bat' or 'cinema-agent.exe'.
 
-3. RUN AS BACKGROUND WINDOWS SERVICE (Recommended):
-   Right-click 'install-service.bat' and select 'Run as administrator'.
-   The agent will start automatically in the background and 
-   run on system boot.
+3. CONNECT WITH WEB APP:
+   Open https://cinema.abhijeetkharkar.com
+   The onboarding wizard will detect this agent automatically 
+   and link your media library.
 
-4. TO UNINSTALL SERVICE:
-   Right-click 'uninstall-service.bat' and select 'Run as administrator'.
-
+4. TO UNINSTALL:
+   Double-click 'uninstall-service.bat'.
 ======================================================
 "@
 Set-Content -Path (Join-Path $OutPath "README.txt") -Value $Readme
