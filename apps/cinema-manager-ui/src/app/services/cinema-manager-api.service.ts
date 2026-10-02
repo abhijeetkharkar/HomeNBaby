@@ -14,6 +14,7 @@ export interface DeviceInfo {
   hostname: string;
   platform?: string;
   watchPaths: string[];
+  isPaired?: boolean;
 }
 
 @Injectable({
@@ -58,6 +59,56 @@ export class CinemaManagerApiService {
       return null;
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Directly pair local agent via HTTP loopback
+   */
+  async pairLocalAgent(
+    pairingCode: string,
+    watchPaths?: string[]
+  ): Promise<{ success: boolean; deviceId?: string; agentName?: string; error?: string }> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch('http://127.0.0.1:3334/pair', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pairingCode,
+          watchPaths,
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      return (await response.json()) as any;
+    } catch (err: any) {
+      console.warn('Failed to pair local agent over loopback:', err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Dynamically update watched paths on local agent
+   */
+  async updateLocalAgentPaths(watchPaths: string[]): Promise<boolean> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+      const response = await fetch('http://127.0.0.1:3334/config/paths', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ watchPaths }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      return response.ok;
+    } catch {
+      return false;
     }
   }
 
@@ -151,19 +202,35 @@ export class CinemaManagerApiService {
   /**
    * Play or open video file path
    */
-  async playVideo(filePath: string): Promise<void> {
+  async playVideo(filePath: string, title?: string): Promise<void> {
     if (!filePath) return;
     try {
       // 1. Try launching through local Cinema Agent HTTP server
       const localAgentUrl = `http://127.0.0.1:3334/open?path=${encodeURIComponent(filePath)}`;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
 
       try {
         const response = await fetch(localAgentUrl, { signal: controller.signal });
         clearTimeout(timeoutId);
         if (response.ok) {
-          this.snackBar?.open('🎬 Opening movie in media player...', 'OK', { duration: 3000 });
+          const display = title ? `"${title}"` : 'movie';
+          this.snackBar?.open(`🎬 Opening ${display} in VLC...`, 'Dismiss', {
+            duration: 4000,
+            horizontalPosition: 'center',
+            verticalPosition: 'bottom',
+            panelClass: ['cinema-prominent-snackbar'],
+          });
+          return;
+        } else {
+          const errData = await response.json().catch(() => null);
+          const errorMsg = errData?.error || `HTTP ${response.status}`;
+          this.snackBar?.open(`⚠️ Playback error: ${errorMsg}`, 'Dismiss', {
+            duration: 5000,
+            horizontalPosition: 'center',
+            verticalPosition: 'bottom',
+            panelClass: ['cinema-prominent-snackbar', 'cinema-error-snackbar'],
+          });
           return;
         }
       } catch (localErr) {
@@ -173,7 +240,12 @@ export class CinemaManagerApiService {
       // 2. Fallback: Copy to clipboard if agent is not running on this machine
       if (navigator.clipboard) {
         await navigator.clipboard.writeText(filePath);
-        this.snackBar?.open('📋 File path copied to clipboard! (Start Cinema Agent for 1-click launch)', 'OK', { duration: 4000 });
+        this.snackBar?.open('📋 File path copied to clipboard! (Start Cinema Agent for 1-click launch)', 'Dismiss', {
+          duration: 4500,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom',
+          panelClass: ['cinema-prominent-snackbar'],
+        });
       }
     } catch (e) {
       console.warn('Playback handler error:', e);

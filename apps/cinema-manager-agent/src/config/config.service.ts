@@ -2,11 +2,11 @@ import * as path from 'path';
 import * as fs from 'fs-extra';
 
 export interface ServiceConfig {
-  auth0: {
-    domain: string;
-    clientId: string;
-    clientSecret: string;
-    audience: string;
+  auth0?: {
+    domain?: string;
+    clientId?: string;
+    clientSecret?: string;
+    audience?: string;
   };
   api: {
     baseUrl: string;
@@ -60,47 +60,52 @@ export class ConfigService {
   }
 
   private loadConfig(configPath?: string): void {
+    const os = require('os');
+    const exeDir = path.dirname(process.execPath);
+    const userConfigDir = path.join(os.homedir(), '.cinema-manager');
+
     const candidatePaths = [
       configPath,
+      path.join(exeDir, 'service.json'),
+      path.join(exeDir, 'config', 'service.json'),
       path.join(process.cwd(), 'service.json'),
-      path.join(path.dirname(process.execPath), 'service.json'),
       path.join(process.cwd(), 'config', 'service.json'),
-      path.join(path.dirname(process.execPath), 'config', 'service.json'),
-      path.join(__dirname, '..', 'config', 'service.json'),
-      path.join(__dirname, 'config', 'service.json'),
+      path.join(userConfigDir, 'service.json'),
     ].filter(Boolean) as string[];
 
     let finalConfigPath = candidatePaths.find((p) => fs.existsSync(p));
 
     if (!finalConfigPath) {
-      finalConfigPath = configPath || path.join(process.cwd(), 'service.json');
-      this.createDefaultConfig(finalConfigPath);
+      finalConfigPath = path.join(userConfigDir, 'service.json');
+      try {
+        this.createDefaultConfig(finalConfigPath);
+      } catch (err) {
+        console.warn('Could not write default config file:', err);
+      }
     }
 
     try {
-      const configData = fs.readJsonSync(finalConfigPath);
+      let configData: any = {};
+      if (finalConfigPath && fs.existsSync(finalConfigPath)) {
+        try {
+          configData = fs.readJsonSync(finalConfigPath);
+        } catch {
+          configData = {};
+        }
+      }
       
       // Override with environment variables
       this.config = {
-        ...configData,
-        auth0: {
-          ...configData.auth0,
-          domain: process.env.AUTH0_DOMAIN || configData.auth0?.domain,
-          clientId: process.env.AUTH0_M2M_CLIENT_ID || configData.auth0?.clientId,
-          clientSecret: process.env.AUTH0_M2M_CLIENT_SECRET || configData.auth0?.clientSecret,
-          audience: process.env.AUTH0_AUDIENCE || configData.auth0?.audience
-        },
         api: {
-          ...configData.api,
           baseUrl: process.env.API_BASE_URL || configData.api?.baseUrl || 'https://api.abhijeetkharkar.com/cinema-manager',
           timeout: parseInt(process.env.API_TIMEOUT || '30000', 10),
-          retryCount: parseInt(process.env.API_RETRY_COUNT || '3', 10)
+          retryCount: parseInt(process.env.API_RETRY_COUNT || '3', 10),
         },
         agent: {
-          ...configData.agent,
-          id: process.env.AGENT_ID || configData.agent?.id || this.generateAgentId(),
-          name: process.env.AGENT_NAME || configData.agent?.name || `Cinema Agent - ${require('os').hostname()}`
-        }
+          id: process.env.AGENT_ID || (configData.agent?.id && configData.agent.id.trim()) || this.generateAgentId(),
+          name: process.env.AGENT_NAME || (configData.agent?.name && configData.agent.name.trim()) || `Cinema Agent - ${os.hostname()}`,
+          watchPaths: Array.isArray(configData.agent?.watchPaths) ? configData.agent.watchPaths : [],
+        },
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -109,38 +114,20 @@ export class ConfigService {
   }
 
   private createDefaultConfig(configPath: string): void {
-    const defaultConfig: ServiceConfig = {
-      auth0: {
-        domain: 'your-domain.auth0.com',
-        clientId: 'your-m2m-client-id',
-        clientSecret: 'your-m2m-client-secret',
-        audience: 'https://api.abhijeetkharkar.com/cinema-manager'
-      },
+    const defaultConfig = {
       api: {
         baseUrl: 'https://api.abhijeetkharkar.com/cinema-manager',
         timeout: 30000,
-        retryCount: 3
+        retryCount: 3,
       },
-      agent: {
-        id: this.generateAgentId(),
-        name: `Cinema Agent - ${require('os').hostname()}`,
-        watchPaths: [
-          'C:\\Users\\Public\\Videos',
-          `C:\\Users\\${process.env.USERNAME || 'DefaultUser'}\\Downloads`,
-          `C:\\Users\\${process.env.USERNAME || 'DefaultUser'}\\Videos`
-        ]
-      }
     };
 
     // Ensure config directory exists
     const configDir = path.dirname(configPath);
     fs.ensureDirSync(configDir);
-    
-    // Write default configuration
+
+    // Write clean default configuration
     fs.writeJsonSync(configPath, defaultConfig, { spaces: 2 });
-    
-    console.log(`Created default configuration file: ${configPath}`);
-    console.log('Please update the Auth0 credentials in the configuration file.');
   }
 
   private generateAgentId(): string {

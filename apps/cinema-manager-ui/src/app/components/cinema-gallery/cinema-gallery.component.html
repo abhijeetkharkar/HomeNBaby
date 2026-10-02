@@ -166,12 +166,74 @@
     </div>
 
     <!-- Movie Cards Grid -->
-    <div *ngIf="!isLoading && displayedCinemas.length > 0" class="cinemas-grid">
+    <div *ngIf="!isLoading && paginatedCinemas.length > 0" class="cinemas-grid">
       <app-cinema
-        *ngFor="let cinema of displayedCinemas"
+        *ngFor="let cinema of paginatedCinemas"
         [cinema]="cinema"
         (delete)="deleteCinema($event)"
       ></app-cinema>
+    </div>
+
+    <!-- Sleek Custom Cinema Paginator -->
+    <div *ngIf="!isLoading && displayedCinemas.length > 0" class="cinema-paginator">
+      <div class="paginator-info">
+        Showing <span class="highlight">{{ startIndex + 1 }}–{{ endIndex }}</span> of <span class="highlight">{{ displayedCinemas.length }}</span> movies
+      </div>
+
+      <div class="paginator-controls" *ngIf="totalPages > 1">
+        <button
+          type="button"
+          class="page-nav-btn"
+          [disabled]="pageIndex === 0"
+          (click)="prevPage()"
+          aria-label="Previous Page"
+          title="Previous Page"
+        >
+          <mat-icon>chevron_left</mat-icon>
+          <span>Prev</span>
+        </button>
+
+        <div class="page-pills">
+          <ng-container *ngFor="let p of getPageNumbers()">
+            <span *ngIf="p === '...'" class="page-ellipsis">&hellip;</span>
+            <button
+              *ngIf="p !== '...'"
+              type="button"
+              class="page-pill-btn"
+              [class.active]="p === (pageIndex + 1)"
+              (click)="goToPage(+p - 1)"
+            >
+              {{ p }}
+            </button>
+          </ng-container>
+        </div>
+
+        <button
+          type="button"
+          class="page-nav-btn"
+          [disabled]="pageIndex >= totalPages - 1"
+          (click)="nextPage()"
+          aria-label="Next Page"
+          title="Next Page"
+        >
+          <span>Next</span>
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+
+      <div class="paginator-size-select">
+        <label for="pageSizeSelect">Per page:</label>
+        <div class="select-wrapper">
+          <select
+            id="pageSizeSelect"
+            [ngModel]="pageSize"
+            (ngModelChange)="onPageSizeChange($event)"
+            class="custom-select"
+          >
+            <option *ngFor="let opt of pageSizeOptions" [value]="opt">{{ opt }} / page</option>
+          </select>
+        </div>
+      </div>
     </div>
 
     <!-- Empty State -->

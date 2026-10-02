@@ -35,21 +35,30 @@ class CinemaManagerAgent {
 // Create and start the agent
 const agent = new CinemaManagerAgent();
 
+// Handle uncaught exceptions and rejections
+process.on('uncaughtException', (err) => {
+  console.error('[CinemaManagerAgent] Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[CinemaManagerAgent] Unhandled Rejection:', reason);
+});
+
+// Handle graceful shutdown signals
+process.on('SIGINT', async () => {
+  await agent.stop();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  await agent.stop();
+  process.exit(0);
+});
+
 // Handle service lifecycle
 if (process.platform === 'win32') {
-  // Run as Windows service
   createService(agent);
 } else {
-  // Run as regular process for development
   agent.start();
-  
-  process.on('SIGINT', async () => {
-    await agent.stop();
-    process.exit(0);
-  });
-  
-  process.on('SIGTERM', async () => {
-    await agent.stop();
-    process.exit(0);
-  });
 }
+

@@ -91,6 +91,13 @@ export class CredentialsService {
   }
 
   /**
+   * Returns full stored credentials if available
+   */
+  getCredentials(): StoredCredentials | null {
+    return this.loadCredentials();
+  }
+
+  /**
    * Returns current active agent token or null
    */
   getAgentToken(): string | null {

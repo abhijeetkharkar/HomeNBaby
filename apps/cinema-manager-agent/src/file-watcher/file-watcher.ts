@@ -15,7 +15,7 @@ export class FileWatcher {
   private watchers: chokidar.FSWatcher[] = [];
   private watchPaths: string[] = [];
   private readonly supportedVideoExtensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v'] as const;
-  private readonly minimumFileSizeBytes = 100 * 1024 * 1024; // 100MB
+  private readonly minimumFileSizeBytes = 20 * 1024 * 1024; // 20MB (supports compressed rips and series)
 
   constructor(
     private readonly movieProcessor: MovieProcessor,
@@ -117,11 +117,49 @@ export class FileWatcher {
     return [...this.watchPaths];
   }
 
+  /**
+   * Recursively walk folder to discover all existing media files immediately
+   */
+  private async scanDirectory(dirPath: string): Promise<void> {
+    try {
+      if (!fs.existsSync(dirPath)) return;
+      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name);
+        try {
+          if (entry.isDirectory()) {
+            if (!entry.name.startsWith('.')) {
+              await this.scanDirectory(fullPath);
+            }
+          } else if (entry.isFile()) {
+            if (this.isVideoFile(fullPath) && this.isNewFile(fullPath)) {
+              await this.movieProcessor.processNewFile(fullPath);
+            }
+          }
+        } catch {
+          // ignore individual file error
+        }
+      }
+    } catch (err) {
+      console.warn(`[FileWatcher] Error scanning directory ${dirPath}:`, err);
+    }
+  }
+
   private async watchFolder(folderPath: string) {
+    // 1. Initial scan: immediately walk tree and enqueue existing movies
+    console.log(`[FileWatcher] Starting initial directory scan: ${folderPath}`);
+    this.scanDirectory(folderPath)
+      .then(() => console.log(`[FileWatcher] Completed initial scan for: ${folderPath}`))
+      .catch((err) => console.warn(`[FileWatcher] Initial scan error:`, err));
+
+    // 2. Chokidar watcher with polling enabled for virtual cloud & network drives (Google Drive, OneDrive)
     const watcher = chokidar.watch(folderPath, {
       ignored: /(^|[/\\])\../, // ignore dotfiles
       persistent: true,
       depth: 10,
+      usePolling: true,
+      interval: 3000,
+      binaryInterval: 5000,
     });
 
     watcher

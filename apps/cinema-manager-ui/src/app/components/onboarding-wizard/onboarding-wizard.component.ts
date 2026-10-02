@@ -111,24 +111,52 @@ export class OnboardingWizardComponent implements OnInit, OnDestroy {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   }
 
+  private isPairingInProgress = false;
+
   private startDetectionPolling(): void {
     if (this.pollInterval) clearInterval(this.pollInterval);
     this.pollInterval = setInterval(async () => {
+      if (this.isPairingInProgress) return;
+
       const device = await this.apiService.checkLocalDevice();
       if (device && device.status === 'ok') {
-        this.pairedDevice = device;
-        this.isPairingComplete = true;
-        clearInterval(this.pollInterval);
-        setTimeout(() => {
-          this.completed.emit();
-        }, 2500);
+        if (device.isPaired) {
+          // Device is already paired with an account
+          this.pairedDevice = device;
+          this.isPairingComplete = true;
+          clearInterval(this.pollInterval);
+          setTimeout(() => {
+            this.completed.emit();
+          }, 2500);
+        } else if (this.pairingCode) {
+          // Agent active on loopback but not yet paired: perform instant auto-pairing
+          this.isPairingInProgress = true;
+          const watchPaths = this.lookupPath ? [this.lookupPath.trim()] : [];
+          const res = await this.apiService.pairLocalAgent(this.pairingCode, watchPaths);
+          if (res.success) {
+            this.pairedDevice = {
+              ...device,
+              agentName: res.agentName || device.agentName,
+              isPaired: true,
+            };
+            this.isPairingComplete = true;
+            clearInterval(this.pollInterval);
+            setTimeout(() => {
+              this.completed.emit();
+            }, 2500);
+          } else {
+            console.warn('Local agent auto-pairing attempt failed:', res.error);
+            this.isPairingInProgress = false;
+          }
+        }
       }
-    }, 3000);
+    }, 2000);
   }
 
   savePath(): void {
     if (this.lookupPath.trim()) {
-      this.apiService.addLookupPath(this.lookupPath.trim()).subscribe({
+      const path = this.lookupPath.trim();
+      this.apiService.addLookupPath(path).subscribe({
         next: () => {
           this.pathSaved = true;
         },
@@ -136,6 +164,9 @@ export class OnboardingWizardComponent implements OnInit, OnDestroy {
           this.pathSaved = true; // Fallback
         },
       });
+
+      // Also dynamically update local agent if active
+      this.apiService.updateLocalAgentPaths([path]);
     }
   }
 
