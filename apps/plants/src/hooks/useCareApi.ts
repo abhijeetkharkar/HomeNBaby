@@ -63,10 +63,12 @@ export function useCareApi() {
     type: 'water' | 'fertilize' | 'fertilize-2',
     fertilizer?: string,
     notes?: string,
+    customTimestamp?: string,
   ) => {
+    const timestamp = customTimestamp || new Date().toISOString();
     const newLog: CareLog = {
       plantId,
-      timestamp: new Date().toISOString(),
+      timestamp,
       logId: crypto.randomUUID(),
       type,
       ...(fertilizer ? { fertilizer } : {}),
@@ -80,7 +82,7 @@ export function useCareApi() {
       await fetch(`${API_BASE}/plants/logs`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ plantId, type, fertilizer, notes }),
+        body: JSON.stringify({ plantId, type, fertilizer, notes, timestamp }),
       });
     }
     await fetchLatest();
@@ -103,6 +105,163 @@ export function useCareApi() {
   }, [latestLogs]);
 
   return { latestLogs, loading, logCare, deleteLog, getLatest, refresh: fetchLatest };
+}
+
+export interface PlantSettings {
+  potTypeOverrides: Record<string, 'self-watering' | 'standard'>;
+  deletedPlantIds: string[];
+  permanentlyDeletedIds: string[];
+  trackWateringOverrides: Record<string, boolean>;
+}
+
+const LS_SETTINGS_KEY = 'plants-settings-data';
+const DEFAULT_SETTINGS: PlantSettings = {
+  potTypeOverrides: {
+    'money-tree': 'self-watering',
+    'cream-allusion-arrowhead': 'self-watering',
+    'prayer-plant': 'self-watering',
+  },
+  deletedPlantIds: [],
+  permanentlyDeletedIds: [],
+  trackWateringOverrides: {},
+};
+
+function lsGetSettings(): PlantSettings {
+  try {
+    const saved = localStorage.getItem(LS_SETTINGS_KEY);
+    return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS;
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
+
+function lsSaveSettings(settings: PlantSettings) {
+  try {
+    localStorage.setItem(LS_SETTINGS_KEY, JSON.stringify(settings));
+  } catch (e) {
+    console.error('Failed to save settings to localStorage', e);
+  }
+}
+
+export function usePlantSettings() {
+  const [settings, setSettings] = useState<PlantSettings>(lsGetSettings);
+
+  const fetchSettings = useCallback(async () => {
+    try {
+      if (!IS_DEV) {
+        const res = await fetch(`${API_BASE}/plants/settings`);
+        if (res.ok) {
+          const cloudData: PlantSettings = await res.json();
+          const merged: PlantSettings = {
+            potTypeOverrides: {
+              ...DEFAULT_SETTINGS.potTypeOverrides,
+              ...(cloudData.potTypeOverrides || {}),
+            },
+            deletedPlantIds: cloudData.deletedPlantIds || [],
+            permanentlyDeletedIds: cloudData.permanentlyDeletedIds || [],
+            trackWateringOverrides: cloudData.trackWateringOverrides || {},
+          };
+          setSettings(merged);
+          lsSaveSettings(merged);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch plant settings', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+  const persistSettings = useCallback(async (updated: PlantSettings) => {
+    setSettings(updated);
+    lsSaveSettings(updated);
+    if (!IS_DEV) {
+      try {
+        await fetch(`${API_BASE}/plants/settings`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(updated),
+        });
+      } catch (e) {
+        console.error('Failed to sync settings to API', e);
+      }
+    }
+  }, []);
+
+  const setPotType = useCallback(
+    (plantId: string, potType: 'self-watering' | 'standard') => {
+      const next: PlantSettings = {
+        ...settings,
+        potTypeOverrides: {
+          ...settings.potTypeOverrides,
+          [plantId]: potType,
+        },
+      };
+      persistSettings(next);
+    },
+    [settings, persistSettings],
+  );
+
+  const softDeletePlant = useCallback(
+    (plantId: string) => {
+      if (settings.deletedPlantIds.includes(plantId)) return;
+      const next: PlantSettings = {
+        ...settings,
+        deletedPlantIds: [...settings.deletedPlantIds, plantId],
+      };
+      persistSettings(next);
+    },
+    [settings, persistSettings],
+  );
+
+  const restorePlant = useCallback(
+    (plantId: string) => {
+      const next: PlantSettings = {
+        ...settings,
+        deletedPlantIds: settings.deletedPlantIds.filter(id => id !== plantId),
+      };
+      persistSettings(next);
+    },
+    [settings, persistSettings],
+  );
+
+  const permanentlyDeletePlant = useCallback(
+    (plantId: string) => {
+      const next: PlantSettings = {
+        ...settings,
+        deletedPlantIds: settings.deletedPlantIds.filter(id => id !== plantId),
+        permanentlyDeletedIds: Array.from(new Set([...settings.permanentlyDeletedIds, plantId])),
+      };
+      persistSettings(next);
+    },
+    [settings, persistSettings],
+  );
+
+  const setTrackWatering = useCallback(
+    (plantId: string, track: boolean) => {
+      const next: PlantSettings = {
+        ...settings,
+        trackWateringOverrides: {
+          ...settings.trackWateringOverrides,
+          [plantId]: track,
+        },
+      };
+      persistSettings(next);
+    },
+    [settings, persistSettings],
+  );
+
+  return {
+    settings,
+    setPotType,
+    setTrackWatering,
+    softDeletePlant,
+    restorePlant,
+    permanentlyDeletePlant,
+    refreshSettings: fetchSettings,
+  };
 }
 
 // Given last care date and [min, max] frequency, compute urgency
