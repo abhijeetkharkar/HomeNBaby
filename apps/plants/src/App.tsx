@@ -1,14 +1,16 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useCareApi, computeUrgency } from './hooks/useCareApi';
+import { useCareApi, usePlantSettings, computeUrgency } from './hooks/useCareApi';
 import { PLANTS, PLANT_GROUPS } from './data/plants';
 import { FERTILIZERS } from './data/fertilizers';
 
 import type { PlantGroup, PlantDef } from './data/plants';
 import { PlantCard } from './components/PlantCard';
 import { LogCareModal } from './components/LogCareModal';
+import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 
 type ExtendedGroup = PlantGroup | 'all';
 type TaskFilter = 'all' | 'water-due' | 'fert-due';
+type StatusFilter = 'active' | 'deleted';
 type FertFilter =
   | 'all'
   | 'schultz'
@@ -34,10 +36,21 @@ function getPlantUrgency(
   plant: PlantDef,
   latestLogs: Record<string, { timestamp: string } | undefined>,
   taskFilter: TaskFilter,
+  isSelfWatering: boolean = false,
+  isWaterTrackingActive: boolean = true,
 ) {
-  const waterUrgency = plant.waterFreqDays
-    ? computeUrgency(latestLogs[`${plant.id}__water`]?.timestamp || null, plant.waterFreqDays)
-    : null;
+  const canSelfWater =
+    plant.group !== 'outdoor-garden' &&
+    (plant.selfWatering === 'ideal' || plant.selfWatering === 'caution');
+  const effectiveWaterFreq =
+    canSelfWater && isSelfWatering && plant.selfWaterFreqDays
+      ? plant.selfWaterFreqDays
+      : plant.waterFreqDays;
+
+  const waterUrgency =
+    isWaterTrackingActive && effectiveWaterFreq
+      ? computeUrgency(latestLogs[`${plant.id}__water`]?.timestamp || null, effectiveWaterFreq)
+      : null;
   const fertUrgency = computeUrgency(
     latestLogs[`${plant.id}__fertilize`]?.timestamp || null,
     plant.fertFreqDays,
@@ -72,6 +85,16 @@ function getPlantUrgency(
 
 function App() {
   const { latestLogs, logCare, loading } = useCareApi();
+  const {
+    settings,
+    setPotType,
+    setTrackWatering,
+    softDeletePlant,
+    restorePlant,
+    permanentlyDeletePlant,
+  } = usePlantSettings();
+
+  const [activeStatus, setActiveStatus] = useState<StatusFilter>('active');
   const [activeGroup, setActiveGroup] = useState<ExtendedGroup>('all');
   const [activeTaskFilter, setActiveTaskFilter] = useState<TaskFilter>('all');
   const [activeFertFilter, setActiveFertFilter] = useState<FertFilter>('all');
@@ -81,21 +104,58 @@ function App() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalPlant, setModalPlant] = useState<PlantDef | null>(null);
   const [modalType, setModalType] = useState<'water' | 'fertilize' | 'fertilize-2'>('water');
+  const [deleteModal, setDeleteModal] = useState<{
+    plant: PlantDef;
+    mode: 'soft' | 'permanent';
+  } | null>(null);
+
+  const nonPermanentlyDeletedPlants = useMemo(() => {
+    return PLANTS.filter(p => !settings.permanentlyDeletedIds.includes(p.id));
+  }, [settings.permanentlyDeletedIds]);
+
+  const activeCount = useMemo(() => {
+    return nonPermanentlyDeletedPlants.filter(p => !settings.deletedPlantIds.includes(p.id)).length;
+  }, [nonPermanentlyDeletedPlants, settings.deletedPlantIds]);
+
+  const deletedCount = useMemo(() => {
+    return nonPermanentlyDeletedPlants.filter(p => settings.deletedPlantIds.includes(p.id)).length;
+  }, [nonPermanentlyDeletedPlants, settings.deletedPlantIds]);
 
   const visiblePlants = useMemo(() => {
-    let list = [...PLANTS];
+    // 0. Base: exclude permanently deleted
+    let list = PLANTS.filter(p => !settings.permanentlyDeletedIds.includes(p.id));
 
-    // 1. Group Filtering
+    // 1. Status Filter: active vs deleted
+    if (activeStatus === 'active') {
+      list = list.filter(p => !settings.deletedPlantIds.includes(p.id));
+    } else {
+      list = list.filter(p => settings.deletedPlantIds.includes(p.id));
+    }
+
+    // 2. Group Filtering
     if (activeGroup !== 'all') {
       list = list.filter(p => p.group === activeGroup);
     }
 
-    // 2. Task / Urgency Filtering
+    // 3. Task / Urgency Filtering
     if (activeTaskFilter === 'water-due') {
       list = list.filter(p => {
-        if (!p.waterFreqDays) return false;
+        const isWaterActive =
+          p.group === 'indoor'
+            ? true
+            : p.group === 'outdoor-garden'
+            ? false
+            : Boolean(settings.trackWateringOverrides[p.id]);
+        if (!isWaterActive) return false;
+
+        const isSw = settings.potTypeOverrides[p.id] === 'self-watering';
+        const canSw =
+          p.group !== 'outdoor-garden' &&
+          (p.selfWatering === 'ideal' || p.selfWatering === 'caution');
+        const freq = canSw && isSw && p.selfWaterFreqDays ? p.selfWaterFreqDays : p.waterFreqDays;
+        if (!freq) return false;
         const last = latestLogs[`${p.id}__water`]?.timestamp;
-        const urgency = computeUrgency(last || null, p.waterFreqDays);
+        const urgency = computeUrgency(last || null, freq);
         return (
           urgency.status === 'overdue' ||
           urgency.status === 'due-today' ||
@@ -116,7 +176,7 @@ function App() {
       });
     }
 
-    // 3. Fertilizer Filtering
+    // 4. Fertilizer Filtering
     if (activeFertFilter !== 'all') {
       if (activeFertFilter === 'schultz') {
         list = list.filter(
@@ -171,21 +231,33 @@ function App() {
       }
     }
 
-    // 4. 5-Tier Urgency Sorting: Overdue -> Due Today -> Due Soon -> No Record -> OK
+    // 5. 5-Tier Urgency Sorting: Overdue -> Due Today -> Due Soon -> No Record -> OK
     list.sort((a, b) => {
-      const uA = getPlantUrgency(a, latestLogs, activeTaskFilter);
-      const uB = getPlantUrgency(b, latestLogs, activeTaskFilter);
+      const isWaterA =
+        a.group === 'indoor'
+          ? true
+          : a.group === 'outdoor-garden'
+          ? false
+          : Boolean(settings.trackWateringOverrides[a.id]);
+      const isWaterB =
+        b.group === 'indoor'
+          ? true
+          : b.group === 'outdoor-garden'
+          ? false
+          : Boolean(settings.trackWateringOverrides[b.id]);
+      const isSwA = settings.potTypeOverrides[a.id] === 'self-watering';
+      const isSwB = settings.potTypeOverrides[b.id] === 'self-watering';
+      const uA = getPlantUrgency(a, latestLogs, activeTaskFilter, isSwA, isWaterA);
+      const uB = getPlantUrgency(b, latestLogs, activeTaskFilter, isSwB, isWaterB);
       const rankA = rankUrgency(uA);
       const rankB = rankUrgency(uB);
 
       if (rankA !== rankB) {
         return rankA - rankB;
       }
-      // Both overdue: most overdue first (-10 before -1)
       if (uA.status === 'overdue') {
         return uA.daysUntil - uB.daysUntil;
       }
-      // Both due-soon or OK: closest due date first (1 before 5)
       if (uA.status === 'due-soon' || uA.status === 'ok') {
         return uA.daysUntil - uB.daysUntil;
       }
@@ -193,7 +265,7 @@ function App() {
     });
 
     return list;
-  }, [activeGroup, activeTaskFilter, activeFertFilter, latestLogs]);
+  }, [activeGroup, activeTaskFilter, activeFertFilter, activeStatus, settings, latestLogs]);
 
   const handleOpenModal = useCallback(
     (plant: PlantDef, defaultType: 'water' | 'fertilize' | 'fertilize-2') => {
@@ -210,21 +282,47 @@ function App() {
       type: 'water' | 'fertilize' | 'fertilize-2',
       fertilizer?: string,
       notes?: string,
+      timestamp?: string,
     ) => {
-      await logCare(plantId, type, fertilizer, notes);
+      await logCare(plantId, type, fertilizer, notes, timestamp);
 
       // Auto-log watering if fertilizing with a liquid fertilizer
       if (type.includes('fertilize') && fertilizer) {
         const liquidKeywords = ['schultz', 'agrothrive', 'liquid'];
         const isLiquid = liquidKeywords.some(k => fertilizer.toLowerCase().includes(k));
         if (isLiquid) {
-          await logCare(plantId, 'water', undefined, `Auto-logged from ${fertilizer}`);
+          await logCare(plantId, 'water', undefined, `Auto-logged from ${fertilizer}`, timestamp);
         }
       }
       setModalOpen(false);
     },
     [logCare],
   );
+
+  const handleDeletePlant = useCallback((plant: PlantDef) => {
+    setDeleteModal({ plant, mode: 'soft' });
+  }, []);
+
+  const handleRestorePlant = useCallback(
+    (plant: PlantDef) => {
+      restorePlant(plant.id);
+    },
+    [restorePlant],
+  );
+
+  const handlePermanentDeletePlant = useCallback((plant: PlantDef) => {
+    setDeleteModal({ plant, mode: 'permanent' });
+  }, []);
+
+  const handleConfirmDelete = useCallback(() => {
+    if (!deleteModal) return;
+    if (deleteModal.mode === 'soft') {
+      softDeletePlant(deleteModal.plant.id);
+    } else {
+      permanentlyDeletePlant(deleteModal.plant.id);
+    }
+    setDeleteModal(null);
+  }, [deleteModal, softDeletePlant, permanentlyDeletePlant]);
 
   return (
     <div className="app-container">
@@ -277,6 +375,20 @@ function App() {
       {/* Filter Control Bar */}
       <div className="tracker-filters">
         <div className="filter-grid">
+          {/* Status Dropdown */}
+          <div className="filter-control">
+            <label htmlFor="filter-status" className="filter-control-label">Status</label>
+            <select
+              id="filter-status"
+              className="filter-select"
+              value={activeStatus}
+              onChange={e => setActiveStatus(e.target.value as StatusFilter)}
+            >
+              <option value="active">🌱 Active Plants ({activeCount})</option>
+              <option value="deleted">🗑️ Deleted ({deletedCount})</option>
+            </select>
+          </div>
+
           {/* Group Dropdown */}
           <div className="filter-control">
             <label htmlFor="filter-group" className="filter-control-label">Group</label>
@@ -339,7 +451,7 @@ function App() {
       ) : (
         <div className="plant-list">
           <div className="results-count">
-            Showing {visiblePlants.length} plant{visiblePlants.length !== 1 ? 's' : ''} (sorted by due status)
+            {activeStatus === 'deleted' ? 'Deleted Plants' : 'Active Plants'}: Showing {visiblePlants.length} plant{visiblePlants.length !== 1 ? 's' : ''} (sorted by due status)
           </div>
           {visiblePlants.map(plant => (
             <PlantCard
@@ -349,6 +461,20 @@ function App() {
               lastFert={latestLogs[`${plant.id}__fertilize`] || null}
               lastFert2={latestLogs[`${plant.id}__fertilize-2`] || null}
               onLog={handleOpenModal}
+              isSelfWatering={settings.potTypeOverrides[plant.id] === 'self-watering'}
+              onTogglePotType={setPotType}
+              isWaterTrackingActive={
+                plant.group === 'indoor'
+                  ? true
+                  : plant.group === 'outdoor-garden'
+                  ? false
+                  : Boolean(settings.trackWateringOverrides[plant.id])
+              }
+              onToggleWaterTracking={setTrackWatering}
+              onDelete={handleDeletePlant}
+              onRestore={handleRestorePlant}
+              onPermanentDelete={handlePermanentDeletePlant}
+              isDeleted={settings.deletedPlantIds.includes(plant.id)}
             />
           ))}
           {visiblePlants.length === 0 && (
@@ -360,7 +486,9 @@ function App() {
                 gridColumn: '1 / -1',
               }}
             >
-              No plants need attention under this filter! 🎉
+              {activeStatus === 'deleted'
+                ? 'No deleted plants! All plants are active. 🌿'
+                : 'No plants need attention under this filter! 🎉'}
             </div>
           )}
         </div>
@@ -370,8 +498,24 @@ function App() {
         <LogCareModal
           plant={modalPlant}
           defaultType={modalType}
+          isWaterTrackingActive={
+            modalPlant.group === 'indoor'
+              ? true
+              : modalPlant.group === 'outdoor-garden'
+              ? false
+              : Boolean(settings.trackWateringOverrides[modalPlant.id])
+          }
           onConfirm={handleConfirmLog}
           onClose={() => setModalOpen(false)}
+        />
+      )}
+
+      {deleteModal && (
+        <DeleteConfirmModal
+          plant={deleteModal.plant}
+          mode={deleteModal.mode}
+          onConfirm={handleConfirmDelete}
+          onClose={() => setDeleteModal(null)}
         />
       )}
     </div>

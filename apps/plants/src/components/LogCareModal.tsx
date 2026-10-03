@@ -5,17 +5,38 @@ import type { PlantDef } from '../data/plants';
 interface Props {
   plant: PlantDef;
   defaultType: 'water' | 'fertilize' | 'fertilize-2';
-  onConfirm: (plantId: string, type: 'water' | 'fertilize' | 'fertilize-2', fertilizer?: string, notes?: string) => void;
+  isWaterTrackingActive?: boolean;
+  onConfirm: (
+    plantId: string,
+    type: 'water' | 'fertilize' | 'fertilize-2',
+    fertilizer?: string,
+    notes?: string,
+    timestamp?: string,
+  ) => void;
   onClose: () => void;
 }
 
-export function LogCareModal({ plant, defaultType, onConfirm, onClose }: Props) {
-  const [type, setType] = useState<'water' | 'fertilize' | 'fertilize-2'>(defaultType);
+function toLocalDatetimeString(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+export function LogCareModal({ plant, defaultType, isWaterTrackingActive = true, onConfirm, onClose }: Props) {
+  const canWater = Boolean(plant.waterFreqDays && isWaterTrackingActive);
+  const initialType = (!canWater && defaultType === 'water') ? 'fertilize' : defaultType;
+  const [type, setType] = useState<'water' | 'fertilize' | 'fertilize-2'>(initialType);
   const [selectedFert, setSelectedFert] = useState<string>(plant.fertRecommendation);
+  const [careDate, setCareDate] = useState<string>(() => toLocalDatetimeString(new Date()));
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
   const fertOptions = [plant.fertRecommendation, ...(plant.altFertilizers || [])];
+
+  const setDatePreset = (daysAgo: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    setCareDate(toLocalDatetimeString(d));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +44,8 @@ export function LogCareModal({ plant, defaultType, onConfirm, onClose }: Props) 
     let fertStr = undefined;
     if (type === 'fertilize') fertStr = selectedFert;
     if (type === 'fertilize-2') fertStr = plant.fertRecommendation2;
-    await onConfirm(plant.id, type, fertStr, notes || undefined);
+    const isoTimestamp = careDate ? new Date(careDate).toISOString() : new Date().toISOString();
+    await onConfirm(plant.id, type, fertStr, notes || undefined, isoTimestamp);
     setSaving(false);
     onClose();
   };
@@ -48,7 +70,7 @@ export function LogCareModal({ plant, defaultType, onConfirm, onClose }: Props) 
           <div className="field-group">
             <label className="field-label">Type</label>
             <div className="type-toggle">
-              {plant.waterFreqDays && (
+              {canWater && (
                 <button
                   type="button"
                   className={`toggle-btn ${type === 'water' ? 'active' : ''}`}
@@ -78,6 +100,40 @@ export function LogCareModal({ plant, defaultType, onConfirm, onClose }: Props) 
                 </button>
               )}
             </div>
+          </div>
+
+          <div className="field-group">
+            <label className="field-label">Date & Time (Retro-logging)</label>
+            <div className="date-preset-buttons">
+              <button
+                type="button"
+                className="date-preset-btn"
+                onClick={() => setDatePreset(0)}
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                className="date-preset-btn"
+                onClick={() => setDatePreset(1)}
+              >
+                Yesterday
+              </button>
+              <button
+                type="button"
+                className="date-preset-btn"
+                onClick={() => setDatePreset(2)}
+              >
+                2 Days Ago
+              </button>
+            </div>
+            <input
+              type="datetime-local"
+              className="field-datetime"
+              value={careDate}
+              onChange={e => setCareDate(e.target.value)}
+              required
+            />
           </div>
 
           {type === 'fertilize' && fertOptions.length > 1 && (

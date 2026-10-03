@@ -9,6 +9,14 @@ interface Props {
   lastFert: CareLog | null;
   lastFert2?: CareLog | null;
   onLog: (plant: PlantDef, type: 'water' | 'fertilize' | 'fertilize-2') => void;
+  isSelfWatering?: boolean;
+  onTogglePotType?: (plantId: string, type: 'self-watering' | 'standard') => void;
+  isWaterTrackingActive?: boolean;
+  onToggleWaterTracking?: (plantId: string, track: boolean) => void;
+  onDelete?: (plant: PlantDef) => void;
+  onRestore?: (plant: PlantDef) => void;
+  onPermanentDelete?: (plant: PlantDef) => void;
+  isDeleted?: boolean;
 }
 
 
@@ -33,11 +41,42 @@ function getStatusText(daysUntil: number, status: string): string {
   }
 }
 
-export function PlantCard({ plant, lastWater, lastFert, lastFert2, onLog }: Props) {
+export function PlantCard({
+  plant,
+  lastWater,
+  lastFert,
+  lastFert2,
+  onLog,
+  isSelfWatering = false,
+  onTogglePotType,
+  isWaterTrackingActive = false,
+  onToggleWaterTracking,
+  onDelete,
+  onRestore,
+  onPermanentDelete,
+  isDeleted = false,
+}: Props) {
   const [flipped, setFlipped] = useState(false);
 
-  const waterUrgency = plant.waterFreqDays
-    ? computeUrgency(lastWater?.timestamp || null, plant.waterFreqDays)
+  const effectiveWaterTracking =
+    plant.group === 'indoor'
+      ? true
+      : plant.group === 'outdoor-garden'
+      ? false
+      : Boolean(isWaterTrackingActive);
+
+  const canSelfWater =
+    plant.group !== 'outdoor-garden' &&
+    (plant.selfWatering === 'ideal' || plant.selfWatering === 'caution');
+  const isSelfWateringActive = canSelfWater && Boolean(isSelfWatering);
+
+  const effectiveWaterFreq =
+    isSelfWateringActive && plant.selfWaterFreqDays
+      ? plant.selfWaterFreqDays
+      : plant.waterFreqDays;
+
+  const waterUrgency = effectiveWaterTracking && effectiveWaterFreq
+    ? computeUrgency(lastWater?.timestamp || null, effectiveWaterFreq)
     : null;
   const fertUrgency = computeUrgency(lastFert?.timestamp || null, plant.fertFreqDays);
   
@@ -45,7 +84,7 @@ export function PlantCard({ plant, lastWater, lastFert, lastFert2, onLog }: Prop
     ? computeUrgency(lastFert2?.timestamp || null, plant.fertFreqDays2) 
     : null;
 
-  let defaultTab: 'water' | 'fertilize' | 'fertilize-2' = 'water';
+  let defaultTab: 'water' | 'fertilize' | 'fertilize-2' = effectiveWaterTracking ? 'water' : 'fertilize';
   if (waterUrgency?.status === 'overdue') defaultTab = 'water';
   else if (fertUrgency.status === 'overdue') defaultTab = 'fertilize';
   else if (fert2Urgency?.status === 'overdue') defaultTab = 'fertilize-2';
@@ -71,7 +110,7 @@ export function PlantCard({ plant, lastWater, lastFert, lastFert2, onLog }: Prop
             </div>
           )}
           
-          {(plant.warning || (plant.group !== 'outdoor-garden' && plant.selfWatering === 'never')) && (
+          {(plant.warning || (plant.group !== 'outdoor-garden' && plant.selfWatering === 'never') || isSelfWateringActive) && (
             <div className="front-badges-container">
               {plant.warning && (
                 <div className="front-warning-top">⚠️ {plant.warning.replace(/^⚠️\s*/, '')}</div>
@@ -79,30 +118,42 @@ export function PlantCard({ plant, lastWater, lastFert, lastFert2, onLog }: Prop
               {plant.group !== 'outdoor-garden' && plant.selfWatering === 'never' && (
                 <div className="front-warning-top front-no-self-water-top">⚠️ No Self-Watering</div>
               )}
+              {isSelfWateringActive && (
+                <div className="front-self-water-active">💧 Self-Watering Pot Active</div>
+              )}
             </div>
           )}
           
           <div className="front-info-panel">
             <div className="panel-header">
-              <h3 className="panel-title">{plant.name}</h3>
-              <button 
-                className="panel-btn-inline"
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  onLog(plant, defaultTab); 
-                }}
-              >
-                Log
-              </button>
+              <div className="panel-title-group">
+                <h3 className="panel-title">{plant.name}</h3>
+                {plant.scientificName && (
+                  <span className="panel-scientific-name">{plant.scientificName}</span>
+                )}
+              </div>
+              {isDeleted ? (
+                <span className="panel-badge-deleted">🗑️ Deleted</span>
+              ) : (
+                <button 
+                  className="panel-btn-inline"
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    onLog(plant, defaultTab); 
+                  }}
+                >
+                  Log
+                </button>
+              )}
             </div>
             
             <div className="panel-rows">
-              {plant.waterFreqDays && (
+              {effectiveWaterTracking && effectiveWaterFreq && (
                 <div className="panel-row">
                   <div className="panel-row-header">
                     <div className="panel-row-left">
-                      <span>💧 Water</span>
-                      <span className="panel-row-freq">{plant.waterFreqDays[0]}-{plant.waterFreqDays[1]}d</span>
+                      <span>{isSelfWateringActive ? '💧 Refill Reservoir' : '💧 Water'}</span>
+                      <span className="panel-row-freq">{effectiveWaterFreq[0]}-{effectiveWaterFreq[1]}d</span>
                     </div>
                     <div className={`panel-row-status ${getStatusColorClass(waterUrgency!.status)}`}>
                       {getStatusText(waterUrgency!.daysUntil, waterUrgency!.status)}
@@ -142,6 +193,41 @@ export function PlantCard({ plant, lastWater, lastFert, lastFert2, onLog }: Prop
 
         {/* BACK OF CARD */}
         <div className="flip-card-back" onClick={() => setFlipped(false)}>
+          {/* Top-Right Action Icons on Backside */}
+          <div className="back-top-actions" onClick={e => e.stopPropagation()}>
+            {isDeleted ? (
+              <>
+                <button
+                  type="button"
+                  className="back-icon-btn btn-restore-icon"
+                  title="Restore Plant"
+                  onClick={() => onRestore?.(plant)}
+                >
+                  ♻️
+                </button>
+                <button
+                  type="button"
+                  className="back-icon-btn btn-perm-delete-icon"
+                  title="Delete Permanently"
+                  onClick={() => onPermanentDelete?.(plant)}
+                >
+                  ❌
+                </button>
+              </>
+            ) : (
+              onDelete && (
+                <button
+                  type="button"
+                  className="back-icon-btn btn-delete-icon"
+                  title="Delete Plant"
+                  onClick={() => onDelete(plant)}
+                >
+                  🗑️
+                </button>
+              )
+            )}
+          </div>
+
           <div className="back-scroll-area">
             
             <div className="back-metadata-grid">
@@ -185,7 +271,7 @@ export function PlantCard({ plant, lastWater, lastFert, lastFert2, onLog }: Prop
 
               {plant.group !== 'outdoor-garden' && plant.selfWatering && (
                 <div className="meta-item full-width">
-                  <span className="meta-label">🪴 Pot Type</span>
+                  <span className="meta-label">🪴 Pot Type & Selection</span>
                   <div className="meta-val-block">
                     <span className={`meta-pill meta-pill-${plant.selfWatering}`}>
                       {plant.selfWatering === 'never' && '⛔ Standard Pot Only (No Self-Water)'}
@@ -194,6 +280,60 @@ export function PlantCard({ plant, lastWater, lastFert, lastFert2, onLog }: Prop
                     </span>
                     {plant.selfWateringNote && (
                       <span className="meta-subtext">{plant.selfWateringNote}</span>
+                    )}
+                    {canSelfWater && onTogglePotType && (
+                      <div className="pot-type-selector" onClick={e => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className={`pot-selector-btn ${!isSelfWateringActive ? 'active' : ''}`}
+                          onClick={() => onTogglePotType(plant.id, 'standard')}
+                        >
+                          🪴 Standard Pot
+                        </button>
+                        <button
+                          type="button"
+                          className={`pot-selector-btn ${isSelfWateringActive ? 'active' : ''}`}
+                          onClick={() => onTogglePotType(plant.id, 'self-watering')}
+                        >
+                          💧 Self-Watering Pot
+                        </button>
+                      </div>
+                    )}
+                    {isSelfWateringActive && plant.selfWaterFreqDays && (
+                      <span className="meta-subtext self-water-freq-note">
+                        💧 Reservoir refill interval: every {plant.selfWaterFreqDays[0]}-{plant.selfWaterFreqDays[1]} days.
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {plant.group === 'outdoor-potted' && (
+                <div className="meta-item full-width">
+                  <span className="meta-label">💧 Outdoor Water Tracking</span>
+                  <div className="meta-val-block">
+                    <span className="meta-subtext">
+                      {effectiveWaterTracking
+                        ? `Tracking schedule: water every ${plant.waterFreqDays ? `${plant.waterFreqDays[0]}-${plant.waterFreqDays[1]}` : ''} days.`
+                        : 'Water tracking is off (weather/rain-fed).'}
+                    </span>
+                    {onToggleWaterTracking && (
+                      <div className="pot-type-selector" onClick={e => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className={`pot-selector-btn ${!effectiveWaterTracking ? 'active' : ''}`}
+                          onClick={() => onToggleWaterTracking(plant.id, false)}
+                        >
+                          ⏸️ Off (Untracked)
+                        </button>
+                        <button
+                          type="button"
+                          className={`pot-selector-btn ${effectiveWaterTracking ? 'active' : ''}`}
+                          onClick={() => onToggleWaterTracking(plant.id, true)}
+                        >
+                          💧 On (Track Schedule)
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -243,7 +383,6 @@ export function PlantCard({ plant, lastWater, lastFert, lastFert2, onLog }: Prop
                 <span className="meta-val" style={{ color: 'var(--text-muted)' }}>No special notes.</span>
               )}
             </div>
-
           </div>
         </div>
 

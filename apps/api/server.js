@@ -500,6 +500,7 @@ app.get('/plants/logs', async (req, res) => {
         const items = r.Items || [];
         const latest = {};
         for (const item of items) {
+            if (item.plantId === '__CONFIG__') continue;
             const key = `${item.plantId}__${item.type}`;
             if (!latest[key] || item.timestamp > latest[key].timestamp) latest[key] = item;
         }
@@ -513,13 +514,17 @@ app.get('/plants/logs', async (req, res) => {
 // ─── POST /plants/logs ───────────────────────────────────────────────────────
 app.post('/plants/logs', async (req, res) => {
     try {
-        const { plantId, type, fertilizer, notes } = req.body;
+        const { plantId, type, fertilizer, notes, timestamp: reqTimestamp } = req.body;
         if (!plantId || !type) return res.status(400).json({ error: 'plantId and type are required' });
         
+        const timestamp = reqTimestamp && !isNaN(new Date(reqTimestamp).getTime())
+            ? new Date(reqTimestamp).toISOString()
+            : new Date().toISOString();
+
         const { randomUUID } = require('crypto');
         const item = {
             plantId,
-            timestamp: new Date().toISOString(),
+            timestamp,
             logId: randomUUID(),
             type,
             ...(fertilizer ? { fertilizer } : {}),
@@ -529,6 +534,48 @@ app.post('/plants/logs', async (req, res) => {
         res.status(201).json(item);
     } catch (err) {
         console.error('POST /plants/logs error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── GET /plants/settings ───────────────────────────────────────────────────
+app.get('/plants/settings', async (req, res) => {
+    try {
+        const { GetCommand } = require('@aws-sdk/lib-dynamodb');
+        const r = await ddb.send(new GetCommand({
+            TableName: PLANTS_TABLE,
+            Key: { plantId: '__CONFIG__', timestamp: 'settings' }
+        }));
+        const data = r.Item?.settings || {
+            potTypeOverrides: {
+                'money-tree': 'self-watering',
+                'cream-allusion-arrowhead': 'self-watering',
+                'prayer-plant': 'self-watering',
+            },
+            deletedPlantIds: [],
+            permanentlyDeletedIds: []
+        };
+        res.json(data);
+    } catch (err) {
+        console.error('GET /plants/settings error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── POST /plants/settings ──────────────────────────────────────────────────
+app.post('/plants/settings', async (req, res) => {
+    try {
+        const settings = req.body;
+        const item = {
+            plantId: '__CONFIG__',
+            timestamp: 'settings',
+            updatedAt: new Date().toISOString(),
+            settings
+        };
+        await ddb.send(new PutCommand({ TableName: PLANTS_TABLE, Item: item }));
+        res.json({ success: true, settings });
+    } catch (err) {
+        console.error('POST /plants/settings error:', err);
         res.status(500).json({ error: err.message });
     }
 });
