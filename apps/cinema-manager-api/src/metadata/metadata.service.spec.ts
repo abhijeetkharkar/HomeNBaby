@@ -58,4 +58,47 @@ describe('MetadataService', () => {
       { canonicalKey: 'thematrix_1999' }
     );
   });
+
+  it('should score exact title match with close release year higher than popular partial title match', () => {
+    const exactMatchCandidate = {
+      id: 191726,
+      title: 'Ugly',
+      release_date: '2013-05-17',
+      original_language: 'hi',
+      popularity: 1.26,
+    };
+
+    const distantClassicCandidate = {
+      id: 429,
+      title: 'The Good, the Bad and the Ugly',
+      release_date: '1966-12-23',
+      original_language: 'it',
+      popularity: 26.96,
+    };
+
+    const exactScore = (service as any).scoreTmdbCandidate(
+      exactMatchCandidate,
+      'Ugly',
+      2015,
+      'hi'
+    );
+
+    const classicScore = (service as any).scoreTmdbCandidate(
+      distantClassicCandidate,
+      'Ugly',
+      2015,
+      'hi'
+    );
+
+    expect(exactScore).toBeGreaterThan(150);
+    expect(classicScore).toBeLessThan(50);
+    expect(exactScore).toBeGreaterThan(classicScore);
+  });
+
+  it('should correctly match close titles ignoring case and leading articles', () => {
+    expect((service as any).isCloseTitleMatch('The Matrix', 'Matrix')).toBe(true);
+    expect((service as any).isCloseTitleMatch('Ugly', 'Ugly')).toBe(true);
+    expect((service as any).isCloseTitleMatch('The Good, the Bad and the Ugly', 'Ugly')).toBe(false);
+    expect((service as any).isCloseTitleMatch("You're Ugly Too", 'Ugly')).toBe(false);
+  });
 });
