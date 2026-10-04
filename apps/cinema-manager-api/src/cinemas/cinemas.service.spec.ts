@@ -70,4 +70,19 @@ describe('CinemasService', () => {
     expect(results).toHaveLength(1);
     expect(results[0].title).toBe('The Matrix');
   });
+
+  it('should extract language hints from directory paths correctly', () => {
+    expect(
+      (service as any).extractLanguageFromPath('G:\\My Drive\\Videos\\Hindi\\Ugly.2015.720p.mkv')
+    ).toBe('hi');
+    expect(
+      (service as any).extractLanguageFromPath('/Volumes/Media/Korean/Parasite.2019.mp4')
+    ).toBe('ko');
+    expect(
+      (service as any).extractLanguageFromPath('C:\\Movies\\Spanish Movies\\Roma.2018.mkv')
+    ).toBe('es');
+    expect(
+      (service as any).extractLanguageFromPath('C:\\Movies\\The.Matrix.1999.mkv')
+    ).toBeUndefined();
+  });
 });

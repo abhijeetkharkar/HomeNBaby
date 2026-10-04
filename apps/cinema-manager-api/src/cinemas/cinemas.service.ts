@@ -108,13 +108,15 @@ export class CinemasService {
     // 2. Extract year from filename if present (e.g., Movie.Title.2023.1080p.mkv)
     const yearMatch = dto.fileName.match(/\b(19\d\d|20\d\d)\b/);
     const parsedYear = yearMatch ? parseInt(yearMatch[1], 10) : undefined;
+    const languageHint = this.extractLanguageFromPath(dto.filePath);
 
     // 3. Fetch TMDB/OMDB enrichment with fallback
     let enriched: any = null;
     try {
       enriched = await this.metadataService.enrichMovie(
         dto.title || dto.fileName,
-        parsedYear
+        parsedYear,
+        languageHint
       );
     } catch (e) {
       this.logger.warn(`Metadata enrichment failed for "${dto.fileName}", using basic metadata:`, e);
@@ -338,5 +340,58 @@ export class CinemasService {
       directors,
       actorsList,
     };
+  }
+
+  private extractLanguageFromPath(filePath?: string): string | undefined {
+    if (!filePath) return undefined;
+    const normalized = filePath.replace(/\\/g, '/').toLowerCase();
+    const segments = normalized.split('/');
+
+    const languageMap: Record<string, string> = {
+      hindi: 'hi',
+      bollywood: 'hi',
+      marathi: 'mr',
+      tamil: 'ta',
+      kollywood: 'ta',
+      telugu: 'te',
+      tollywood: 'te',
+      malayalam: 'ml',
+      mollywood: 'ml',
+      kannada: 'kn',
+      sandalwood: 'kn',
+      bengali: 'bn',
+      bangla: 'bn',
+      gujarati: 'gu',
+      punjabi: 'pa',
+      english: 'en',
+      hollywood: 'en',
+      korean: 'ko',
+      kdrama: 'ko',
+      japanese: 'ja',
+      anime: 'ja',
+      spanish: 'es',
+      french: 'fr',
+      german: 'de',
+      italian: 'it',
+      chinese: 'zh',
+      mandarin: 'zh',
+      cantonese: 'zh',
+      russian: 'ru',
+    };
+
+    for (const segment of segments) {
+      for (const [key, langCode] of Object.entries(languageMap)) {
+        if (
+          segment === key ||
+          segment.startsWith(`${key} `) ||
+          segment.endsWith(` ${key}`) ||
+          segment.includes(`_${key}`) ||
+          segment.includes(`${key}_`)
+        ) {
+          return langCode;
+        }
+      }
+    }
+    return undefined;
   }
 }

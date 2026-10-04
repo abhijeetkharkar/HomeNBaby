@@ -46,21 +46,33 @@ export class MetadataService {
    * Enrich movie with metadata from TMDB and OMDB APIs (with DynamoDB master cache)
    * @param searchString - Movie title
    * @param year - Optional release year
+   * @param languageHint - Optional ISO 639-1 language hint (e.g. 'hi', 'en', 'es')
    * @returns Enriched metadata or fallback object
    */
-  async enrichMovie(searchString: string, year?: number): Promise<EnrichedMetadata> {
+  async enrichMovie(
+    searchString: string,
+    year?: number,
+    languageHint?: string
+  ): Promise<EnrichedMetadata> {
     const extracted = this.extractTitleAndYear(searchString, year);
     const cleanedTitle = extracted.title;
     const effectiveYear = extracted.year;
-    const canonicalKey = `${cleanedTitle.toLowerCase().replace(/[^a-z0-9]/g, '')}_${effectiveYear || 0}`;
+    const baseKey = `${cleanedTitle.toLowerCase().replace(/[^a-z0-9]/g, '')}_${effectiveYear || 0}`;
+    const canonicalKey = languageHint ? `${baseKey}_${languageHint}` : baseKey;
 
     // 1. Check Master Cache
     if (this.dynamoDb) {
       try {
-        const cached = await this.dynamoDb.getItem<any>(
+        let cached = await this.dynamoDb.getItem<any>(
           this.dynamoDb.masterMoviesTable,
           { canonicalKey }
         );
+        if (!cached && languageHint) {
+          cached = await this.dynamoDb.getItem<any>(
+            this.dynamoDb.masterMoviesTable,
+            { canonicalKey: baseKey }
+          );
+        }
         if (cached && cached.metadata) {
           this.logger.log(`[Cache Hit] Master cache resolved "${canonicalKey}" (${cleanedTitle})`);
           if (this.telemetry) {
@@ -77,7 +89,7 @@ export class MetadataService {
       }
     }
 
-    this.logger.log(`Enriching movie: "${cleanedTitle}" (Year: ${effectiveYear || 'unknown'}) [from: "${searchString}"]`);
+    this.logger.log(`Enriching movie: "${cleanedTitle}" (Year: ${effectiveYear || 'unknown'}, Lang: ${languageHint || 'none'}) [from: "${searchString}"]`);
 
     if (!this.tmdbApiKey && !this.omdbApiKey) {
       this.logger.warn('TMDB_API_KEY and OMDB_API_KEY are not configured. Using fallback metadata.');
@@ -87,39 +99,81 @@ export class MetadataService {
     try {
       let tmdbMovie: any = null;
 
-      // 1. Search TMDB with year (if available)
+      // 1. Search TMDB with scoring and year fallback
       if (this.tmdbApiKey) {
         try {
-          const tmdbParams: Record<string, string> = {
-            api_key: this.tmdbApiKey,
-            page: '1',
-            include_adult: 'true',
-            query: cleanedTitle,
-          };
+          const candidates: any[] = [];
+
+          // 1a. Search TMDB with year (if available)
           if (effectiveYear && !isNaN(effectiveYear)) {
-            tmdbParams['year'] = String(effectiveYear);
+            try {
+              const resWithYear = await axios.get(`${this.tmdbBaseUrl}/search/movie`, {
+                params: {
+                  api_key: this.tmdbApiKey,
+                  page: '1',
+                  include_adult: 'true',
+                  query: cleanedTitle,
+                  year: String(effectiveYear),
+                },
+                timeout: 5000,
+              });
+              if (resWithYear.data?.results) {
+                candidates.push(...resWithYear.data.results);
+              }
+            } catch (yearErr) {
+              this.logger.warn(`TMDB year-specific search failed for "${cleanedTitle}":`, yearErr);
+            }
           }
 
-          const res = await axios.get(`${this.tmdbBaseUrl}/search/movie`, {
-            params: tmdbParams,
-            timeout: 5000,
+          // 1b. Search TMDB without year constraint if no candidates or if year candidates lack an exact match
+          const hasExactMatch = candidates.some((c) => {
+            const t = (c.title || '').trim().toLowerCase();
+            const ot = (c.original_title || '').trim().toLowerCase();
+            const q = cleanedTitle.trim().toLowerCase();
+            return t === q || ot === q;
           });
 
-          if (res.data?.results && res.data.results.length > 0) {
-            tmdbMovie = res.data.results[0];
-          } else if (effectiveYear) {
-            // Retry TMDB search without year filter
-            const retryRes = await axios.get(`${this.tmdbBaseUrl}/search/movie`, {
-              params: {
-                api_key: this.tmdbApiKey,
-                page: '1',
-                include_adult: 'true',
-                query: cleanedTitle,
-              },
-              timeout: 5000,
-            });
-            if (retryRes.data?.results && retryRes.data.results.length > 0) {
-              tmdbMovie = retryRes.data.results[0];
+          if (!hasExactMatch) {
+            try {
+              const resNoYear = await axios.get(`${this.tmdbBaseUrl}/search/movie`, {
+                params: {
+                  api_key: this.tmdbApiKey,
+                  page: '1',
+                  include_adult: 'true',
+                  query: cleanedTitle,
+                },
+                timeout: 5000,
+              });
+              if (resNoYear.data?.results) {
+                candidates.push(...resNoYear.data.results);
+              }
+            } catch (noYearErr) {
+              this.logger.warn(`TMDB broad search failed for "${cleanedTitle}":`, noYearErr);
+            }
+          }
+
+          // Deduplicate candidates by TMDB ID
+          const uniqueCandidates = new Map<number, any>();
+          for (const cand of candidates) {
+            if (cand && cand.id && !uniqueCandidates.has(cand.id)) {
+              uniqueCandidates.set(cand.id, cand);
+            }
+          }
+
+          // Score and rank candidates
+          if (uniqueCandidates.size > 0) {
+            const ranked = Array.from(uniqueCandidates.values())
+              .map((cand) => ({
+                cand,
+                score: this.scoreTmdbCandidate(cand, cleanedTitle, effectiveYear, languageHint),
+              }))
+              .sort((a, b) => b.score - a.score);
+
+            if (ranked.length > 0 && ranked[0].score > 0) {
+              tmdbMovie = ranked[0].cand;
+              this.logger.log(
+                `[TMDB Selected] "${tmdbMovie.title}" (${tmdbMovie.release_date || 'N/A'}) ID: ${tmdbMovie.id} [Score: ${ranked[0].score.toFixed(1)}]`
+              );
             }
           }
 
@@ -208,16 +262,22 @@ export class MetadataService {
               params: omdbParams,
               timeout: 5000,
             });
-            if (omdbRes.data?.Response !== 'False') {
+            if (
+              omdbRes.data?.Response !== 'False' &&
+              this.isCloseTitleMatch(omdbRes.data?.Title, cleanedTitle)
+            ) {
               omdbData = omdbRes.data;
             } else if (effectiveYear) {
-              // Retry OMDB search without year
+              // Retry OMDB search without year if year resulted in mismatch or False
               delete omdbParams['y'];
               const omdbRetryRes = await axios.get(this.omdbBaseUrl, {
                 params: omdbParams,
                 timeout: 5000,
               });
-              if (omdbRetryRes.data?.Response !== 'False') {
+              if (
+                omdbRetryRes.data?.Response !== 'False' &&
+                (this.isCloseTitleMatch(omdbRetryRes.data?.Title, cleanedTitle) || !omdbData)
+              ) {
                 omdbData = omdbRetryRes.data;
               }
             }
@@ -262,9 +322,9 @@ export class MetadataService {
       };
 
       const releaseYear =
-        effectiveYear ||
         parseSafeInt(omdbData?.Year, 0) ||
         (releaseDate ? parseSafeInt(releaseDate.substring(0, 4), 0) : 0) ||
+        effectiveYear ||
         new Date().getFullYear();
 
       const posterPath = tmdbMovie?.poster_path
@@ -351,6 +411,82 @@ export class MetadataService {
 
     const title = clean.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase());
     return { title, year };
+  }
+
+  private isCloseTitleMatch(candidateTitle?: string, queryTitle?: string): boolean {
+    if (!candidateTitle || !queryTitle) return false;
+    const stripArticles = (s: string) =>
+      s
+        .trim()
+        .toLowerCase()
+        .replace(/^(the|a|an)\s+/i, '')
+        .replace(/[^a-z0-9]/g, '');
+    const c = stripArticles(candidateTitle);
+    const q = stripArticles(queryTitle);
+    return c === q;
+  }
+
+  private scoreTmdbCandidate(
+    cand: any,
+    cleanTitle: string,
+    targetYear?: number,
+    languageHint?: string
+  ): number {
+    if (!cand || !cand.title) return -999;
+
+    let score = 0;
+    const candTitle = cand.title.trim().toLowerCase();
+    const candOrigTitle = (cand.original_title || '').trim().toLowerCase();
+    const target = cleanTitle.trim().toLowerCase();
+
+    const stripArticles = (s: string) => s.replace(/^(the|a|an)\s+/i, '').trim();
+    const targetNoArticles = stripArticles(target);
+    const candNoArticles = stripArticles(candTitle);
+
+    // 1. Title Matching
+    if (candTitle === target || candOrigTitle === target) {
+      score += 120; // Exact title match
+    } else if (candNoArticles === targetNoArticles) {
+      score += 100; // Exact match ignoring leading articles
+    } else if (candTitle.startsWith(target + ' ') || candTitle.endsWith(' ' + target)) {
+      score += 20; // Word prefix/suffix
+    } else if (candTitle.includes(target)) {
+      score += 10; // Substring
+    } else {
+      score -= 30; // Neither exact nor substring
+    }
+
+    // 2. Release Year Matching
+    const candYear = cand.release_date ? parseInt(cand.release_date.substring(0, 4), 10) : 0;
+    if (targetYear && candYear) {
+      const diff = Math.abs(candYear - targetYear);
+      if (diff === 0) {
+        score += 50; // Exact year
+      } else if (diff === 1) {
+        score += 40; // 1 year diff (late release or festival/theatrical lag)
+      } else if (diff === 2) {
+        score += 30; // 2 years diff (festival premiere vs general/home release)
+      } else if (diff <= 4) {
+        score += 10;
+      } else if (diff > 15) {
+        score -= 50; // Vastly different era
+      }
+    }
+
+    // 3. Language Matching
+    if (languageHint && cand.original_language) {
+      if (cand.original_language.toLowerCase() === languageHint.toLowerCase()) {
+        score += 50; // Boost matching language
+      } else {
+        score -= 10;
+      }
+    }
+
+    // 4. Popularity Tie-breaker
+    const popularity = typeof cand.popularity === 'number' ? cand.popularity : 0;
+    score += Math.min(popularity, 15);
+
+    return score;
   }
 
   private createFallbackMetadata(title: string, year?: number): EnrichedMetadata {
