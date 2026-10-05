@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useCareApi, usePlantSettings, computeUrgency } from './hooks/useCareApi';
+import { useCareApi, usePlantSettings, computeUrgency, type PlantSettings } from './hooks/useCareApi';
 import { PLANTS, PLANT_GROUPS } from './data/plants';
 import { FERTILIZERS } from './data/fertilizers';
 
@@ -32,15 +32,22 @@ function rankUrgency(u: { status: 'overdue' | 'due-today' | 'due-soon' | 'never'
   }
 }
 
+function getEffectiveGroup(plant: PlantDef, settings: PlantSettings): PlantGroup {
+  if (plant.group === 'outdoor-garden') return 'outdoor-garden';
+  return settings.groupOverrides?.[plant.id] || plant.group;
+}
+
 function getPlantUrgency(
   plant: PlantDef,
   latestLogs: Record<string, { timestamp: string } | undefined>,
   taskFilter: TaskFilter,
   isSelfWatering: boolean = false,
   isWaterTrackingActive: boolean = true,
+  effectiveGroup?: PlantGroup,
 ) {
+  const currentGroup = effectiveGroup || plant.group;
   const canSelfWater =
-    plant.group !== 'outdoor-garden' &&
+    currentGroup !== 'outdoor-garden' &&
     (plant.selfWatering === 'ideal' || plant.selfWatering === 'caution');
   const effectiveWaterFreq =
     canSelfWater && isSelfWatering && plant.selfWaterFreqDays
@@ -89,6 +96,7 @@ function App() {
     settings,
     setPotType,
     setTrackWatering,
+    setPlantGroup,
     softDeletePlant,
     restorePlant,
     permanentlyDeletePlant,
@@ -134,23 +142,24 @@ function App() {
 
     // 2. Group Filtering
     if (activeGroup !== 'all') {
-      list = list.filter(p => p.group === activeGroup);
+      list = list.filter(p => getEffectiveGroup(p, settings) === activeGroup);
     }
 
     // 3. Task / Urgency Filtering
     if (activeTaskFilter === 'water-due') {
       list = list.filter(p => {
+        const effectiveGrp = getEffectiveGroup(p, settings);
         const isWaterActive =
-          p.group === 'indoor'
+          effectiveGrp === 'indoor'
             ? true
-            : p.group === 'outdoor-garden'
+            : effectiveGrp === 'outdoor-garden'
             ? false
             : Boolean(settings.trackWateringOverrides[p.id]);
         if (!isWaterActive) return false;
 
         const isSw = settings.potTypeOverrides[p.id] === 'self-watering';
         const canSw =
-          p.group !== 'outdoor-garden' &&
+          effectiveGrp !== 'outdoor-garden' &&
           (p.selfWatering === 'ideal' || p.selfWatering === 'caution');
         const freq = canSw && isSw && p.selfWaterFreqDays ? p.selfWaterFreqDays : p.waterFreqDays;
         if (!freq) return false;
@@ -233,22 +242,24 @@ function App() {
 
     // 5. 5-Tier Urgency Sorting: Overdue -> Due Today -> Due Soon -> No Record -> OK
     list.sort((a, b) => {
+      const grpA = getEffectiveGroup(a, settings);
+      const grpB = getEffectiveGroup(b, settings);
       const isWaterA =
-        a.group === 'indoor'
+        grpA === 'indoor'
           ? true
-          : a.group === 'outdoor-garden'
+          : grpA === 'outdoor-garden'
           ? false
           : Boolean(settings.trackWateringOverrides[a.id]);
       const isWaterB =
-        b.group === 'indoor'
+        grpB === 'indoor'
           ? true
-          : b.group === 'outdoor-garden'
+          : grpB === 'outdoor-garden'
           ? false
           : Boolean(settings.trackWateringOverrides[b.id]);
       const isSwA = settings.potTypeOverrides[a.id] === 'self-watering';
       const isSwB = settings.potTypeOverrides[b.id] === 'self-watering';
-      const uA = getPlantUrgency(a, latestLogs, activeTaskFilter, isSwA, isWaterA);
-      const uB = getPlantUrgency(b, latestLogs, activeTaskFilter, isSwB, isWaterB);
+      const uA = getPlantUrgency(a, latestLogs, activeTaskFilter, isSwA, isWaterA, grpA);
+      const uB = getPlantUrgency(b, latestLogs, activeTaskFilter, isSwB, isWaterB, grpB);
       const rankA = rankUrgency(uA);
       const rankB = rankUrgency(uB);
 
@@ -453,30 +464,35 @@ function App() {
           <div className="results-count">
             {activeStatus === 'deleted' ? 'Deleted Plants' : 'Active Plants'}: Showing {visiblePlants.length} plant{visiblePlants.length !== 1 ? 's' : ''} (sorted by due status)
           </div>
-          {visiblePlants.map(plant => (
-            <PlantCard
-              key={plant.id}
-              plant={plant}
-              lastWater={latestLogs[`${plant.id}__water`] || null}
-              lastFert={latestLogs[`${plant.id}__fertilize`] || null}
-              lastFert2={latestLogs[`${plant.id}__fertilize-2`] || null}
-              onLog={handleOpenModal}
-              isSelfWatering={settings.potTypeOverrides[plant.id] === 'self-watering'}
-              onTogglePotType={setPotType}
-              isWaterTrackingActive={
-                plant.group === 'indoor'
-                  ? true
-                  : plant.group === 'outdoor-garden'
-                  ? false
-                  : Boolean(settings.trackWateringOverrides[plant.id])
-              }
-              onToggleWaterTracking={setTrackWatering}
-              onDelete={handleDeletePlant}
-              onRestore={handleRestorePlant}
-              onPermanentDelete={handlePermanentDeletePlant}
-              isDeleted={settings.deletedPlantIds.includes(plant.id)}
-            />
-          ))}
+          {visiblePlants.map(plant => {
+            const effectiveGrp = getEffectiveGroup(plant, settings);
+            return (
+              <PlantCard
+                key={plant.id}
+                plant={plant}
+                lastWater={latestLogs[`${plant.id}__water`] || null}
+                lastFert={latestLogs[`${plant.id}__fertilize`] || null}
+                lastFert2={latestLogs[`${plant.id}__fertilize-2`] || null}
+                onLog={handleOpenModal}
+                effectiveGroup={effectiveGrp}
+                onToggleGroup={setPlantGroup}
+                isSelfWatering={settings.potTypeOverrides[plant.id] === 'self-watering'}
+                onTogglePotType={setPotType}
+                isWaterTrackingActive={
+                  effectiveGrp === 'indoor'
+                    ? true
+                    : effectiveGrp === 'outdoor-garden'
+                    ? false
+                    : Boolean(settings.trackWateringOverrides[plant.id])
+                }
+                onToggleWaterTracking={setTrackWatering}
+                onDelete={handleDeletePlant}
+                onRestore={handleRestorePlant}
+                onPermanentDelete={handlePermanentDeletePlant}
+                isDeleted={settings.deletedPlantIds.includes(plant.id)}
+              />
+            );
+          })}
           {visiblePlants.length === 0 && (
             <div
               style={{
@@ -499,9 +515,9 @@ function App() {
           plant={modalPlant}
           defaultType={modalType}
           isWaterTrackingActive={
-            modalPlant.group === 'indoor'
+            getEffectiveGroup(modalPlant, settings) === 'indoor'
               ? true
-              : modalPlant.group === 'outdoor-garden'
+              : getEffectiveGroup(modalPlant, settings) === 'outdoor-garden'
               ? false
               : Boolean(settings.trackWateringOverrides[modalPlant.id])
           }
