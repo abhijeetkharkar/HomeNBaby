@@ -13,6 +13,8 @@ interface Props {
   onTogglePotType?: (plantId: string, type: 'self-watering' | 'standard') => void;
   isWaterTrackingActive?: boolean;
   onToggleWaterTracking?: (plantId: string, track: boolean) => void;
+  effectiveGroup?: 'indoor' | 'outdoor-potted' | 'outdoor-garden';
+  onToggleGroup?: (plantId: string, group: 'indoor' | 'outdoor-potted') => void;
   onDelete?: (plant: PlantDef) => void;
   onRestore?: (plant: PlantDef) => void;
   onPermanentDelete?: (plant: PlantDef) => void;
@@ -51,6 +53,8 @@ export function PlantCard({
   onTogglePotType,
   isWaterTrackingActive = false,
   onToggleWaterTracking,
+  effectiveGroup,
+  onToggleGroup,
   onDelete,
   onRestore,
   onPermanentDelete,
@@ -58,15 +62,17 @@ export function PlantCard({
 }: Props) {
   const [flipped, setFlipped] = useState(false);
 
+  const currentGroup = effectiveGroup || plant.group;
+
   const effectiveWaterTracking =
-    plant.group === 'indoor'
+    currentGroup === 'indoor'
       ? true
-      : plant.group === 'outdoor-garden'
+      : currentGroup === 'outdoor-garden'
       ? false
       : Boolean(isWaterTrackingActive);
 
   const canSelfWater =
-    plant.group !== 'outdoor-garden' &&
+    currentGroup !== 'outdoor-garden' &&
     (plant.selfWatering === 'ideal' || plant.selfWatering === 'caution');
   const isSelfWateringActive = canSelfWater && Boolean(isSelfWatering);
 
@@ -110,12 +116,12 @@ export function PlantCard({
             </div>
           )}
           
-          {(plant.warning || (plant.group !== 'outdoor-garden' && plant.selfWatering === 'never') || isSelfWateringActive) && (
+          {(plant.warning || (currentGroup !== 'outdoor-garden' && plant.selfWatering === 'never') || isSelfWateringActive) && (
             <div className="front-badges-container">
               {plant.warning && (
                 <div className="front-warning-top">⚠️ {plant.warning.replace(/^⚠️\s*/, '')}</div>
               )}
-              {plant.group !== 'outdoor-garden' && plant.selfWatering === 'never' && (
+              {currentGroup !== 'outdoor-garden' && plant.selfWatering === 'never' && (
                 <div className="front-warning-top front-no-self-water-top">⚠️ No Self-Watering</div>
               )}
               {isSelfWateringActive && (
@@ -269,7 +275,31 @@ export function PlantCard({
                 </div>
               )}
 
-              {plant.group !== 'outdoor-garden' && plant.selfWatering && (
+              {plant.group !== 'outdoor-garden' && onToggleGroup && (
+                <div className="meta-item full-width">
+                  <span className="meta-label">📍 Environment & Location</span>
+                  <div className="meta-val-block">
+                    <div className="pot-type-selector" onClick={e => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className={`pot-selector-btn ${currentGroup === 'indoor' ? 'active' : ''}`}
+                        onClick={() => onToggleGroup(plant.id, 'indoor')}
+                      >
+                        🏠 Indoor
+                      </button>
+                      <button
+                        type="button"
+                        className={`pot-selector-btn ${currentGroup === 'outdoor-potted' ? 'active' : ''}`}
+                        onClick={() => onToggleGroup(plant.id, 'outdoor-potted')}
+                      >
+                        🪴 Outdoor Potted
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {currentGroup !== 'outdoor-garden' && plant.selfWatering && (
                 <div className="meta-item full-width">
                   <span className="meta-label">🪴 Pot Type & Selection</span>
                   <div className="meta-val-block">
@@ -308,7 +338,7 @@ export function PlantCard({
                 </div>
               )}
 
-              {plant.group === 'outdoor-potted' && (
+              {currentGroup === 'outdoor-potted' && (
                 <div className="meta-item full-width">
                   <span className="meta-label">💧 Outdoor Water Tracking</span>
                   <div className="meta-val-block">
@@ -346,7 +376,7 @@ export function PlantCard({
                 </div>
               )}
 
-              {plant.group !== 'outdoor-garden' && plant.pebbleRule && (
+              {currentGroup !== 'outdoor-garden' && plant.pebbleRule && (
                 <div className="meta-item full-width">
                   <span className="meta-label">🪨 Pebbles / Top Dressing</span>
                   <span className="meta-val">{plant.pebbleRule}</span>

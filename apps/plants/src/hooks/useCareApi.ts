@@ -112,6 +112,7 @@ export interface PlantSettings {
   deletedPlantIds: string[];
   permanentlyDeletedIds: string[];
   trackWateringOverrides: Record<string, boolean>;
+  groupOverrides?: Record<string, 'indoor' | 'outdoor-potted'>;
 }
 
 const LS_SETTINGS_KEY = 'plants-settings-data';
@@ -124,6 +125,7 @@ const DEFAULT_SETTINGS: PlantSettings = {
   deletedPlantIds: [],
   permanentlyDeletedIds: [],
   trackWateringOverrides: {},
+  groupOverrides: {},
 };
 
 function lsGetSettings(): PlantSettings {
@@ -160,6 +162,7 @@ export function usePlantSettings() {
             deletedPlantIds: cloudData.deletedPlantIds || [],
             permanentlyDeletedIds: cloudData.permanentlyDeletedIds || [],
             trackWateringOverrides: cloudData.trackWateringOverrides || {},
+            groupOverrides: cloudData.groupOverrides || {},
           };
           setSettings(merged);
           lsSaveSettings(merged);
@@ -253,10 +256,25 @@ export function usePlantSettings() {
     [settings, persistSettings],
   );
 
+  const setPlantGroup = useCallback(
+    (plantId: string, group: 'indoor' | 'outdoor-potted') => {
+      const next: PlantSettings = {
+        ...settings,
+        groupOverrides: {
+          ...(settings.groupOverrides || {}),
+          [plantId]: group,
+        },
+      };
+      persistSettings(next);
+    },
+    [settings, persistSettings],
+  );
+
   return {
     settings,
     setPotType,
     setTrackWatering,
+    setPlantGroup,
     softDeletePlant,
     restorePlant,
     permanentlyDeletePlant,
