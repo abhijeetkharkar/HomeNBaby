@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version tag (e.g. v1.0.0-alpha.1)'
+        description: 'Release version tag (e.g. v1.0.0-alpha.3)'
         required: true
-        default: 'v1.0.0-alpha.1'
+        default: 'v1.0.0-alpha.3'
 
 permissions:
   contents: write
@@ -116,15 +116,32 @@ jobs:
           genisoimage -V "CinemaCompanion" -D -R -apple -no-pad -o dist/cinema-agent-macos.dmg dist/cinema-agent-macos
           cd dist/cinema-agent-macos && zip -r ../cinema-agent-macos.zip . && cd ../..
 
+      - name: Determine release tag
+        id: release-tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.version }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          TAG=$(echo "$TAG" | xargs)
+          if [ -z "$TAG" ]; then
+            echo "Error: Release tag cannot be empty."
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.release-tag.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: |
             dist/cinema-agent-win-x64.zip
             dist/cinema-agent-macos.dmg
             dist/cinema-agent-macos.zip
-          name: Cinema Companion Agent ${{ github.ref_name }}
+          name: Cinema Companion Agent ${{ steps.release-tag.outputs.tag }}
           draft: false
-          prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
+          prerelease: ${{ contains(steps.release-tag.outputs.tag, '-alpha') || contains(steps.release-tag.outputs.tag, '-beta') || contains(steps.release-tag.outputs.tag, '-rc') }}
           make_latest: true
           generate_release_notes: true
