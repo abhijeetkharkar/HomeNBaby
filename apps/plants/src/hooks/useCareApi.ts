@@ -44,7 +44,7 @@ export function useCareApi() {
           const map: Record<string, CareLog> = {};
           for (const item of items) {
             const key = `${item.plantId}__${item.type}`;
-            map[key] = item;
+            if (!map[key] || item.timestamp > map[key].timestamp) map[key] = item;
           }
           setLatestLogs(map);
         }
