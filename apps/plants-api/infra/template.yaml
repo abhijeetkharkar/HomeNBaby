@@ -1,0 +1,238 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Plants API - HTTP API Gateway, Lambda, custom domain, DynamoDB tables & catalog images bucket'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: 'prod'
+    Description: 'Deployment environment'
+
+  DomainName:
+    Type: String
+    Default: 'plantsapi.abhijeetkharkar.com'
+    Description: 'Custom domain name for the plants API'
+
+  HostedZoneId:
+    Type: String
+    Default: 'Z13Z70GHALBE08'
+    Description: 'Route 53 Hosted Zone ID for abhijeetkharkar.com'
+
+  CertificateArn:
+    Type: String
+    Default: 'arn:aws:acm:us-east-1:797884421713:certificate/15b73dd4-bcb8-4f54-b9a4-7dc728ed2727'
+    Description: 'ACM Wildcard Certificate ARN in us-east-1'
+
+Resources:
+  # ── DynamoDB: master plants catalog (plant metadata, shared by all users) ─
+  PlantsCatalogTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: 'plants-catalog'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: plantId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: plantId
+          KeyType: HASH
+      Tags:
+        - Key: App
+          Value: plants-api
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── DynamoDB: plants users asked for that aren't in the catalog yet ──────
+  PlantsStagingTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: 'plants-staging'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: normalizedName
+          AttributeType: S
+      KeySchema:
+        - AttributeName: normalizedName
+          KeyType: HASH
+      Tags:
+        - Key: App
+          Value: plants-api
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── S3: catalog plant photos (a CloudFront behavior serves it at cutover) ─
+  PlantsImagesBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub 'plants-catalog-images-${Environment}-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: App
+          Value: plants-api
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── IAM Role for the Plants API Lambda ───────────────────────────────────
+  PlantsApiLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'plants-api-lambda-role-${Environment}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Scan
+                  - dynamodb:Query
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:BatchGetItem
+                Resource:
+                  # Original single-user table (managed outside this stack), used by the copied legacy routes
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/plants-care-logs'
+                  - !GetAtt PlantsCatalogTable.Arn
+                  - !GetAtt PlantsStagingTable.Arn
+      Tags:
+        - Key: App
+          Value: plants-api
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── Plants API Lambda Function ───────────────────────────────────────────
+  PlantsApiHandlerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'plants-api-handler-${Environment}'
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: !GetAtt PlantsApiLambdaExecutionRole.Arn
+      MemorySize: 512
+      Timeout: 15
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            return { statusCode: 200, body: JSON.stringify({ message: "Plants API Initializing" }) };
+          };
+      Environment:
+        Variables:
+          PLANTS_TABLE_NAME: 'plants-care-logs'
+          CATALOG_TABLE_NAME: 'plants-catalog'
+          STAGING_TABLE_NAME: 'plants-staging'
+      Tags:
+        - Key: App
+          Value: plants-api
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── API Gateway Custom Domain ────────────────────────────────────────────
+  PlantsApiCustomDomain:
+    Type: AWS::ApiGatewayV2::DomainName
+    Properties:
+      DomainName: !Ref DomainName
+      DomainNameConfigurations:
+        - CertificateArn: !Ref CertificateArn
+          EndpointType: REGIONAL
+      Tags:
+        App: plants-api
+        Environment: !Ref Environment
+
+  # ── HTTP API ─────────────────────────────────────────────────────────────
+  PlantsHttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub 'plants-http-api-${Environment}'
+      ProtocolType: HTTP
+      Tags:
+        App: plants-api
+        Environment: !Ref Environment
+
+  PlantsHttpApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref PlantsHttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt PlantsApiHandlerLambda.Arn
+      PayloadFormatVersion: '2.0'
+
+  PlantsHttpApiDefaultRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref PlantsHttpApi
+      RouteKey: '$default'
+      Target: !Sub 'integrations/${PlantsHttpApiIntegration}'
+
+  PlantsHttpApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref PlantsHttpApi
+      StageName: '$default'
+      AutoDeploy: true
+
+  PlantsApiMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    DependsOn:
+      - PlantsHttpApiStage
+      - PlantsApiCustomDomain
+    Properties:
+      ApiId: !Ref PlantsHttpApi
+      DomainName: !Ref DomainName
+      Stage: '$default'
+
+  PlantsApiLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PlantsApiHandlerLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${PlantsHttpApi}/*/*'
+
+  # ── Route 53 DNS Alias Record ────────────────────────────────────────────
+  PlantsApiDnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        HostedZoneId: !GetAtt PlantsApiCustomDomain.RegionalHostedZoneId
+        DNSName: !GetAtt PlantsApiCustomDomain.RegionalDomainName
+
+Outputs:
+  PlantsApiEndpoint:
+    Description: 'Plants API custom domain endpoint'
+    Value: !Sub 'https://${DomainName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-Endpoint'
+
+  PlantsApiLambdaName:
+    Description: 'Plants API Lambda function name'
+    Value: !Ref PlantsApiHandlerLambda
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaName'
+
+  PlantsImagesBucketName:
+    Description: 'Plants catalog images S3 bucket name'
+    Value: !Ref PlantsImagesBucket
