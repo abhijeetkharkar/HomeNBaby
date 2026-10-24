@@ -11,9 +11,12 @@
     "deploy": "powershell -ExecutionPolicy Bypass -File ./infra/deploy.ps1"
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.1117.0",
     "@aws-sdk/client-dynamodb": "^3.1029.0",
+    "@aws-sdk/client-ses": "^3.1117.0",
     "@aws-sdk/credential-provider-ini": "^3.972.29",
     "@aws-sdk/lib-dynamodb": "^3.1029.0",
+    "aws-jwt-verify": "^5.2.1",
     "cors": "^2.8.6",
     "express": "^4.18.2",
     "serverless-http": "^4.0.0"

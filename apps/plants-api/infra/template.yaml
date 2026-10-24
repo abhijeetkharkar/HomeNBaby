@@ -63,6 +63,130 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
+  # ── DynamoDB: homes (shared household / garden profile) ──────────────────
+  PlantsHomesTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: 'plants-homes'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: homeId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: homeId
+          KeyType: HASH
+      Tags:
+        - Key: App
+          Value: plants-api
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── DynamoDB: user -> home memberships (supports up to 3 homes per user) ─
+  PlantsUserHomesTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: 'plants-user-homes'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+        - AttributeName: homeId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+        - AttributeName: homeId
+          KeyType: RANGE
+      Tags:
+        - Key: App
+          Value: plants-api
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── Cognito Authentication ───────────────────────────────────────────────
+  PlantsUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: 'plants-user-pool'
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      EmailConfiguration:
+        EmailSendingAccount: DEVELOPER
+        SourceArn: !Sub 'arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/abhijeetkharkar.com'
+        From: 'Plants Tracker <plants@abhijeetkharkar.com>'
+        ReplyToEmailAddress: 'abhijeetkharkar@gmail.com'
+      UserPoolTags:
+        App: plants
+        Environment: !Ref Environment
+
+  PlantsCognitoDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: 'plants-abhijeetkharkar'
+      UserPoolId: !Ref PlantsUserPool
+
+  PlantsGoogleIdentityProvider:
+    Type: AWS::Cognito::UserPoolIdentityProvider
+    Properties:
+      UserPoolId: !Ref PlantsUserPool
+      ProviderName: Google
+      ProviderType: Google
+      ProviderDetails:
+        client_id: '{{resolve:secretsmanager:plants-tracker/google-oauth-secret:SecretString:clientId}}'
+        client_secret: '{{resolve:secretsmanager:plants-tracker/google-oauth-secret:SecretString:clientSecret}}'
+        authorize_scopes: 'profile email openid'
+      AttributeMapping:
+        email: email
+        given_name: given_name
+        family_name: family_name
+        picture: picture
+
+  PlantsUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn:
+      - PlantsGoogleIdentityProvider
+    Properties:
+      ClientName: 'plants-react-client'
+      UserPoolId: !Ref PlantsUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+      SupportedIdentityProviders:
+        - COGNITO
+        - Google
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+      CallbackURLs:
+        - 'http://localhost:5173/'
+        - 'https://plants.abhijeetkharkar.com/'
+      LogoutURLs:
+        - 'http://localhost:5173/'
+        - 'https://plants.abhijeetkharkar.com/'
+
   # ── S3: catalog plant photos (a CloudFront behavior serves it at cutover) ─
   PlantsImagesBucket:
     Type: AWS::S3::Bucket
@@ -115,6 +239,18 @@ Resources:
                   - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/plants-care-logs'
                   - !GetAtt PlantsCatalogTable.Arn
                   - !GetAtt PlantsStagingTable.Arn
+                  - !GetAtt PlantsHomesTable.Arn
+                  - !GetAtt PlantsUserHomesTable.Arn
+        - PolicyName: CognitoAndSESAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:AdminGetUser
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                Resource: '*'
       Tags:
         - Key: App
           Value: plants-api
@@ -141,6 +277,10 @@ Resources:
           PLANTS_TABLE_NAME: 'plants-care-logs'
           CATALOG_TABLE_NAME: 'plants-catalog'
           STAGING_TABLE_NAME: 'plants-staging'
+          HOMES_TABLE_NAME: 'plants-homes'
+          USER_HOMES_TABLE_NAME: 'plants-user-homes'
+          USER_POOL_ID: !Ref PlantsUserPool
+          USER_POOL_CLIENT_ID: !Ref PlantsUserPoolClient
       Tags:
         - Key: App
           Value: plants-api
@@ -236,3 +376,16 @@ Outputs:
   PlantsImagesBucketName:
     Description: 'Plants catalog images S3 bucket name'
     Value: !Ref PlantsImagesBucket
+
+  PlantsUserPoolId:
+    Description: 'Plants Cognito User Pool ID'
+    Value: !Ref PlantsUserPool
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolId'
+
+  PlantsUserPoolClientId:
+    Description: 'Plants Cognito User Pool Client ID'
+    Value: !Ref PlantsUserPoolClient
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolClientId'
+
