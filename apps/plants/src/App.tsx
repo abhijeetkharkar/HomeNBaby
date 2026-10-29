@@ -546,7 +546,11 @@ function App() {
         </div>
       </header>
 
-      {!homeLoading && !plantsLoading && activeHome && !activeHome.onboardingComplete && homePlants.length === 0 && (
+      {!homeLoading &&
+        !plantsLoading &&
+        activeHome &&
+        (activeHome.onboardingComplete === false ||
+          (!activeHome.onboardingComplete && homePlants.length === 0)) && (
         <OnboardingWizard
           homeName={activeHome.name}
           catalog={catalog}

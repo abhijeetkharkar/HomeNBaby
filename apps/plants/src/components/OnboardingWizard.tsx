@@ -8,6 +8,13 @@ interface SelectedEntry {
   potType: 'standard' | 'self-watering';
 }
 
+interface CustomRequestEntry {
+  key: string;
+  name: string;
+  group: PlantGroup;
+  groupTitle: string;
+}
+
 interface Props {
   homeName: string;
   catalog: CatalogPlantItem[];
@@ -65,7 +72,7 @@ export function OnboardingWizard({
   const [stepIdx, setStepIdx] = useState(0);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Record<string, SelectedEntry>>({});
-  const [customRequested, setCustomRequested] = useState<string[]>([]);
+  const [customRequested, setCustomRequested] = useState<CustomRequestEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -110,23 +117,28 @@ export function OnboardingWizard({
     });
   };
 
-  const handleRequestCustom = async () => {
+  const handleRequestCustom = () => {
     const trimmed = search.trim();
     if (!trimmed) return;
-    setBusy(true);
     setError(null);
-    try {
-      await onRequestUnknownPlant({
-        name: trimmed,
-        group: currentStep.group,
-      });
-      setCustomRequested(prev => [...prev, `${trimmed} (${currentStep.title})`]);
-      setSearch('');
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to request plant');
-    } finally {
-      setBusy(false);
-    }
+    const key = `${currentStep.group}::${trimmed.toLowerCase()}`;
+    setCustomRequested(prev => {
+      if (prev.some(item => item.key === key)) return prev;
+      return [
+        ...prev,
+        {
+          key,
+          name: trimmed,
+          group: currentStep.group,
+          groupTitle: currentStep.title,
+        },
+      ];
+    });
+    setSearch('');
+  };
+
+  const removeCustomRequested = (key: string) => {
+    setCustomRequested(prev => prev.filter(item => item.key !== key));
   };
 
   const handleFinish = async () => {
@@ -141,9 +153,26 @@ export function OnboardingWizard({
       if (items.length > 0) {
         await onAddPlants(items);
       }
+      for (const req of customRequested) {
+        await onRequestUnknownPlant({
+          name: req.name,
+          group: req.group,
+        });
+      }
       await onCompleteOnboarding();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to finish setup');
+      setBusy(false);
+    }
+  };
+
+  const handleSkipSetup = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await onCompleteOnboarding();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to skip setup');
       setBusy(false);
     }
   };
@@ -207,7 +236,22 @@ export function OnboardingWizard({
 
       {customRequested.length > 0 && (
         <div className="onboarding-custom-banner">
-          🌱 Added to Coming Soon queue: <strong>{customRequested.join(', ')}</strong>
+          <span>🌱 Queued for Coming Soon:</span>
+          <div className="onboarding-custom-chips">
+            {customRequested.map(item => (
+              <span key={item.key} className="onboarding-custom-chip">
+                <strong>{item.name}</strong> ({item.groupTitle})
+                <button
+                  type="button"
+                  className="onboarding-custom-chip-remove"
+                  onClick={() => removeCustomRequested(item.key)}
+                  aria-label={`Remove ${item.name}`}
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+          </div>
         </div>
       )}
 
@@ -325,14 +369,24 @@ export function OnboardingWizard({
           <button
             type="button"
             className="onboarding-skip-btn"
-            onClick={handleFinish}
+            onClick={handleSkipSetup}
             disabled={busy}
           >
-            {totalSelectedCount > 0 ? 'Save & Skip Remaining Steps' : 'Skip Setup for Now'}
+            Skip Setup for Now
           </button>
         </div>
 
         <div className="onboarding-footer-right">
+          {stepIdx < STEPS.length - 1 && totalSelectedCount > 0 && (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={handleFinish}
+              disabled={busy}
+            >
+              {busy ? 'Saving...' : `🌱 Save & Finish (${totalSelectedCount})`}
+            </button>
+          )}
           {stepIdx < STEPS.length - 1 ? (
             <button
               type="button"
