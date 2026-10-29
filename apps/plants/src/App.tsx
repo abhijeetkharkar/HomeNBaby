@@ -1,5 +1,11 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { useCareApi, usePlantSettings, computeUrgency, type PlantSettings } from './hooks/useCareApi';
+import {
+  useCareApi,
+  usePlantSettings,
+  useCatalogPlants,
+  computeUrgency,
+  type PlantSettings,
+} from './hooks/useCareApi';
 import { PLANT_GROUPS } from './data/plants';
 import { FERTILIZERS } from './data/fertilizers';
 
@@ -9,6 +15,8 @@ import { LogCareModal } from './components/LogCareModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { HomeManagerModal } from './components/HomeManagerModal';
 import { UserSettingsModal } from './components/UserSettingsModal';
+import { OnboardingWizard } from './components/OnboardingWizard';
+import { AddPlantModal } from './components/AddPlantModal';
 import { AuthContainer } from './components/auth/AuthContainer';
 import { useAuth } from './context/AuthContext';
 import { useHomeProfile } from './hooks/useHomeProfile';
@@ -108,6 +116,7 @@ function App() {
     createHome,
     inviteMember,
     deleteHome,
+    completeHomeOnboarding,
   } = useHomeProfile();
   const { latestLogs, logCare, loading: logsLoading } = useCareApi(activeHomeId);
   const {
@@ -120,7 +129,10 @@ function App() {
     softDeletePlant,
     restorePlant,
     permanentlyDeletePlant,
+    addPlantsToHome,
+    requestUnknownPlant,
   } = usePlantSettings(activeHomeId);
+  const { catalog, catalogLoading } = useCatalogPlants();
   const loading = homeLoading || logsLoading || plantsLoading;
 
   const [activeStatus, setActiveStatus] = useState<StatusFilter>('active');
@@ -130,6 +142,7 @@ function App() {
   const [showFertGuide, setShowFertGuide] = useState(false);
   const [showHomeModal, setShowHomeModal] = useState(false);
   const [showUserSettingsModal, setShowUserSettingsModal] = useState(false);
+  const [showAddPlantModal, setShowAddPlantModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const [firstHomeName, setFirstHomeName] = useState('');
@@ -427,6 +440,16 @@ function App() {
           </div>
 
           <div className="header-actions-group">
+            {activeHome && (
+              <button
+                type="button"
+                className="add-plant-header-btn hide-on-mobile"
+                onClick={() => setShowAddPlantModal(true)}
+              >
+                ➕ Add Plant
+              </button>
+            )}
+
             <button
               className={`fert-guide-toggle-btn hide-on-mobile ${showFertGuide ? 'active' : ''}`}
               onClick={() => setShowFertGuide(!showFertGuide)}
@@ -502,6 +525,16 @@ function App() {
             <span>🏡 {activeHome ? activeHome.name : 'Set Up Home'}</span>
           </button>
 
+          {activeHome && (
+            <button
+              type="button"
+              className="add-plant-header-btn"
+              onClick={() => setShowAddPlantModal(true)}
+            >
+              ➕ Add Plant
+            </button>
+          )}
+
           <button
             className={`fert-guide-toggle-btn ${showFertGuide ? 'active' : ''}`}
             onClick={() => setShowFertGuide(!showFertGuide)}
@@ -512,6 +545,21 @@ function App() {
           </button>
         </div>
       </header>
+
+      {!homeLoading &&
+        !plantsLoading &&
+        activeHome &&
+        (activeHome.onboardingComplete === false ||
+          (!activeHome.onboardingComplete && homePlants.length === 0)) && (
+        <OnboardingWizard
+          homeName={activeHome.name}
+          catalog={catalog}
+          catalogLoading={catalogLoading}
+          onAddPlants={addPlantsToHome}
+          onRequestUnknownPlant={requestUnknownPlant}
+          onCompleteOnboarding={() => completeHomeOnboarding(activeHome.homeId)}
+        />
+      )}
 
       {!homeLoading && homes.length === 0 && (
         <section className="first-home-setup-card">
@@ -748,6 +796,17 @@ function App() {
           userProfile={userProfile}
           onSaveProfile={updateUserProfile}
           onClose={() => setShowUserSettingsModal(false)}
+        />
+      )}
+
+      {showAddPlantModal && activeHome && (
+        <AddPlantModal
+          homeName={activeHome.name}
+          catalog={catalog}
+          catalogLoading={catalogLoading}
+          onAddPlants={addPlantsToHome}
+          onRequestUnknownPlant={requestUnknownPlant}
+          onClose={() => setShowAddPlantModal(false)}
         />
       )}
     </div>
