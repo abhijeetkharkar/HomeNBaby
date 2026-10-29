@@ -7,6 +7,10 @@ import type { PlantGroup, PlantDef } from './data/plants';
 import { PlantCard } from './components/PlantCard';
 import { LogCareModal } from './components/LogCareModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
+import { HomeManagerModal } from './components/HomeManagerModal';
+import { AuthContainer } from './components/auth/AuthContainer';
+import { useAuth } from './context/AuthContext';
+import { useHomeProfile } from './hooks/useHomeProfile';
 
 type ExtendedGroup = PlantGroup | 'all';
 type TaskFilter = 'all' | 'water-due' | 'fert-due';
@@ -91,6 +95,16 @@ function getPlantUrgency(
 }
 
 function App() {
+  const { user, userEmail, initialCheckLoading, handleSignOut } = useAuth();
+  const {
+    homes,
+    activeHome,
+    setActiveHomeId,
+    loading: homeLoading,
+    createHome,
+    inviteMember,
+    deleteHome,
+  } = useHomeProfile();
   const { latestLogs, logCare, loading } = useCareApi();
   const {
     settings,
@@ -107,6 +121,10 @@ function App() {
   const [activeTaskFilter, setActiveTaskFilter] = useState<TaskFilter>('all');
   const [activeFertFilter, setActiveFertFilter] = useState<FertFilter>('all');
   const [showFertGuide, setShowFertGuide] = useState(false);
+  const [showHomeModal, setShowHomeModal] = useState(false);
+  const [firstHomeName, setFirstHomeName] = useState('');
+  const [creatingFirstHome, setCreatingFirstHome] = useState(false);
+  const [firstHomeError, setFirstHomeError] = useState<string | null>(null);
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -339,21 +357,99 @@ function App() {
     setDeleteModal(null);
   }, [deleteModal, softDeletePlant, permanentlyDeletePlant]);
 
+  const handleCreateFirstHome = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!firstHomeName.trim()) return;
+    setCreatingFirstHome(true);
+    setFirstHomeError(null);
+    try {
+      await createHome(firstHomeName.trim());
+      setFirstHomeName('');
+    } catch (err: unknown) {
+      setFirstHomeError(err instanceof Error ? err.message : 'Failed to create home');
+    } finally {
+      setCreatingFirstHome(false);
+    }
+  };
+
+  if (initialCheckLoading || !user) {
+    return <AuthContainer />;
+  }
+
   return (
     <div className="app-container">
       <header className="header">
-        <h1 className="title">
-          Plants Tracker <span style={{ fontSize: '2rem' }}>🌱</span>
-        </h1>
-        <button
-          className={`fert-guide-toggle-btn ${showFertGuide ? 'active' : ''}`}
-          onClick={() => setShowFertGuide(!showFertGuide)}
-          title="Toggle Fertilizer Application & Dosage Guide"
-        >
-          <span>🧪 Fertilizer Application Guide</span>
-          <span className="toggle-chevron">{showFertGuide ? '▲' : '▼'}</span>
-        </button>
+        <div className="header-brand-group">
+          <h1 className="title">
+            Plants Tracker <span style={{ fontSize: '2rem' }}>🌱</span>
+          </h1>
+          <button
+            type="button"
+            className="home-header-pill"
+            onClick={() => setShowHomeModal(true)}
+            title="Switch home, invite family members, or manage home settings"
+          >
+            <span>🏡 {activeHome ? activeHome.name : 'Set Up Home'}</span>
+            {activeHome && (
+              <span className="home-header-badge">
+                👥 {activeHome.members.length}/4
+              </span>
+            )}
+          </button>
+        </div>
+
+        <div className="header-actions-group">
+          <button
+            className={`fert-guide-toggle-btn ${showFertGuide ? 'active' : ''}`}
+            onClick={() => setShowFertGuide(!showFertGuide)}
+            title="Toggle Fertilizer Application & Dosage Guide"
+          >
+            <span>🧪 Fertilizer Application Guide</span>
+            <span className="toggle-chevron">{showFertGuide ? '▲' : '▼'}</span>
+          </button>
+
+          <button
+            type="button"
+            className="header-signout-btn"
+            onClick={handleSignOut}
+            title={`Signed in as ${userEmail}`}
+          >
+            Sign Out
+          </button>
+        </div>
       </header>
+
+      {!homeLoading && homes.length === 0 && (
+        <section className="first-home-setup-card">
+          <h3>🏡 Welcome! Name Your Home &amp; Garden</h3>
+          <p>
+            Create your home profile to start tracking your plants or invite up to 3 family members to care for them together.
+          </p>
+          {firstHomeError && (
+            <div className="auth-alert auth-alert-error" role="alert">
+              <span>{firstHomeError}</span>
+            </div>
+          )}
+          <form onSubmit={handleCreateFirstHome} className="home-inline-form">
+            <input
+              type="text"
+              className="auth-input"
+              placeholder="e.g. Kharkar Home"
+              value={firstHomeName}
+              onChange={e => setFirstHomeName(e.target.value)}
+              maxLength={60}
+              required
+            />
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={creatingFirstHome || !firstHomeName.trim()}
+            >
+              {creatingFirstHome ? 'Creating...' : '🌱 Create Home'}
+            </button>
+          </form>
+        </section>
+      )}
 
       {/* Collapsible Fertilizer Application Guide */}
       {showFertGuide && (
@@ -536,6 +632,19 @@ function App() {
           mode={deleteModal.mode}
           onConfirm={handleConfirmDelete}
           onClose={() => setDeleteModal(null)}
+        />
+      )}
+
+      {showHomeModal && (
+        <HomeManagerModal
+          userEmail={userEmail}
+          homes={homes}
+          activeHome={activeHome}
+          onSelectHome={setActiveHomeId}
+          onCreateHome={createHome}
+          onInviteMember={inviteMember}
+          onDeleteHome={deleteHome}
+          onClose={() => setShowHomeModal(false)}
         />
       )}
     </div>
