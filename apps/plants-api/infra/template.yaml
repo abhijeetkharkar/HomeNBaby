@@ -107,6 +107,54 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
+  # ── DynamoDB: plant instances per home (supports nicknames & overrides) ──
+  PlantsHomePlantsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: 'plants-home-plants'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: homeId
+          AttributeType: S
+        - AttributeName: homePlantId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: homeId
+          KeyType: HASH
+        - AttributeName: homePlantId
+          KeyType: RANGE
+      Tags:
+        - Key: App
+          Value: plants-api
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── DynamoDB: multi-tenant care logs (SK: homePlantId#timestamp#type) ────
+  PlantsCareLogsV2Table:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: 'plants-care-logs-v2'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: homeId
+          AttributeType: S
+        - AttributeName: logKey
+          AttributeType: S
+      KeySchema:
+        - AttributeName: homeId
+          KeyType: HASH
+        - AttributeName: logKey
+          KeyType: RANGE
+      Tags:
+        - Key: App
+          Value: plants-api
+        - Key: Environment
+          Value: !Ref Environment
+
   # ── Cognito Authentication ───────────────────────────────────────────────
   PlantsUserPool:
     Type: AWS::Cognito::UserPool
@@ -241,6 +289,8 @@ Resources:
                   - !GetAtt PlantsStagingTable.Arn
                   - !GetAtt PlantsHomesTable.Arn
                   - !GetAtt PlantsUserHomesTable.Arn
+                  - !GetAtt PlantsHomePlantsTable.Arn
+                  - !GetAtt PlantsCareLogsV2Table.Arn
         - PolicyName: CognitoAndSESAccess
           PolicyDocument:
             Version: '2012-10-17'
@@ -279,6 +329,8 @@ Resources:
           STAGING_TABLE_NAME: 'plants-staging'
           HOMES_TABLE_NAME: 'plants-homes'
           USER_HOMES_TABLE_NAME: 'plants-user-homes'
+          HOME_PLANTS_TABLE_NAME: 'plants-home-plants'
+          CARE_LOGS_V2_TABLE_NAME: 'plants-care-logs-v2'
           USER_POOL_ID: !Ref PlantsUserPool
           USER_POOL_CLIENT_ID: !Ref PlantsUserPoolClient
       Tags:

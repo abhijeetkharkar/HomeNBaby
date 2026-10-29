@@ -1,6 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useCareApi, usePlantSettings, computeUrgency, type PlantSettings } from './hooks/useCareApi';
-import { PLANTS, PLANT_GROUPS } from './data/plants';
+import { PLANT_GROUPS } from './data/plants';
 import { FERTILIZERS } from './data/fertilizers';
 
 import type { PlantGroup, PlantDef } from './data/plants';
@@ -8,6 +8,7 @@ import { PlantCard } from './components/PlantCard';
 import { LogCareModal } from './components/LogCareModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { HomeManagerModal } from './components/HomeManagerModal';
+import { UserSettingsModal } from './components/UserSettingsModal';
 import { AuthContainer } from './components/auth/AuthContainer';
 import { useAuth } from './context/AuthContext';
 import { useHomeProfile } from './hooks/useHomeProfile';
@@ -99,14 +100,19 @@ function App() {
   const {
     homes,
     activeHome,
+    activeHomeId,
     setActiveHomeId,
+    userProfile,
+    updateUserProfile,
     loading: homeLoading,
     createHome,
     inviteMember,
     deleteHome,
   } = useHomeProfile();
-  const { latestLogs, logCare, loading } = useCareApi();
+  const { latestLogs, logCare, loading: logsLoading } = useCareApi(activeHomeId);
   const {
+    homePlants,
+    plantsLoading,
     settings,
     setPotType,
     setTrackWatering,
@@ -114,7 +120,8 @@ function App() {
     softDeletePlant,
     restorePlant,
     permanentlyDeletePlant,
-  } = usePlantSettings();
+  } = usePlantSettings(activeHomeId);
+  const loading = homeLoading || logsLoading || plantsLoading;
 
   const [activeStatus, setActiveStatus] = useState<StatusFilter>('active');
   const [activeGroup, setActiveGroup] = useState<ExtendedGroup>('all');
@@ -122,9 +129,34 @@ function App() {
   const [activeFertFilter, setActiveFertFilter] = useState<FertFilter>('all');
   const [showFertGuide, setShowFertGuide] = useState(false);
   const [showHomeModal, setShowHomeModal] = useState(false);
+  const [showUserSettingsModal, setShowUserSettingsModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
   const [firstHomeName, setFirstHomeName] = useState('');
   const [creatingFirstHome, setCreatingFirstHome] = useState(false);
   const [firstHomeError, setFirstHomeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!showUserMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserMenu]);
+
+  const displayFullName = useMemo(() => {
+    const full = `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim();
+    if (full) return full;
+    return userEmail ? userEmail.split('@')[0] : 'Account';
+  }, [userProfile.firstName, userProfile.lastName, userEmail]);
+
+  const avatarInitial = useMemo(() => {
+    const ch = userProfile.firstName?.trim()?.[0] || userEmail?.trim()?.[0] || 'U';
+    return ch.toUpperCase();
+  }, [userProfile.firstName, userEmail]);
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -136,8 +168,8 @@ function App() {
   } | null>(null);
 
   const nonPermanentlyDeletedPlants = useMemo(() => {
-    return PLANTS.filter(p => !settings.permanentlyDeletedIds.includes(p.id));
-  }, [settings.permanentlyDeletedIds]);
+    return homePlants.filter(p => !settings.permanentlyDeletedIds.includes(p.id));
+  }, [homePlants, settings.permanentlyDeletedIds]);
 
   const activeCount = useMemo(() => {
     return nonPermanentlyDeletedPlants.filter(p => !settings.deletedPlantIds.includes(p.id)).length;
@@ -149,7 +181,7 @@ function App() {
 
   const visiblePlants = useMemo(() => {
     // 0. Base: exclude permanently deleted
-    let list = PLANTS.filter(p => !settings.permanentlyDeletedIds.includes(p.id));
+    let list = homePlants.filter(p => !settings.permanentlyDeletedIds.includes(p.id));
 
     // 1. Status Filter: active vs deleted
     if (activeStatus === 'active') {
@@ -294,7 +326,7 @@ function App() {
     });
 
     return list;
-  }, [activeGroup, activeTaskFilter, activeFertFilter, activeStatus, settings, latestLogs]);
+  }, [homePlants, activeGroup, activeTaskFilter, activeFertFilter, activeStatus, settings, latestLogs]);
 
   const handleOpenModal = useCallback(
     (plant: PlantDef, defaultType: 'water' | 'fertilize' | 'fertilize-2') => {
@@ -379,10 +411,88 @@ function App() {
   return (
     <div className="app-container">
       <header className="header">
-        <div className="header-brand-group">
-          <h1 className="title">
-            Plants Tracker <span style={{ fontSize: '2rem' }}>🌱</span>
-          </h1>
+        <div className="header-top-row">
+          <div className="header-brand-group">
+            <h1 className="title">
+              Plants Tracker <span style={{ fontSize: '2rem' }}>🌱</span>
+            </h1>
+            <button
+              type="button"
+              className="home-header-pill hide-on-mobile"
+              onClick={() => setShowHomeModal(true)}
+              title="Switch home, invite family members, or manage home settings"
+            >
+              <span>🏡 {activeHome ? activeHome.name : 'Set Up Home'}</span>
+            </button>
+          </div>
+
+          <div className="header-actions-group">
+            <button
+              className={`fert-guide-toggle-btn hide-on-mobile ${showFertGuide ? 'active' : ''}`}
+              onClick={() => setShowFertGuide(!showFertGuide)}
+              title="Toggle Fertilizer Application & Dosage Guide"
+            >
+              <span>🧪 Fertilizer Application Guide</span>
+              <span className="toggle-chevron">{showFertGuide ? '▲' : '▼'}</span>
+            </button>
+
+            <div className="user-menu-wrapper" ref={userMenuRef}>
+              <button
+                type="button"
+                className="user-pill-trigger"
+                onClick={() => setShowUserMenu(v => !v)}
+                aria-expanded={showUserMenu}
+                title={`Signed in as ${userEmail}`}
+              >
+                <span className="user-pill-name">{displayFullName}</span>
+                <span className="user-avatar-circle">{avatarInitial}</span>
+              </button>
+
+              {showUserMenu && (
+                <div className="user-dropdown-menu" role="menu">
+                  <button
+                    type="button"
+                    className="user-dropdown-item"
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      setShowUserSettingsModal(true);
+                    }}
+                  >
+                    <span className="user-dropdown-icon">👤</span>
+                    <span>Account settings</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="user-dropdown-item"
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      setShowHomeModal(true);
+                    }}
+                  >
+                    <span className="user-dropdown-icon">🏡</span>
+                    <span>Home &amp; Family</span>
+                  </button>
+
+                  <div className="user-dropdown-divider" />
+
+                  <button
+                    type="button"
+                    className="user-dropdown-signout"
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      handleSignOut();
+                    }}
+                  >
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="header-mobile-subrow">
           <button
             type="button"
             className="home-header-pill"
@@ -390,31 +500,15 @@ function App() {
             title="Switch home, invite family members, or manage home settings"
           >
             <span>🏡 {activeHome ? activeHome.name : 'Set Up Home'}</span>
-            {activeHome && (
-              <span className="home-header-badge">
-                👥 {activeHome.members.length}/4
-              </span>
-            )}
           </button>
-        </div>
 
-        <div className="header-actions-group">
           <button
             className={`fert-guide-toggle-btn ${showFertGuide ? 'active' : ''}`}
             onClick={() => setShowFertGuide(!showFertGuide)}
             title="Toggle Fertilizer Application & Dosage Guide"
           >
-            <span>🧪 Fertilizer Application Guide</span>
+            <span>🧪 Fertilizer Guide</span>
             <span className="toggle-chevron">{showFertGuide ? '▲' : '▼'}</span>
-          </button>
-
-          <button
-            type="button"
-            className="header-signout-btn"
-            onClick={handleSignOut}
-            title={`Signed in as ${userEmail}`}
-          >
-            Sign Out
           </button>
         </div>
       </header>
@@ -645,6 +739,15 @@ function App() {
           onInviteMember={inviteMember}
           onDeleteHome={deleteHome}
           onClose={() => setShowHomeModal(false)}
+        />
+      )}
+
+      {showUserSettingsModal && (
+        <UserSettingsModal
+          userEmail={userEmail}
+          userProfile={userProfile}
+          onSaveProfile={updateUserProfile}
+          onClose={() => setShowUserSettingsModal(false)}
         />
       )}
     </div>

@@ -13,6 +13,29 @@ export interface HomeProfile {
   joinedAt?: string;
 }
 
+export interface UserAccountProfile {
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  notifications: {
+    careReminders: boolean;
+    email: boolean;
+    sms: boolean;
+  };
+  updatedAt?: string | null;
+}
+
+const DEFAULT_USER_PROFILE: UserAccountProfile = {
+  firstName: '',
+  lastName: '',
+  phoneNumber: '',
+  notifications: {
+    careReminders: true,
+    email: true,
+    sms: false,
+  },
+};
+
 const PLANTS_API_BASE =
   import.meta.env.VITE_PLANTS_API_URL || 'https://plantsapi.abhijeetkharkar.com';
 const ACTIVE_HOME_LS_KEY = 'plants-active-home-id';
@@ -20,6 +43,7 @@ const ACTIVE_HOME_LS_KEY = 'plants-active-home-id';
 export function useHomeProfile() {
   const { user, getIdToken } = useAuth();
   const [homes, setHomes] = useState<HomeProfile[]>([]);
+  const [userProfile, setUserProfile] = useState<UserAccountProfile>(DEFAULT_USER_PROFILE);
   const [activeHomeId, setActiveHomeIdState] = useState<string | null>(() => {
     try {
       return localStorage.getItem(ACTIVE_HOME_LS_KEY);
@@ -44,6 +68,7 @@ export function useHomeProfile() {
     const token = await getIdToken();
     if (!token) {
       setHomes([]);
+      setUserProfile(DEFAULT_USER_PROFILE);
       setLoading(false);
       return;
     }
@@ -56,9 +81,16 @@ export function useHomeProfile() {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || 'Failed to load home profile');
       }
-      const data: { email: string; homes: HomeProfile[]; defaultHomeId: string | null } =
-        await res.json();
+      const data: {
+        email: string;
+        userProfile?: UserAccountProfile;
+        homes: HomeProfile[];
+        defaultHomeId: string | null;
+      } = await res.json();
       setHomes(data.homes || []);
+      if (data.userProfile) {
+        setUserProfile(data.userProfile);
+      }
       setError(null);
 
       // Keep saved activeHomeId if still valid; otherwise fall back to defaultHomeId
@@ -87,10 +119,17 @@ export function useHomeProfile() {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok || cancelled) return;
-        const data: { email: string; homes: HomeProfile[]; defaultHomeId: string | null } =
-          await res.json();
+        const data: {
+          email: string;
+          userProfile?: UserAccountProfile;
+          homes: HomeProfile[];
+          defaultHomeId: string | null;
+        } = await res.json();
         if (cancelled) return;
         setHomes(data.homes || []);
+        if (data.userProfile) {
+          setUserProfile(data.userProfile);
+        }
         const saved = localStorage.getItem(ACTIVE_HOME_LS_KEY);
         const validSaved = data.homes.some(h => h.homeId === saved);
         const resolved = validSaved
@@ -107,6 +146,30 @@ export function useHomeProfile() {
       cancelled = true;
     };
   }, [user, getIdToken, setActiveHomeId]);
+
+  const updateUserProfile = useCallback(
+    async (next: Omit<UserAccountProfile, 'updatedAt'>): Promise<UserAccountProfile> => {
+      const token = await getIdToken();
+      if (!token) throw new Error('Not authenticated');
+      const res = await fetch(`${PLANTS_API_BASE}/plants/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(next),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update account settings');
+      }
+      if (data.userProfile) {
+        setUserProfile(data.userProfile);
+      }
+      return data.userProfile;
+    },
+    [getIdToken],
+  );
 
   const createHome = useCallback(
     async (name: string): Promise<HomeProfile> => {
@@ -182,6 +245,8 @@ export function useHomeProfile() {
     activeHome,
     activeHomeId: activeHome?.homeId || null,
     setActiveHomeId,
+    userProfile,
+    updateUserProfile,
     loading,
     error,
     createHome,

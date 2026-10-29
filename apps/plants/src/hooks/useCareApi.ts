@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useAuth } from '../context/AuthContext';
+import type { PlantDef } from '../data/plants';
 
 export interface CareLog {
   plantId: string;
@@ -7,102 +9,145 @@ export interface CareLog {
   type: 'water' | 'fertilize' | 'fertilize-2';
   fertilizer?: string;
   notes?: string;
+  loggedBy?: string;
 }
 
-// In dev (no deployed Lambda), fall back to localStorage
-const IS_DEV = import.meta.env.DEV;
-const LS_KEY = 'plants-care-logs-dev';
-const API_BASE = import.meta.env.VITE_API_URL || 'https://api.abhijeetkharkar.com';
-
-function lsGetAll(): CareLog[] {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { return []; }
+export interface HomePlantDef extends PlantDef {
+  homePlantId: string;
+  catalogId: string;
+  nickname?: string;
+  displayName?: string;
+  potType?: 'self-watering' | 'standard';
+  trackWatering?: boolean;
+  groupOverride?: 'indoor' | 'outdoor-potted';
+  deleted?: boolean;
 }
-function lsSave(logs: CareLog[]) {
-  localStorage.setItem(LS_KEY, JSON.stringify(logs));
-}
 
-export function useCareApi() {
-  // Map: `${plantId}__${type}` → latest log
+const PLANTS_API_BASE =
+  import.meta.env.VITE_PLANTS_API_URL || 'https://plantsapi.abhijeetkharkar.com';
+
+export function useCareApi(activeHomeId: string | null) {
+  const { getIdToken } = useAuth();
   const [latestLogs, setLatestLogs] = useState<Record<string, CareLog>>({});
   const [loading, setLoading] = useState(true);
 
   const fetchLatest = useCallback(async () => {
+    if (!activeHomeId) {
+      setLatestLogs({});
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      if (IS_DEV) {
-        const all = lsGetAll();
+      const token = await getIdToken();
+      if (!token) {
+        setLatestLogs({});
+        return;
+      }
+      const res = await fetch(`${PLANTS_API_BASE}/plants/v2/logs`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'X-Home-Id': activeHomeId,
+        },
+      });
+      if (res.ok) {
+        const items: CareLog[] = await res.json();
         const map: Record<string, CareLog> = {};
-        for (const log of all) {
-          const key = `${log.plantId}__${log.type}`;
-          if (!map[key] || log.timestamp > map[key].timestamp) map[key] = log;
+        for (const item of items) {
+          const key = `${item.plantId}__${item.type}`;
+          if (!map[key] || item.timestamp > map[key].timestamp) {
+            map[key] = item;
+          }
         }
         setLatestLogs(map);
-      } else {
-        const res = await fetch(`${API_BASE}/plants/logs`);
-        if (res.ok) {
-          const items: CareLog[] = await res.json();
-          const map: Record<string, CareLog> = {};
-          for (const item of items) {
-            const key = `${item.plantId}__${item.type}`;
-            if (!map[key] || item.timestamp > map[key].timestamp) map[key] = item;
-          }
-          setLatestLogs(map);
-        }
       }
     } catch (e) {
       console.error('Failed to fetch care logs', e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeHomeId, getIdToken]);
 
-  useEffect(() => { fetchLatest(); }, [fetchLatest]);
+  useEffect(() => {
+    fetchLatest();
+  }, [fetchLatest]);
 
-  const logCare = useCallback(async (
-    plantId: string,
-    type: 'water' | 'fertilize' | 'fertilize-2',
-    fertilizer?: string,
-    notes?: string,
-    customTimestamp?: string,
-  ) => {
-    const timestamp = customTimestamp || new Date().toISOString();
-    const newLog: CareLog = {
-      plantId,
-      timestamp,
-      logId: crypto.randomUUID(),
-      type,
-      ...(fertilizer ? { fertilizer } : {}),
-      ...(notes ? { notes } : {}),
-    };
+  const logCare = useCallback(
+    async (
+      plantId: string,
+      type: 'water' | 'fertilize' | 'fertilize-2',
+      fertilizer?: string,
+      notes?: string,
+      customTimestamp?: string,
+    ) => {
+      if (!activeHomeId) return;
+      const token = await getIdToken();
+      if (!token) return;
 
-    if (IS_DEV) {
-      const all = lsGetAll();
-      lsSave([...all, newLog]);
-    } else {
-      await fetch(`${API_BASE}/plants/logs`, {
+      const timestamp = customTimestamp || new Date().toISOString();
+      const optimistic: CareLog = {
+        plantId,
+        timestamp,
+        logId: crypto.randomUUID(),
+        type,
+        ...(fertilizer ? { fertilizer } : {}),
+        ...(notes ? { notes } : {}),
+      };
+
+      // Optimistic update so consecutive logCare calls (e.g. liquid fert + auto-water) both appear immediately
+      setLatestLogs(prev => {
+        const key = `${plantId}__${type}`;
+        const existing = prev[key];
+        if (!existing || timestamp >= existing.timestamp) {
+          return { ...prev, [key]: optimistic };
+        }
+        return prev;
+      });
+
+      await fetch(`${PLANTS_API_BASE}/plants/v2/logs`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'X-Home-Id': activeHomeId,
+        },
         body: JSON.stringify({ plantId, type, fertilizer, notes, timestamp }),
       });
-    }
-    await fetchLatest();
-  }, [fetchLatest]);
 
-  const deleteLog = useCallback(async (plantId: string, timestamp: string) => {
-    if (IS_DEV) {
-      const all = lsGetAll().filter(l => !(l.plantId === plantId && l.timestamp === timestamp));
-      lsSave(all);
-    } else {
-      await fetch(`${API_BASE}/plants/logs/${encodeURIComponent(plantId)}/${encodeURIComponent(timestamp)}`, {
+      await fetchLatest();
+    },
+    [activeHomeId, getIdToken, fetchLatest],
+  );
+
+  const deleteLog = useCallback(
+    async (plantId: string, timestamp: string, type?: string) => {
+      if (!activeHomeId) return;
+      const token = await getIdToken();
+      if (!token) return;
+
+      const path = type
+        ? `${PLANTS_API_BASE}/plants/v2/logs/${encodeURIComponent(plantId)}/${encodeURIComponent(timestamp)}/${encodeURIComponent(type)}`
+        : `${PLANTS_API_BASE}/plants/v2/logs/${encodeURIComponent(plantId)}/${encodeURIComponent(timestamp)}`;
+
+      await fetch(path, {
         method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'X-Home-Id': activeHomeId,
+        },
       });
-    }
-    await fetchLatest();
-  }, [fetchLatest]);
+      await fetchLatest();
+    },
+    [activeHomeId, getIdToken, fetchLatest],
+  );
 
-  const getLatest = useCallback((plantId: string, type: 'water' | 'fertilize') => {
-    return latestLogs[`${plantId}__${type}`] || null;
-  }, [latestLogs]);
+  const getLatest = useCallback(
+    (plantId: string, type: 'water' | 'fertilize') => {
+      return latestLogs[`${plantId}__${type}`] || null;
+    },
+    [latestLogs],
+  );
 
   return { latestLogs, loading, logCare, deleteLog, getLatest, refresh: fetchLatest };
 }
@@ -115,162 +160,192 @@ export interface PlantSettings {
   groupOverrides?: Record<string, 'indoor' | 'outdoor-potted'>;
 }
 
-const LS_SETTINGS_KEY = 'plants-settings-data';
-const DEFAULT_SETTINGS: PlantSettings = {
-  potTypeOverrides: {
-    'money-tree': 'self-watering',
-    'cream-allusion-arrowhead': 'self-watering',
-    'prayer-plant': 'self-watering',
-  },
-  deletedPlantIds: [],
-  permanentlyDeletedIds: [],
-  trackWateringOverrides: {},
-  groupOverrides: {},
-};
+export function usePlantSettings(activeHomeId: string | null) {
+  const { getIdToken } = useAuth();
+  const [homePlants, setHomePlants] = useState<HomePlantDef[]>([]);
+  const [plantsLoading, setPlantsLoading] = useState(true);
 
-function lsGetSettings(): PlantSettings {
-  try {
-    const saved = localStorage.getItem(LS_SETTINGS_KEY);
-    return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS;
-  } catch {
-    return DEFAULT_SETTINGS;
-  }
-}
+  const fetchHomePlants = useCallback(async () => {
+    if (!activeHomeId) {
+      setHomePlants([]);
+      setPlantsLoading(false);
+      return;
+    }
 
-function lsSaveSettings(settings: PlantSettings) {
-  try {
-    localStorage.setItem(LS_SETTINGS_KEY, JSON.stringify(settings));
-  } catch (e) {
-    console.error('Failed to save settings to localStorage', e);
-  }
-}
-
-export function usePlantSettings() {
-  const [settings, setSettings] = useState<PlantSettings>(lsGetSettings);
-
-  const fetchSettings = useCallback(async () => {
+    setPlantsLoading(true);
     try {
-      if (!IS_DEV) {
-        const res = await fetch(`${API_BASE}/plants/settings`);
-        if (res.ok) {
-          const cloudData: PlantSettings = await res.json();
-          const merged: PlantSettings = {
-            potTypeOverrides: {
-              ...DEFAULT_SETTINGS.potTypeOverrides,
-              ...(cloudData.potTypeOverrides || {}),
-            },
-            deletedPlantIds: cloudData.deletedPlantIds || [],
-            permanentlyDeletedIds: cloudData.permanentlyDeletedIds || [],
-            trackWateringOverrides: cloudData.trackWateringOverrides || {},
-            groupOverrides: cloudData.groupOverrides || {},
-          };
-          setSettings(merged);
-          lsSaveSettings(merged);
-        }
+      const token = await getIdToken();
+      if (!token) {
+        setHomePlants([]);
+        return;
+      }
+      const res = await fetch(`${PLANTS_API_BASE}/plants/my-plants`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'X-Home-Id': activeHomeId,
+        },
+      });
+      if (res.ok) {
+        const data: { homeId: string; plants: HomePlantDef[] } = await res.json();
+        setHomePlants(
+          (data.plants || []).map(p => ({
+            ...p,
+            name: p.displayName || p.name,
+          })),
+        );
       }
     } catch (e) {
-      console.error('Failed to fetch plant settings', e);
+      console.error('Failed to fetch home plants', e);
+    } finally {
+      setPlantsLoading(false);
     }
-  }, []);
+  }, [activeHomeId, getIdToken]);
 
   useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
+    fetchHomePlants();
+  }, [fetchHomePlants]);
 
-  const persistSettings = useCallback(async (updated: PlantSettings) => {
-    setSettings(updated);
-    lsSaveSettings(updated);
-    if (!IS_DEV) {
+  const settings = useMemo<PlantSettings>(() => {
+    const potTypeOverrides: Record<string, 'self-watering' | 'standard'> = {};
+    const deletedPlantIds: string[] = [];
+    const trackWateringOverrides: Record<string, boolean> = {};
+    const groupOverrides: Record<string, 'indoor' | 'outdoor-potted'> = {};
+
+    for (const p of homePlants) {
+      if (p.potType) potTypeOverrides[p.id] = p.potType;
+      if (p.deleted) deletedPlantIds.push(p.id);
+      if (typeof p.trackWatering === 'boolean') trackWateringOverrides[p.id] = p.trackWatering;
+      if (p.groupOverride) groupOverrides[p.id] = p.groupOverride;
+    }
+
+    return {
+      potTypeOverrides,
+      deletedPlantIds,
+      permanentlyDeletedIds: [],
+      trackWateringOverrides,
+      groupOverrides,
+    };
+  }, [homePlants]);
+
+  const patchHomePlant = useCallback(
+    async (
+      plantId: string,
+      patch: Partial<Pick<HomePlantDef, 'potType' | 'trackWatering' | 'groupOverride' | 'deleted' | 'nickname'>>,
+    ) => {
+      if (!activeHomeId) return;
+      setHomePlants(prev =>
+        prev.map(p => (p.id === plantId ? { ...p, ...patch } : p)),
+      );
       try {
-        await fetch(`${API_BASE}/plants/settings`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(updated),
+        const token = await getIdToken();
+        if (!token) return;
+        await fetch(`${PLANTS_API_BASE}/plants/my-plants/${encodeURIComponent(plantId)}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            'X-Home-Id': activeHomeId,
+          },
+          body: JSON.stringify(patch),
         });
       } catch (e) {
-        console.error('Failed to sync settings to API', e);
+        console.error('Failed to update plant in home', e);
       }
-    }
-  }, []);
+    },
+    [activeHomeId, getIdToken],
+  );
 
   const setPotType = useCallback(
     (plantId: string, potType: 'self-watering' | 'standard') => {
-      const next: PlantSettings = {
-        ...settings,
-        potTypeOverrides: {
-          ...settings.potTypeOverrides,
-          [plantId]: potType,
-        },
-      };
-      persistSettings(next);
+      patchHomePlant(plantId, { potType });
     },
-    [settings, persistSettings],
+    [patchHomePlant],
   );
 
   const softDeletePlant = useCallback(
     (plantId: string) => {
-      if (settings.deletedPlantIds.includes(plantId)) return;
-      const next: PlantSettings = {
-        ...settings,
-        deletedPlantIds: [...settings.deletedPlantIds, plantId],
-      };
-      persistSettings(next);
+      patchHomePlant(plantId, { deleted: true });
     },
-    [settings, persistSettings],
+    [patchHomePlant],
   );
 
   const restorePlant = useCallback(
     (plantId: string) => {
-      const next: PlantSettings = {
-        ...settings,
-        deletedPlantIds: settings.deletedPlantIds.filter(id => id !== plantId),
-      };
-      persistSettings(next);
+      patchHomePlant(plantId, { deleted: false });
     },
-    [settings, persistSettings],
+    [patchHomePlant],
   );
 
   const permanentlyDeletePlant = useCallback(
-    (plantId: string) => {
-      const next: PlantSettings = {
-        ...settings,
-        deletedPlantIds: settings.deletedPlantIds.filter(id => id !== plantId),
-        permanentlyDeletedIds: Array.from(new Set([...settings.permanentlyDeletedIds, plantId])),
-      };
-      persistSettings(next);
+    async (plantId: string) => {
+      if (!activeHomeId) return;
+      setHomePlants(prev => prev.filter(p => p.id !== plantId));
+      try {
+        const token = await getIdToken();
+        if (!token) return;
+        await fetch(`${PLANTS_API_BASE}/plants/my-plants/${encodeURIComponent(plantId)}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'X-Home-Id': activeHomeId,
+          },
+        });
+      } catch (e) {
+        console.error('Failed to permanently delete plant from home', e);
+      }
     },
-    [settings, persistSettings],
+    [activeHomeId, getIdToken],
   );
 
   const setTrackWatering = useCallback(
     (plantId: string, track: boolean) => {
-      const next: PlantSettings = {
-        ...settings,
-        trackWateringOverrides: {
-          ...settings.trackWateringOverrides,
-          [plantId]: track,
-        },
-      };
-      persistSettings(next);
+      patchHomePlant(plantId, { trackWatering: track });
     },
-    [settings, persistSettings],
+    [patchHomePlant],
   );
 
   const setPlantGroup = useCallback(
     (plantId: string, group: 'indoor' | 'outdoor-potted') => {
-      const next: PlantSettings = {
-        ...settings,
-        groupOverrides: {
-          ...(settings.groupOverrides || {}),
-          [plantId]: group,
-        },
-      };
-      persistSettings(next);
+      patchHomePlant(plantId, { groupOverride: group });
     },
-    [settings, persistSettings],
+    [patchHomePlant],
+  );
+
+  const addPlantsToHome = useCallback(
+    async (
+      items: Array<{
+        catalogId: string;
+        nickname?: string;
+        potType?: 'self-watering' | 'standard';
+        trackWatering?: boolean;
+        groupOverride?: 'indoor' | 'outdoor-potted';
+      }>,
+    ) => {
+      if (!activeHomeId || items.length === 0) return [];
+      const token = await getIdToken();
+      if (!token) throw new Error('Not authenticated');
+      const res = await fetch(`${PLANTS_API_BASE}/plants/my-plants`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'X-Home-Id': activeHomeId,
+        },
+        body: JSON.stringify({ items }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to add plants to home');
+      }
+      await fetchHomePlants();
+      return data.added || [];
+    },
+    [activeHomeId, getIdToken, fetchHomePlants],
   );
 
   return {
+    homePlants,
+    plantsLoading,
     settings,
     setPotType,
     setTrackWatering,
@@ -278,7 +353,8 @@ export function usePlantSettings() {
     softDeletePlant,
     restorePlant,
     permanentlyDeletePlant,
-    refreshSettings: fetchSettings,
+    addPlantsToHome,
+    refreshSettings: fetchHomePlants,
   };
 }
 
