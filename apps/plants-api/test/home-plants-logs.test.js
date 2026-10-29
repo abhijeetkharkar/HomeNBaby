@@ -34,11 +34,13 @@ function createFakeDdb() {
     ]);
     const homePlants = []; // { homeId, homePlantId, ... }
     const careLogs = []; // { homeId, logKey, ... }
+    const staging = new Map(); // normalizedName -> item
 
     return {
         catalog,
         homePlants,
         careLogs,
+        staging,
         async send(command) {
             const name = command.constructor.name;
             const input = command.input;
@@ -111,6 +113,16 @@ function createFakeDdb() {
                     l => l.homeId === input.Key.homeId && l.logKey === input.Key.logKey
                 );
                 if (idx >= 0) careLogs.splice(idx, 1);
+                return {};
+            }
+
+            if (name === 'GetCommand' && input.TableName === 'plants-staging') {
+                const s = staging.get(input.Key.normalizedName);
+                return { Item: s ? { ...s } : undefined };
+            }
+
+            if (name === 'PutCommand' && input.TableName === 'plants-staging') {
+                staging.set(input.Item.normalizedName, { ...input.Item });
                 return {};
             }
 
@@ -238,5 +250,31 @@ test('care-logs-v2: water and fertilize at the exact same timestamp do not overw
             headers: { 'x-home-id': 'home-1' },
         })).json();
         assert.strictEqual(afterDelLogs.length, 0);
+    });
+});
+
+test('POST /plants/my-plants/request stages unknown plant in plants-staging and creates Coming Soon card', async () => {
+    const ddb = createFakeDdb();
+    await withServer(ddb, async base => {
+        const reqRes = await fetch(`${base}/plants/my-plants/request`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-home-id': 'home-1' },
+            body: JSON.stringify({
+                name: 'Monstera Thai Constellation',
+                group: 'indoor',
+                nickname: 'Corner Window',
+            }),
+        });
+        assert.strictEqual(reqRes.status, 201);
+        const { plant } = await reqRes.json();
+        assert.strictEqual(plant.comingSoon, true);
+        assert.strictEqual(plant.displayName, 'Monstera Thai Constellation (Corner Window)');
+        assert.strictEqual(ddb.staging.has('monstera thai constellation'), true);
+
+        const listRes = await (await fetch(`${base}/plants/my-plants`, {
+            headers: { 'x-home-id': 'home-1' },
+        })).json();
+        assert.strictEqual(listRes.plants.length, 1);
+        assert.strictEqual(listRes.plants[0].comingSoon, true);
     });
 });

@@ -343,6 +343,35 @@ export function usePlantSettings(activeHomeId: string | null) {
     [activeHomeId, getIdToken, fetchHomePlants],
   );
 
+  const requestUnknownPlant = useCallback(
+    async (req: {
+      name: string;
+      group: 'indoor' | 'outdoor-potted' | 'outdoor-garden';
+      nickname?: string;
+      potType?: 'self-watering' | 'standard';
+    }) => {
+      if (!activeHomeId) throw new Error('No active home selected');
+      const token = await getIdToken();
+      if (!token) throw new Error('Not authenticated');
+      const res = await fetch(`${PLANTS_API_BASE}/plants/my-plants/request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'X-Home-Id': activeHomeId,
+        },
+        body: JSON.stringify(req),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to request plant');
+      }
+      await fetchHomePlants();
+      return data.plant as HomePlantDef;
+    },
+    [activeHomeId, getIdToken, fetchHomePlants],
+  );
+
   return {
     homePlants,
     plantsLoading,
@@ -354,8 +383,50 @@ export function usePlantSettings(activeHomeId: string | null) {
     restorePlant,
     permanentlyDeletePlant,
     addPlantsToHome,
+    requestUnknownPlant,
     refreshSettings: fetchHomePlants,
   };
+}
+
+export interface CatalogPlantItem extends PlantDef {
+  plantId: string;
+}
+
+export function useCatalogPlants() {
+  const { user, getIdToken } = useAuth();
+  const [catalog, setCatalog] = useState<CatalogPlantItem[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+
+  const fetchCatalog = useCallback(async () => {
+    if (!user) return;
+    setCatalogLoading(true);
+    try {
+      const token = await getIdToken();
+      if (!token) return;
+      const res = await fetch(`${PLANTS_API_BASE}/plants/catalog`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const items: CatalogPlantItem[] = await res.json();
+        setCatalog(
+          items.map(item => ({
+            ...item,
+            id: item.plantId || item.id,
+          })),
+        );
+      }
+    } catch (e) {
+      console.error('Failed to fetch plant catalog', e);
+    } finally {
+      setCatalogLoading(false);
+    }
+  }, [user, getIdToken]);
+
+  useEffect(() => {
+    fetchCatalog();
+  }, [fetchCatalog]);
+
+  return { catalog, catalogLoading, refreshCatalog: fetchCatalog };
 }
 
 // Given last care date and [min, max] frequency, compute urgency
