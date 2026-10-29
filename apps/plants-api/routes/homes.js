@@ -12,14 +12,34 @@ const USER_HOMES_TABLE = process.env.USER_HOMES_TABLE_NAME || 'plants-user-homes
 
 const MAX_HOMES_PER_USER = 3;
 const MAX_MEMBERS_PER_HOME = 4;
+const PROFILE_SK = 'PROFILE';
 
-async function getUserMemberships(ddb, email) {
+async function getUserRows(ddb, email) {
     const r = await ddb.send(new QueryCommand({
         TableName: USER_HOMES_TABLE,
         KeyConditionExpression: 'email = :email',
         ExpressionAttributeValues: { ':email': email },
     }));
     return r.Items || [];
+}
+
+async function getUserMemberships(ddb, email) {
+    const rows = await getUserRows(ddb, email);
+    return rows.filter(item => item.homeId !== PROFILE_SK);
+}
+
+function normalizeUserProfile(profileRow) {
+    return {
+        firstName: profileRow?.firstName || '',
+        lastName: profileRow?.lastName || '',
+        phoneNumber: profileRow?.phoneNumber || '',
+        notifications: {
+            careReminders: profileRow?.notifications?.careReminders ?? true,
+            email: profileRow?.notifications?.email ?? true,
+            sms: profileRow?.notifications?.sms ?? false,
+        },
+        updatedAt: profileRow?.updatedAt || null,
+    };
 }
 
 async function listEnrichedUserHomes(ddb, email) {
@@ -55,15 +75,57 @@ function createHomesRouter(ddb, { isUserInCognito, sendEmail } = {}) {
     router.get('/plants/profile', async (req, res) => {
         try {
             const email = req.user.email;
+            const rows = await getUserRows(ddb, email);
+            const profileRow = rows.find(r => r.homeId === PROFILE_SK);
             const homes = await listEnrichedUserHomes(ddb, email);
             const defaultHome = homes.find(h => h.isDefault) || homes[0] || null;
             res.json({
                 email,
+                userProfile: normalizeUserProfile(profileRow),
                 homes,
                 defaultHomeId: defaultHome ? defaultHome.homeId : null,
             });
         } catch (err) {
             console.error('GET /plants/profile error:', err);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // ─── PUT /plants/profile ─────────────────────────────────────────────────
+    router.put('/plants/profile', async (req, res) => {
+        try {
+            const email = req.user.email;
+            const firstName = String(req.body?.firstName ?? '').trim().slice(0, 60);
+            const lastName = String(req.body?.lastName ?? '').trim().slice(0, 60);
+            const phoneNumber = String(req.body?.phoneNumber ?? '').trim().slice(0, 30);
+            const rawNotif = req.body?.notifications || {};
+            const notifications = {
+                careReminders: Boolean(rawNotif.careReminders ?? true),
+                email: Boolean(rawNotif.email ?? true),
+                sms: Boolean(rawNotif.sms ?? false),
+            };
+            const now = new Date().toISOString();
+
+            const item = {
+                email,
+                homeId: PROFILE_SK,
+                firstName,
+                lastName,
+                phoneNumber,
+                notifications,
+                updatedAt: now,
+            };
+
+            await ddb.send(new PutCommand({
+                TableName: USER_HOMES_TABLE,
+                Item: item,
+            }));
+
+            res.json({
+                userProfile: normalizeUserProfile(item),
+            });
+        } catch (err) {
+            console.error('PUT /plants/profile error:', err);
             res.status(500).json({ error: err.message });
         }
     });

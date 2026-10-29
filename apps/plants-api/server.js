@@ -11,7 +11,9 @@ const {
 const { createLegacyLogsRouter } = require('./routes/legacy-logs');
 const { createCatalogRouter } = require('./routes/plants-catalog');
 const { createHomesRouter } = require('./routes/homes');
-const { createAuthMiddleware } = require('./middleware/auth');
+const { createHomePlantsRouter } = require('./routes/home-plants');
+const { createCareLogsV2Router } = require('./routes/care-logs-v2');
+const { createAuthMiddleware, createRequireHomeMiddleware } = require('./middleware/auth');
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -20,6 +22,7 @@ const REGION = 'us-east-1';
 app.use(express.json());
 app.use(cors({
     origin: [/abhijeetkharkar\.com$/, /localhost/],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Home-Id'],
 }));
 
 const clientConfig = { region: REGION };
@@ -72,19 +75,24 @@ const isUserInCognito = async (email) => {
 };
 
 const authMiddleware = createAuthMiddleware(verifier);
+const requireHomeMiddleware = createRequireHomeMiddleware(ddb);
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
 // Care logs + settings, copied from the shared API (same contract, same tables)
 app.use(createLegacyLogsRouter(ddb));
 
-// Authenticated routes: catalog, home profile, home creation/invite/delete
+// Authenticated routes: catalog, home profile, home creation/invite/delete, home plants, v2 logs
 app.use('/plants/catalog', authMiddleware);
 app.use('/plants/profile', authMiddleware);
 app.use('/plants/homes', authMiddleware);
+app.use('/plants/my-plants', authMiddleware, requireHomeMiddleware);
+app.use('/plants/v2/logs', authMiddleware, requireHomeMiddleware);
 
 app.use(createCatalogRouter(ddb));
 app.use(createHomesRouter(ddb, { isUserInCognito, sendEmail }));
+app.use(createHomePlantsRouter(ddb));
+app.use(createCareLogsV2Router(ddb));
 
 // Start server locally; export app for Lambda
 if (require.main === module) {

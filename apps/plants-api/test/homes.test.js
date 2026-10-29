@@ -255,3 +255,44 @@ test('only the home creator can delete a home, and deletion cleans up all member
         assert.strictEqual(memberProfile.homes.length, 0);
     });
 });
+
+test('PUT /plants/profile saves user account settings without counting against the 3-home quota', async () => {
+    const ddb = createFakeDdb();
+    await withServer(ddb, {}, async base => {
+        const putRes = await req(base, '/plants/profile', {
+            method: 'PUT',
+            user: 'alice@example.com',
+            body: {
+                firstName: 'Abhijeet',
+                lastName: 'Kharkar',
+                phoneNumber: '+1-555-123-4567',
+                notifications: {
+                    careReminders: true,
+                    email: true,
+                    sms: true,
+                },
+            },
+        });
+        assert.strictEqual(putRes.status, 200);
+        const putData = await putRes.json();
+        assert.strictEqual(putData.userProfile.firstName, 'Abhijeet');
+        assert.strictEqual(putData.userProfile.lastName, 'Kharkar');
+        assert.strictEqual(putData.userProfile.phoneNumber, '+1-555-123-4567');
+        assert.strictEqual(putData.userProfile.notifications.sms, true);
+
+        // User can still create all 3 homes
+        for (let i = 1; i <= 3; i++) {
+            const hRes = await req(base, '/plants/homes', {
+                method: 'POST',
+                user: 'alice@example.com',
+                body: { name: `Home ${i}` },
+            });
+            assert.strictEqual(hRes.status, 201);
+        }
+
+        const getRes = await (await req(base, '/plants/profile', { user: 'alice@example.com' })).json();
+        assert.strictEqual(getRes.userProfile.firstName, 'Abhijeet');
+        assert.strictEqual(getRes.homes.length, 3);
+    });
+});
+

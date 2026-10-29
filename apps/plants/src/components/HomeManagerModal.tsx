@@ -102,9 +102,7 @@ export function HomeManagerModal({
           <span className="modal-emoji">🏡</span>
           <div>
             <div className="modal-title">Home &amp; Family Settings</div>
-            <div className="modal-subtitle">
-              {homes.length} of {MAX_HOMES_PER_USER} homes • Signed in as {userEmail}
-            </div>
+            <div className="modal-subtitle">Signed in as {userEmail}</div>
           </div>
           <button className="modal-close" onClick={onClose} aria-label="Close modal">
             ✕
@@ -126,9 +124,7 @@ export function HomeManagerModal({
           {/* Switch Active Home */}
           {homes.length > 0 && (
             <div className="field-group">
-              <label className="field-label">
-                Your Homes ({homes.length}/{MAX_HOMES_PER_USER})
-              </label>
+              <label className="field-label">Your Homes</label>
               <div className="home-switcher-list">
                 {homes.map(h => {
                   const active = activeHome?.homeId === h.homeId;
@@ -141,7 +137,7 @@ export function HomeManagerModal({
                     >
                       <span>🏡 {h.name}</span>
                       <span className="home-pill-meta">
-                        {h.createdBy === userEmail ? 'Owner' : 'Member'} • {h.members.length}/{MAX_MEMBERS_PER_HOME}
+                        {h.createdBy === userEmail ? 'Owner' : 'Member'}
                       </span>
                     </button>
                   );
@@ -155,9 +151,6 @@ export function HomeManagerModal({
             <div className="home-section-box">
               <div className="home-section-header">
                 <h4>👥 Members of &ldquo;{activeHome.name}&rdquo;</h4>
-                <span className="home-count-badge">
-                  {memberCount} / {MAX_MEMBERS_PER_HOME} members
-                </span>
               </div>
 
               <ul className="home-member-list">
@@ -191,7 +184,7 @@ export function HomeManagerModal({
                 </form>
               ) : (
                 <p className="home-limit-note">
-                  This home has reached the maximum of {MAX_MEMBERS_PER_HOME} members.
+                  You have reached the maximum number of members for this home and cannot add any more.
                 </p>
               )}
 
@@ -274,12 +267,12 @@ export function HomeManagerModal({
                   style={{ width: '100%' }}
                   onClick={() => setShowCreateForm(true)}
                 >
-                  ➕ Add Another Home ({homes.length}/{MAX_HOMES_PER_USER})
+                  ➕ Add Another Home
                 </button>
               )
             ) : (
               <p className="home-limit-note">
-                You belong to the maximum of {MAX_HOMES_PER_USER} homes.
+                You have reached the maximum number of homes and cannot add any more.
               </p>
             )}
           </div>

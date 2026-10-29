@@ -46,7 +46,7 @@ function createRequireHomeMiddleware(ddb) {
                 KeyConditionExpression: 'email = :email',
                 ExpressionAttributeValues: { ':email': req.user.email },
             }));
-            const memberships = r.Items || [];
+            const memberships = (r.Items || []).filter(m => m.homeId !== 'PROFILE');
             if (memberships.length === 0) {
                 return res.status(403).json({ error: 'No home found for this user.' });
             }
