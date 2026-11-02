@@ -1,12 +1,25 @@
-import { useState, useMemo, useCallback } from 'react';
-import { useCareApi, usePlantSettings, computeUrgency, type PlantSettings } from './hooks/useCareApi';
-import { PLANTS, PLANT_GROUPS } from './data/plants';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import {
+  useCareApi,
+  usePlantSettings,
+  useCatalogPlants,
+  computeUrgency,
+  type PlantSettings,
+} from './hooks/useCareApi';
+import { PLANT_GROUPS } from './data/plants';
 import { FERTILIZERS } from './data/fertilizers';
 
 import type { PlantGroup, PlantDef } from './data/plants';
 import { PlantCard } from './components/PlantCard';
 import { LogCareModal } from './components/LogCareModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
+import { HomeManagerModal } from './components/HomeManagerModal';
+import { UserSettingsModal } from './components/UserSettingsModal';
+import { OnboardingWizard } from './components/OnboardingWizard';
+import { AddPlantModal } from './components/AddPlantModal';
+import { AuthContainer } from './components/auth/AuthContainer';
+import { useAuth } from './context/AuthContext';
+import { useHomeProfile } from './hooks/useHomeProfile';
 
 type ExtendedGroup = PlantGroup | 'all';
 type TaskFilter = 'all' | 'water-due' | 'fert-due';
@@ -91,22 +104,73 @@ function getPlantUrgency(
 }
 
 function App() {
-  const { latestLogs, logCare, loading } = useCareApi();
+  const { user, userEmail, initialCheckLoading, handleSignOut } = useAuth();
   const {
+    homes,
+    activeHome,
+    activeHomeId,
+    setActiveHomeId,
+    userProfile,
+    updateUserProfile,
+    loading: homeLoading,
+    createHome,
+    inviteMember,
+    deleteHome,
+    completeHomeOnboarding,
+  } = useHomeProfile();
+  const { latestLogs, logCare, loading: logsLoading } = useCareApi(activeHomeId);
+  const {
+    homePlants,
+    plantsLoading,
     settings,
     setPotType,
     setTrackWatering,
     setPlantGroup,
+    setPlantNickname,
     softDeletePlant,
     restorePlant,
     permanentlyDeletePlant,
-  } = usePlantSettings();
+    addPlantsToHome,
+    requestUnknownPlant,
+  } = usePlantSettings(activeHomeId);
+  const { catalog, catalogLoading } = useCatalogPlants();
+  const loading = homeLoading || logsLoading || plantsLoading;
 
   const [activeStatus, setActiveStatus] = useState<StatusFilter>('active');
   const [activeGroup, setActiveGroup] = useState<ExtendedGroup>('all');
   const [activeTaskFilter, setActiveTaskFilter] = useState<TaskFilter>('all');
   const [activeFertFilter, setActiveFertFilter] = useState<FertFilter>('all');
   const [showFertGuide, setShowFertGuide] = useState(false);
+  const [showHomeModal, setShowHomeModal] = useState(false);
+  const [showUserSettingsModal, setShowUserSettingsModal] = useState(false);
+  const [showAddPlantModal, setShowAddPlantModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
+  const [firstHomeName, setFirstHomeName] = useState('');
+  const [creatingFirstHome, setCreatingFirstHome] = useState(false);
+  const [firstHomeError, setFirstHomeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!showUserMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserMenu]);
+
+  const displayFullName = useMemo(() => {
+    const full = `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim();
+    if (full) return full;
+    return userEmail ? userEmail.split('@')[0] : 'Account';
+  }, [userProfile.firstName, userProfile.lastName, userEmail]);
+
+  const avatarInitial = useMemo(() => {
+    const ch = userProfile.firstName?.trim()?.[0] || userEmail?.trim()?.[0] || 'U';
+    return ch.toUpperCase();
+  }, [userProfile.firstName, userEmail]);
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -118,8 +182,8 @@ function App() {
   } | null>(null);
 
   const nonPermanentlyDeletedPlants = useMemo(() => {
-    return PLANTS.filter(p => !settings.permanentlyDeletedIds.includes(p.id));
-  }, [settings.permanentlyDeletedIds]);
+    return homePlants.filter(p => !settings.permanentlyDeletedIds.includes(p.id));
+  }, [homePlants, settings.permanentlyDeletedIds]);
 
   const activeCount = useMemo(() => {
     return nonPermanentlyDeletedPlants.filter(p => !settings.deletedPlantIds.includes(p.id)).length;
@@ -131,7 +195,7 @@ function App() {
 
   const visiblePlants = useMemo(() => {
     // 0. Base: exclude permanently deleted
-    let list = PLANTS.filter(p => !settings.permanentlyDeletedIds.includes(p.id));
+    let list = homePlants.filter(p => !settings.permanentlyDeletedIds.includes(p.id));
 
     // 1. Status Filter: active vs deleted
     if (activeStatus === 'active') {
@@ -276,7 +340,7 @@ function App() {
     });
 
     return list;
-  }, [activeGroup, activeTaskFilter, activeFertFilter, activeStatus, settings, latestLogs]);
+  }, [homePlants, activeGroup, activeTaskFilter, activeFertFilter, activeStatus, settings, latestLogs]);
 
   const handleOpenModal = useCallback(
     (plant: PlantDef, defaultType: 'water' | 'fertilize' | 'fertilize-2') => {
@@ -339,21 +403,196 @@ function App() {
     setDeleteModal(null);
   }, [deleteModal, softDeletePlant, permanentlyDeletePlant]);
 
+  const handleCreateFirstHome = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!firstHomeName.trim()) return;
+    setCreatingFirstHome(true);
+    setFirstHomeError(null);
+    try {
+      await createHome(firstHomeName.trim());
+      setFirstHomeName('');
+    } catch (err: unknown) {
+      setFirstHomeError(err instanceof Error ? err.message : 'Failed to create home');
+    } finally {
+      setCreatingFirstHome(false);
+    }
+  };
+
+  if (initialCheckLoading || !user) {
+    return <AuthContainer />;
+  }
+
   return (
     <div className="app-container">
       <header className="header">
-        <h1 className="title">
-          Plants Tracker <span style={{ fontSize: '2rem' }}>🌱</span>
-        </h1>
-        <button
-          className={`fert-guide-toggle-btn ${showFertGuide ? 'active' : ''}`}
-          onClick={() => setShowFertGuide(!showFertGuide)}
-          title="Toggle Fertilizer Application & Dosage Guide"
-        >
-          <span>🧪 Fertilizer Application Guide</span>
-          <span className="toggle-chevron">{showFertGuide ? '▲' : '▼'}</span>
-        </button>
+        <div className="header-top-row">
+          <div className="header-brand-group">
+            <h1 className="title">
+              Plants Tracker <span style={{ fontSize: '2rem' }}>🌱</span>
+            </h1>
+            <button
+              type="button"
+              className="home-header-pill hide-on-mobile"
+              onClick={() => setShowHomeModal(true)}
+              title="Switch home, invite family members, or manage home settings"
+            >
+              <span>🏡 {activeHome ? activeHome.name : 'Set Up Home'}</span>
+            </button>
+          </div>
+
+          <div className="header-actions-group">
+            {activeHome && (
+              <button
+                type="button"
+                className="add-plant-header-btn hide-on-mobile"
+                onClick={() => setShowAddPlantModal(true)}
+              >
+                ➕ Add Plant
+              </button>
+            )}
+
+            <button
+              className={`fert-guide-toggle-btn hide-on-mobile ${showFertGuide ? 'active' : ''}`}
+              onClick={() => setShowFertGuide(!showFertGuide)}
+              title="Toggle Fertilizer Application & Dosage Guide"
+            >
+              <span>🧪 Fertilizer Application Guide</span>
+              <span className="toggle-chevron">{showFertGuide ? '▲' : '▼'}</span>
+            </button>
+
+            <div className="user-menu-wrapper" ref={userMenuRef}>
+              <button
+                type="button"
+                className="user-pill-trigger"
+                onClick={() => setShowUserMenu(v => !v)}
+                aria-expanded={showUserMenu}
+                title={`Signed in as ${userEmail}`}
+              >
+                <span className="user-pill-name">{displayFullName}</span>
+                <span className="user-avatar-circle">{avatarInitial}</span>
+              </button>
+
+              {showUserMenu && (
+                <div className="user-dropdown-menu" role="menu">
+                  <button
+                    type="button"
+                    className="user-dropdown-item"
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      setShowUserSettingsModal(true);
+                    }}
+                  >
+                    <span className="user-dropdown-icon">👤</span>
+                    <span>Account settings</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="user-dropdown-item"
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      setShowHomeModal(true);
+                    }}
+                  >
+                    <span className="user-dropdown-icon">🏡</span>
+                    <span>Home &amp; Family</span>
+                  </button>
+
+                  <div className="user-dropdown-divider" />
+
+                  <button
+                    type="button"
+                    className="user-dropdown-signout"
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      handleSignOut();
+                    }}
+                  >
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="header-mobile-subrow">
+          <button
+            type="button"
+            className="home-header-pill"
+            onClick={() => setShowHomeModal(true)}
+            title="Switch home, invite family members, or manage home settings"
+          >
+            <span>🏡 {activeHome ? activeHome.name : 'Set Up Home'}</span>
+          </button>
+
+          {activeHome && (
+            <button
+              type="button"
+              className="add-plant-header-btn"
+              onClick={() => setShowAddPlantModal(true)}
+            >
+              ➕ Add Plant
+            </button>
+          )}
+
+          <button
+            className={`fert-guide-toggle-btn ${showFertGuide ? 'active' : ''}`}
+            onClick={() => setShowFertGuide(!showFertGuide)}
+            title="Toggle Fertilizer Application & Dosage Guide"
+          >
+            <span>🧪 Fertilizer Guide</span>
+            <span className="toggle-chevron">{showFertGuide ? '▲' : '▼'}</span>
+          </button>
+        </div>
       </header>
+
+      {!homeLoading &&
+        !plantsLoading &&
+        activeHome &&
+        (activeHome.onboardingComplete === false ||
+          (!activeHome.onboardingComplete && homePlants.length === 0)) && (
+        <OnboardingWizard
+          homeName={activeHome.name}
+          catalog={catalog}
+          catalogLoading={catalogLoading}
+          onAddPlants={addPlantsToHome}
+          onRequestUnknownPlant={requestUnknownPlant}
+          onCompleteOnboarding={() => completeHomeOnboarding(activeHome.homeId)}
+        />
+      )}
+
+      {!homeLoading && homes.length === 0 && (
+        <section className="first-home-setup-card">
+          <h3>🏡 Welcome! Name Your Home &amp; Garden</h3>
+          <p>
+            Create your home profile to start tracking your plants or invite up to 3 family members to care for them together.
+          </p>
+          {firstHomeError && (
+            <div className="auth-alert auth-alert-error" role="alert">
+              <span>{firstHomeError}</span>
+            </div>
+          )}
+          <form onSubmit={handleCreateFirstHome} className="home-inline-form">
+            <input
+              type="text"
+              className="auth-input"
+              placeholder="e.g. Kharkar Home"
+              value={firstHomeName}
+              onChange={e => setFirstHomeName(e.target.value)}
+              maxLength={60}
+              required
+            />
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={creatingFirstHome || !firstHomeName.trim()}
+            >
+              {creatingFirstHome ? 'Creating...' : '🌱 Create Home'}
+            </button>
+          </form>
+        </section>
+      )}
 
       {/* Collapsible Fertilizer Application Guide */}
       {showFertGuide && (
@@ -480,6 +719,7 @@ function App() {
                 onLog={handleOpenModal}
                 effectiveGroup={effectiveGrp}
                 onToggleGroup={setPlantGroup}
+                onUpdateNickname={setPlantNickname}
                 isSelfWatering={settings.potTypeOverrides[plant.id] === 'self-watering'}
                 onTogglePotType={setPotType}
                 isWaterTrackingActive={
@@ -536,6 +776,39 @@ function App() {
           mode={deleteModal.mode}
           onConfirm={handleConfirmDelete}
           onClose={() => setDeleteModal(null)}
+        />
+      )}
+
+      {showHomeModal && (
+        <HomeManagerModal
+          userEmail={userEmail}
+          homes={homes}
+          activeHome={activeHome}
+          onSelectHome={setActiveHomeId}
+          onCreateHome={createHome}
+          onInviteMember={inviteMember}
+          onDeleteHome={deleteHome}
+          onClose={() => setShowHomeModal(false)}
+        />
+      )}
+
+      {showUserSettingsModal && (
+        <UserSettingsModal
+          userEmail={userEmail}
+          userProfile={userProfile}
+          onSaveProfile={updateUserProfile}
+          onClose={() => setShowUserSettingsModal(false)}
+        />
+      )}
+
+      {showAddPlantModal && activeHome && (
+        <AddPlantModal
+          homeName={activeHome.name}
+          catalog={catalog}
+          catalogLoading={catalogLoading}
+          onAddPlants={addPlantsToHome}
+          onRequestUnknownPlant={requestUnknownPlant}
+          onClose={() => setShowAddPlantModal(false)}
         />
       )}
     </div>

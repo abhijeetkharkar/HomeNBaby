@@ -3,9 +3,11 @@ export type PlantGroup = 'indoor' | 'outdoor-garden' | 'outdoor-potted';
 export interface PlantDef {
   id: string;
   name: string;
+  nickname?: string;
   scientificName?: string;
   emoji: string;
   imageUrl?: string;
+  comingSoon?: boolean;
   group: PlantGroup;
   /** Indoor only — [min, max] days between watering */
   waterFreqDays?: [number, number];
