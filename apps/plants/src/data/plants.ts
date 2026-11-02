@@ -6,6 +6,7 @@ export interface PlantDef {
   scientificName?: string;
   emoji: string;
   imageUrl?: string;
+  comingSoon?: boolean;
   group: PlantGroup;
   /** Indoor only — [min, max] days between watering */
   waterFreqDays?: [number, number];

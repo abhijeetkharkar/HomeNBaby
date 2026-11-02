@@ -187,6 +187,53 @@ function createHomesRouter(ddb, { isUserInCognito, sendEmail } = {}) {
         }
     });
 
+    // ─── PATCH /plants/homes/:homeId ─────────────────────────────────────────
+    router.patch('/plants/homes/:homeId', async (req, res) => {
+        try {
+            const email = req.user.email;
+            const { homeId } = req.params;
+
+            const memberships = await getUserMemberships(ddb, email);
+            const membership = memberships.find(m => m.homeId === homeId);
+            if (!membership) {
+                return res.status(403).json({ error: 'You are not a member of this home.' });
+            }
+
+            const homeRes = await ddb.send(new GetCommand({
+                TableName: HOMES_TABLE,
+                Key: { homeId },
+            }));
+            if (!homeRes.Item) {
+                return res.status(404).json({ error: 'Home not found.' });
+            }
+
+            const next = { ...homeRes.Item };
+            if (typeof req.body?.onboardingComplete === 'boolean') {
+                next.onboardingComplete = req.body.onboardingComplete;
+            }
+            if (typeof req.body?.name === 'string' && req.body.name.trim()) {
+                next.name = req.body.name.trim().slice(0, 60);
+            }
+
+            await ddb.send(new PutCommand({
+                TableName: HOMES_TABLE,
+                Item: next,
+            }));
+
+            res.json({
+                home: {
+                    ...next,
+                    role: membership.role || (next.createdBy === email ? 'owner' : 'member'),
+                    isDefault: Boolean(membership.isDefault),
+                    joinedAt: membership.joinedAt,
+                },
+            });
+        } catch (err) {
+            console.error('PATCH /plants/homes/:homeId error:', err);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
     // ─── POST /plants/homes/:homeId/invite ───────────────────────────────────
     router.post('/plants/homes/:homeId/invite', async (req, res) => {
         try {

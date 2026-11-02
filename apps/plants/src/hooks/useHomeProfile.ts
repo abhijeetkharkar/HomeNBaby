@@ -238,6 +238,27 @@ export function useHomeProfile() {
     [getIdToken, refreshProfile],
   );
 
+  const completeHomeOnboarding = useCallback(
+    async (homeId: string): Promise<void> => {
+      const token = await getIdToken();
+      if (!token) throw new Error('Not authenticated');
+      const res = await fetch(`${PLANTS_API_BASE}/plants/homes/${encodeURIComponent(homeId)}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ onboardingComplete: true }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to complete onboarding');
+      }
+      await refreshProfile();
+    },
+    [getIdToken, refreshProfile],
+  );
+
   const activeHome = homes.find(h => h.homeId === activeHomeId) || homes[0] || null;
 
   return {
@@ -252,6 +273,7 @@ export function useHomeProfile() {
     createHome,
     inviteMember,
     deleteHome,
+    completeHomeOnboarding,
     refreshProfile,
   };
 }

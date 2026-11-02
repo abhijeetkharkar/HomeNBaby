@@ -113,11 +113,17 @@ export function PlantCard({
           {!plant.imageUrl && (
             <div className="front-no-image-bg">
               <span className="front-emoji-large">{plant.emoji}</span>
+              {plant.comingSoon && (
+                <span className="front-coming-soon-caption">📸 Photo &amp; Care Guide Coming Soon</span>
+              )}
             </div>
           )}
           
-          {(plant.warning || (currentGroup !== 'outdoor-garden' && plant.selfWatering === 'never') || isSelfWateringActive) && (
+          {(plant.comingSoon || plant.warning || (currentGroup !== 'outdoor-garden' && plant.selfWatering === 'never') || isSelfWateringActive) && (
             <div className="front-badges-container">
+              {plant.comingSoon && (
+                <div className="front-coming-soon-top">⏳ Curating Botanical Profile</div>
+              )}
               {plant.warning && (
                 <div className="front-warning-top">⚠️ {plant.warning.replace(/^⚠️\s*/, '')}</div>
               )}
