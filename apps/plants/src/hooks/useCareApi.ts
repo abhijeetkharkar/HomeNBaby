@@ -187,12 +187,7 @@ export function usePlantSettings(activeHomeId: string | null) {
       });
       if (res.ok) {
         const data: { homeId: string; plants: HomePlantDef[] } = await res.json();
-        setHomePlants(
-          (data.plants || []).map(p => ({
-            ...p,
-            name: p.displayName || p.name,
-          })),
-        );
+        setHomePlants(data.plants || []);
       }
     } catch (e) {
       console.error('Failed to fetch home plants', e);
@@ -311,6 +306,13 @@ export function usePlantSettings(activeHomeId: string | null) {
     [patchHomePlant],
   );
 
+  const setPlantNickname = useCallback(
+    (plantId: string, nickname: string) => {
+      patchHomePlant(plantId, { nickname: nickname.trim() });
+    },
+    [patchHomePlant],
+  );
+
   const addPlantsToHome = useCallback(
     async (
       items: Array<{
@@ -379,6 +381,7 @@ export function usePlantSettings(activeHomeId: string | null) {
     setPotType,
     setTrackWatering,
     setPlantGroup,
+    setPlantNickname,
     softDeletePlant,
     restorePlant,
     permanentlyDeletePlant,

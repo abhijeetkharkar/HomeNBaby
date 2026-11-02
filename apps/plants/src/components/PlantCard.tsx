@@ -15,6 +15,7 @@ interface Props {
   onToggleWaterTracking?: (plantId: string, track: boolean) => void;
   effectiveGroup?: 'indoor' | 'outdoor-potted' | 'outdoor-garden';
   onToggleGroup?: (plantId: string, group: 'indoor' | 'outdoor-potted') => void;
+  onUpdateNickname?: (plantId: string, nickname: string) => void;
   onDelete?: (plant: PlantDef) => void;
   onRestore?: (plant: PlantDef) => void;
   onPermanentDelete?: (plant: PlantDef) => void;
@@ -55,12 +56,15 @@ export function PlantCard({
   onToggleWaterTracking,
   effectiveGroup,
   onToggleGroup,
+  onUpdateNickname,
   onDelete,
   onRestore,
   onPermanentDelete,
   isDeleted = false,
 }: Props) {
   const [flipped, setFlipped] = useState(false);
+  const [nicknameDraft, setNicknameDraft] = useState(plant.nickname || '');
+  const [nicknameSaved, setNicknameSaved] = useState(false);
 
   const currentGroup = effectiveGroup || plant.group;
 
@@ -139,9 +143,16 @@ export function PlantCard({
           <div className="front-info-panel">
             <div className="panel-header">
               <div className="panel-title-group">
-                <h3 className="panel-title">{plant.name}</h3>
-                {plant.scientificName && (
-                  <span className="panel-scientific-name">{plant.scientificName}</span>
+                <h3 className="panel-title">{plant.nickname || plant.name}</h3>
+                {plant.nickname ? (
+                  <span className="panel-scientific-name">
+                    {plant.name}
+                    {plant.scientificName ? ` • ${plant.scientificName}` : ''}
+                  </span>
+                ) : (
+                  plant.scientificName && (
+                    <span className="panel-scientific-name">{plant.scientificName}</span>
+                  )
                 )}
               </div>
               {isDeleted ? (
@@ -243,6 +254,57 @@ export function PlantCard({
           <div className="back-scroll-area">
             
             <div className="back-metadata-grid">
+              {onUpdateNickname && (
+                <div className="meta-item full-width" onClick={e => e.stopPropagation()}>
+                  <span className="meta-label">🏷️ Nickname / Room Label</span>
+                  <div className="card-nickname-row">
+                    <input
+                      type="text"
+                      className="card-nickname-input"
+                      placeholder={`Optional label for ${plant.name} (e.g. Living Room)`}
+                      value={nicknameDraft}
+                      maxLength={40}
+                      onChange={e => {
+                        setNicknameDraft(e.target.value);
+                        setNicknameSaved(false);
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          onUpdateNickname(plant.id, nicknameDraft);
+                          setNicknameSaved(true);
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="card-nickname-btn"
+                      onClick={() => {
+                        onUpdateNickname(plant.id, nicknameDraft);
+                        setNicknameSaved(true);
+                      }}
+                      disabled={nicknameDraft.trim() === (plant.nickname || '')}
+                    >
+                      {nicknameSaved && nicknameDraft.trim() === (plant.nickname || '') ? '✓' : 'Save'}
+                    </button>
+                    {plant.nickname && (
+                      <button
+                        type="button"
+                        className="card-nickname-clear-btn"
+                        title="Clear nickname"
+                        onClick={() => {
+                          setNicknameDraft('');
+                          onUpdateNickname(plant.id, '');
+                          setNicknameSaved(false);
+                        }}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {plant.lightRequirements && (
                 <div className="meta-item full-width">
                   <span className="meta-label">☀️ Light</span>

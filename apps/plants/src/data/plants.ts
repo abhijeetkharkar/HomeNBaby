@@ -3,6 +3,7 @@ export type PlantGroup = 'indoor' | 'outdoor-garden' | 'outdoor-potted';
 export interface PlantDef {
   id: string;
   name: string;
+  nickname?: string;
   scientificName?: string;
   emoji: string;
   imageUrl?: string;

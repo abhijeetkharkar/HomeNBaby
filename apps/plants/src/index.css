@@ -2471,3 +2471,64 @@ body {
   display: flex;
   flex-direction: column;
 }
+
+/* ── Card Back Nickname Editor ───────────────────────────── */
+.card-nickname-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+}
+
+.card-nickname-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.38rem 0.55rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  background: #ffffff;
+  color: var(--text-main);
+}
+
+.card-nickname-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(46, 167, 111, 0.14);
+}
+
+.card-nickname-btn {
+  padding: 0.38rem 0.65rem;
+  border-radius: 7px;
+  border: none;
+  background: var(--primary);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.card-nickname-btn:disabled {
+  background: #e2e8f0;
+  color: #64748b;
+  cursor: default;
+}
+
+.card-nickname-clear-btn {
+  padding: 0.38rem 0.5rem;
+  border-radius: 7px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.card-nickname-clear-btn:hover {
+  border-color: #fca5a5;
+  color: #dc2626;
+  background: #fef2f2;
+}

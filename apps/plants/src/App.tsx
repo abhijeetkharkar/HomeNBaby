@@ -126,6 +126,7 @@ function App() {
     setPotType,
     setTrackWatering,
     setPlantGroup,
+    setPlantNickname,
     softDeletePlant,
     restorePlant,
     permanentlyDeletePlant,
@@ -718,6 +719,7 @@ function App() {
                 onLog={handleOpenModal}
                 effectiveGroup={effectiveGrp}
                 onToggleGroup={setPlantGroup}
+                onUpdateNickname={setPlantNickname}
                 isSelfWatering={settings.potTypeOverrides[plant.id] === 'self-watering'}
                 onTogglePotType={setPotType}
                 isWaterTrackingActive={

@@ -61,7 +61,9 @@ export function LogCareModal({ plant, defaultType, isWaterTrackingActive = true,
           )}
           <div>
             <div className="modal-title">Log Care</div>
-            <div className="modal-subtitle">{plant.name}</div>
+            <div className="modal-subtitle">
+              {plant.nickname ? `${plant.nickname} • ${plant.name}` : plant.name}
+            </div>
           </div>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
