@@ -25,6 +25,7 @@ const option = (name: string, fallback: string) => {
 };
 
 const dryRun = flag('dry-run');
+const clean = flag('clean');
 const profile = option('profile', 'admin');
 const email = option('email', 'abhijeetkharkar@gmail.com').toLowerCase();
 const explicitHomeId = option('home-id', '');
@@ -46,6 +47,39 @@ async function batchWrite(ddb: DynamoDBDocumentClient, tableName: string, items:
             if (requests.length) await new Promise(res => setTimeout(res, 200 * 2 ** attempt));
         }
     }
+}
+
+async function clearHomePartition(
+    ddb: DynamoDBDocumentClient,
+    tableName: string,
+    homeId: string,
+    skName: string
+) {
+    const keys: Record<string, unknown>[] = [];
+    let ExclusiveStartKey: Record<string, any> | undefined;
+    do {
+        const r = await ddb.send(new QueryCommand({
+            TableName: tableName,
+            KeyConditionExpression: 'homeId = :homeId',
+            ExpressionAttributeValues: { ':homeId': homeId },
+            ExclusiveStartKey,
+        }));
+        for (const item of r.Items || []) {
+            keys.push({ homeId, [skName]: item[skName] });
+        }
+        ExclusiveStartKey = r.LastEvaluatedKey;
+    } while (ExclusiveStartKey);
+
+    for (let i = 0; i < keys.length; i += 25) {
+        let requests: any[] = keys.slice(i, i + 25).map(Key => ({ DeleteRequest: { Key } }));
+        for (let attempt = 0; requests.length > 0; attempt++) {
+            if (attempt > 5) throw new Error(`Too many unprocessed deletes for ${tableName}`);
+            const r = await ddb.send(new BatchWriteCommand({ RequestItems: { [tableName]: requests } }));
+            requests = r.UnprocessedItems?.[tableName] || [];
+            if (requests.length) await new Promise(res => setTimeout(res, 200 * 2 ** attempt));
+        }
+    }
+    return keys.length;
 }
 
 async function main() {
@@ -151,6 +185,12 @@ async function main() {
     if (dryRun) {
         console.log('--dry-run: no writes performed.');
         return;
+    }
+
+    if (clean) {
+        const deletedPlants = await clearHomePartition(ddb, HOME_PLANTS_TABLE, homeId, 'homePlantId');
+        const deletedLogs = await clearHomePartition(ddb, CARE_LOGS_V2_TABLE, homeId, 'logKey');
+        console.log(`Cleaned ${deletedPlants} existing home plants and ${deletedLogs} existing care logs from "${homeRes.Item.name}".`);
     }
 
     await batchWrite(ddb, HOME_PLANTS_TABLE, homePlantItems);
