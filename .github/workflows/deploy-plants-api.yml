@@ -1,8 +1,11 @@
 name: Deploy Plants API
 
-# Manual only until the plants frontend is cut over to this API.
-# At cutover, add a push trigger (branches: main, paths: apps/plants-api/**).
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/plants-api/**'
   workflow_dispatch:
 
 permissions:
@@ -13,6 +16,7 @@ jobs:
   deploy:
     name: Deploy Plants API
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || (github.event.head_commit != null && (startsWith(github.event.head_commit.message, 'Merge pull request') || contains(github.event.head_commit.message, '(#')))
 
     steps:
       - name: Checkout repository
