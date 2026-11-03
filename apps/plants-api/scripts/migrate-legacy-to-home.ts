@@ -15,7 +15,7 @@ import {
     BatchWriteCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { fromIni } from '@aws-sdk/credential-provider-ini';
-import { PLANTS } from '../../plants/src/data/plants';
+import { PLANTS } from '../data/catalog-seed';
 
 const args = process.argv.slice(2);
 const flag = (name: string) => args.includes(`--${name}`);

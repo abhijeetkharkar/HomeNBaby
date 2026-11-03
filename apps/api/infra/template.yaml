@@ -56,7 +56,6 @@ Resources:
                   - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/baby-profiles'
                   - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/babies'
                   - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/baby-tracker-logs'
-                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/plants-care-logs'
         - PolicyName: CognitoAndSESAccess
           PolicyDocument:
             Version: '2012-10-17'
@@ -93,7 +92,6 @@ Resources:
           BABY_PROFILES_TABLE_NAME: 'baby-profiles'
           BABIES_TABLE_NAME: 'babies'
           BABY_LOGS_TABLE_NAME: 'baby-tracker-logs'
-          PLANTS_TABLE_NAME: 'plants-care-logs'
           USER_POOL_ID: 'us-east-1_SFrRMOVHi'
           USER_POOL_CLIENT_ID: '6ci895vprgja3c4ts2kit1urvl'
       Tags:

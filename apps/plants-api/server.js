@@ -8,7 +8,6 @@ const {
     CognitoIdentityProviderClient,
     AdminGetUserCommand,
 } = require('@aws-sdk/client-cognito-identity-provider');
-const { createLegacyLogsRouter } = require('./routes/legacy-logs');
 const { createCatalogRouter } = require('./routes/plants-catalog');
 const { createHomesRouter } = require('./routes/homes');
 const { createHomePlantsRouter } = require('./routes/home-plants');
@@ -78,9 +77,6 @@ const authMiddleware = createAuthMiddleware(verifier);
 const requireHomeMiddleware = createRequireHomeMiddleware(ddb);
 
 app.get('/health', (req, res) => res.json({ ok: true }));
-
-// Care logs + settings, copied from the shared API (same contract, same tables)
-app.use(createLegacyLogsRouter(ddb));
 
 // Authenticated routes: catalog, home profile, home creation/invite/delete, home plants, v2 logs
 app.use('/plants/catalog', authMiddleware);

@@ -25,7 +25,7 @@ Use this skill whenever adding new plants to the Plants Tracker master catalog o
    - Construct the complete botanical profile matching every schema rule in **Section 2** below.
    - Present the proposed `PlantDef` entry (or entries) to the user for review and wait for explicit approval before editing files or writing to DynamoDB.
 3. **Update Source & Validate:**
-   - Once approved, add the new `PlantDef` object(s) to [`apps/plants/src/data/plants.ts`](../../../apps/plants/src/data/plants.ts) under the appropriate group section (`indoor`, `outdoor-potted`, or `outdoor-garden`).
+  - Once approved, add the new `PlantDef` object(s) to [`apps/plants-api/data/catalog-seed.ts`](../../../apps/plants-api/data/catalog-seed.ts) under the appropriate group section (`indoor`, `outdoor-potted`, or `outdoor-garden`).
    - Run the seed script in `--dry-run` mode to verify there are no duplicate `id`s or group+name collisions:
      ```powershell
      npx --prefix apps/plants-api tsx apps/plants-api/scripts/seed-catalog.ts --dry-run

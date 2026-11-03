@@ -22,7 +22,6 @@ const port = 3000;
 const BABY_PROFILES_TABLE = process.env.BABY_PROFILES_TABLE_NAME || 'baby-profiles';
 const BABIES_TABLE = process.env.BABIES_TABLE_NAME || 'babies';
 const TRACKER_TABLE = process.env.BABY_LOGS_TABLE_NAME || 'baby-tracker-logs';
-const PLANTS_TABLE = process.env.PLANTS_TABLE_NAME || 'plants-care-logs';
 const REGION = 'us-east-1';
 
 app.use(express.json());
@@ -471,130 +470,6 @@ app.get('/tracker/summary', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-
-
-
-
-
-// ═════════════════════════════════════════════════════════════════════════════
-// ─── PLANTS API ─────────────────────────────────────────────────────────────
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ─── GET /plants/logs ────────────────────────────────────────────────────────
-app.get('/plants/logs', async (req, res) => {
-    try {
-        const { plantId } = req.query;
-        if (plantId) {
-            const r = await ddb.send(new QueryCommand({
-                TableName: PLANTS_TABLE,
-                KeyConditionExpression: 'plantId = :pid',
-                ExpressionAttributeValues: { ':pid': plantId },
-                ScanIndexForward: false,
-                Limit: 100,
-            }));
-            return res.json(r.Items || []);
-        }
-        // Scan all -> latest per plant per type
-        const { ScanCommand } = require('@aws-sdk/lib-dynamodb');
-        const r = await ddb.send(new ScanCommand({ TableName: PLANTS_TABLE }));
-        const items = r.Items || [];
-        const latest = {};
-        for (const item of items) {
-            if (item.plantId === '__CONFIG__') continue;
-            const key = `${item.plantId}__${item.type}`;
-            if (!latest[key] || item.timestamp > latest[key].timestamp) latest[key] = item;
-        }
-        res.json(Object.values(latest));
-    } catch (err) {
-        console.error('GET /plants/logs error:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// ─── POST /plants/logs ───────────────────────────────────────────────────────
-app.post('/plants/logs', async (req, res) => {
-    try {
-        const { plantId, type, fertilizer, notes, timestamp: reqTimestamp } = req.body;
-        if (!plantId || !type) return res.status(400).json({ error: 'plantId and type are required' });
-        
-        const timestamp = reqTimestamp && !isNaN(new Date(reqTimestamp).getTime())
-            ? new Date(reqTimestamp).toISOString()
-            : new Date().toISOString();
-
-        const { randomUUID } = require('crypto');
-        const item = {
-            plantId,
-            timestamp,
-            logId: randomUUID(),
-            type,
-            ...(fertilizer ? { fertilizer } : {}),
-            ...(notes ? { notes } : {}),
-        };
-        await ddb.send(new PutCommand({ TableName: PLANTS_TABLE, Item: item }));
-        res.status(201).json(item);
-    } catch (err) {
-        console.error('POST /plants/logs error:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// ─── GET /plants/settings ───────────────────────────────────────────────────
-app.get('/plants/settings', async (req, res) => {
-    try {
-        const { GetCommand } = require('@aws-sdk/lib-dynamodb');
-        const r = await ddb.send(new GetCommand({
-            TableName: PLANTS_TABLE,
-            Key: { plantId: '__CONFIG__', timestamp: 'settings' }
-        }));
-        const data = r.Item?.settings || {
-            potTypeOverrides: {
-                'money-tree': 'self-watering',
-                'cream-allusion-arrowhead': 'self-watering',
-                'prayer-plant': 'self-watering',
-            },
-            deletedPlantIds: [],
-            permanentlyDeletedIds: []
-        };
-        res.json(data);
-    } catch (err) {
-        console.error('GET /plants/settings error:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// ─── POST /plants/settings ──────────────────────────────────────────────────
-app.post('/plants/settings', async (req, res) => {
-    try {
-        const settings = req.body;
-        const item = {
-            plantId: '__CONFIG__',
-            timestamp: 'settings',
-            updatedAt: new Date().toISOString(),
-            settings
-        };
-        await ddb.send(new PutCommand({ TableName: PLANTS_TABLE, Item: item }));
-        res.json({ success: true, settings });
-    } catch (err) {
-        console.error('POST /plants/settings error:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// ─── DELETE /plants/logs/:plantId/:timestamp ─────────────────────────────────
-app.delete('/plants/logs/:plantId/:timestamp', async (req, res) => {
-    try {
-        const { plantId, timestamp } = req.params;
-        await ddb.send(new DeleteCommand({
-            TableName: PLANTS_TABLE,
-            Key: { plantId, timestamp }
-        }));
-        res.json({ deleted: true });
-    } catch (err) {
-        console.error('DELETE /plants/logs error:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
 
 // SPA fallback — local only
 if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
