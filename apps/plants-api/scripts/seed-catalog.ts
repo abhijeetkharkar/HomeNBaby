@@ -9,7 +9,7 @@
  */
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
-import { PLANTS } from '../../plants/src/data/plants';
+import { PLANTS } from '../data/catalog-seed';
 import { normalizePlantName } from '../lib/plant-names';
 
 const args = process.argv.slice(2);

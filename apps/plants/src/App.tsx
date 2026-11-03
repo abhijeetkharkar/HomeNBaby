@@ -359,18 +359,15 @@ function App() {
       notes?: string,
       timestamp?: string,
     ) => {
-      await logCare(plantId, type, fertilizer, notes, timestamp);
+      const effectiveTimestamp = timestamp || new Date().toISOString();
+      await logCare(plantId, type, fertilizer, notes, effectiveTimestamp);
 
       // Auto-log watering if fertilizing with a liquid fertilizer
       if (type.includes('fertilize') && fertilizer) {
         const liquidKeywords = ['schultz', 'agrothrive', 'liquid'];
         const isLiquid = liquidKeywords.some(k => fertilizer.toLowerCase().includes(k));
         if (isLiquid) {
-          // Offset by 1s: logs are keyed by plantId + timestamp, so an identical
-          // timestamp would overwrite the fertilize log just written.
-          const base = timestamp ? new Date(timestamp) : new Date();
-          const waterTimestamp = new Date(base.getTime() + 1000).toISOString();
-          await logCare(plantId, 'water', undefined, `Auto-logged from ${fertilizer}`, waterTimestamp);
+          await logCare(plantId, 'water', undefined, `Auto-logged from ${fertilizer}`, effectiveTimestamp);
         }
       }
       setModalOpen(false);

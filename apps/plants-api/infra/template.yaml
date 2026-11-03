@@ -283,8 +283,6 @@ Resources:
                   - dynamodb:BatchWriteItem
                   - dynamodb:BatchGetItem
                 Resource:
-                  # Original single-user table (managed outside this stack), used by the copied legacy routes
-                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/plants-care-logs'
                   - !GetAtt PlantsCatalogTable.Arn
                   - !GetAtt PlantsStagingTable.Arn
                   - !GetAtt PlantsHomesTable.Arn
@@ -324,7 +322,6 @@ Resources:
           };
       Environment:
         Variables:
-          PLANTS_TABLE_NAME: 'plants-care-logs'
           CATALOG_TABLE_NAME: 'plants-catalog'
           STAGING_TABLE_NAME: 'plants-staging'
           HOMES_TABLE_NAME: 'plants-homes'
