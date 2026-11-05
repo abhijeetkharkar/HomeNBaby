@@ -76,6 +76,6 @@ Always include both the common name and the precise Latin scientific name / cult
 
 ## 4. Repository & Workspace Hygiene
 
-* **File Storage:** Plant card photographs must reside in `apps/plants/public/plants/<id>.jpg` and be referenced via `imageUrl: '/plants/<id>.jpg'`.
+* **File Storage:** Plant card photographs are stored in S3 (`s3://plants-frontend-prod-797884421713/plants/<id>.jpg` and `s3://plants-catalog-images-prod-797884421713/plants/<id>.jpg`) via `.agents/skills/plant-image-generator/scripts/publish-images.ps1` and referenced via `imageUrl: '/plants/<id>.jpg'` (do not store `.jpg` files in `apps/plants/public/plants/`).
 * **Scoped Staging:** Only stage and commit files related to the specific feature being worked on (e.g., `apps/plants/` and `apps/api/`). Never stage unrelated experimental or third-party files.
 * **Build Verification:** Always execute `npm run build` and `npm run lint` in `apps/plants` before submitting commits or creating pull requests.

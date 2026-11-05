@@ -2,14 +2,14 @@
 name: plant-image-generator
 description: >-
   Generate botanically accurate, photorealistic 1:1 plant photography following the CLAUDE.md
-  Botanical Image Generation Framework, save to apps/plants/public/plants/<id>.jpg, and upload to
-  the production S3 buckets and CloudFront distribution. Use this skill whenever generating or
-  replacing plant card images for the Plants Tracker app.
+  Botanical Image Generation Framework, and upload directly to the production S3 buckets and
+  CloudFront distribution. Use this skill whenever generating or replacing plant card images
+  for the Plants Tracker app.
 ---
 
 # Botanical Image Generation & S3 Publishing (`plant-image-generator`)
 
-Use this skill whenever generating, regenerating, or publishing plant card photographs (`imageUrl: '/plants/<id>.jpg'`) for the Plants Tracker application.
+Use this skill whenever generating, regenerating, or publishing plant card photographs (`imageUrl: '/plants/<id>.jpg'`) for the Plants Tracker application. Plant images are served directly from S3/CloudFront (and proxied in local Vite dev), so they are **not** stored in the Git repository.
 
 ---
 
@@ -67,27 +67,25 @@ Always include **both** the common name and the precise Latin scientific name / 
 
 ### Step 1: Propose Prompt & Generate Image
 1. Draft the tailored `1:1` prompt following Section 1 & Section 2.
-2. Invoke the `image-generator` subagent to generate the `1:1` square photograph and save/convert it to JPEG at:
-   ```text
-   apps/plants/public/plants/<id>.jpg
+2. Invoke the `image-generator` subagent to generate the `1:1` square photograph(s) into the conversation artifact directory (`<appDataDir>/brain/<conversation-id>/`), then run the bundled [`scripts/publish-images.ps1`](scripts/publish-images.ps1) helper to convert the output into true 92%-quality JPEG (`.jpg`) at `<appDataDir>/brain/<conversation-id>/<id>.jpg`:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .agents/skills/plant-image-generator/scripts/publish-images.ps1 `
+     -PlantId "<id>" `
+     -SourcePath "<appDataDir>\brain\<conversation-id>\<generated_file>.jpg" `
+     -ArtifactDir "<appDataDir>\brain\<conversation-id>"
    ```
-   *(If the generator outputs PNG/WebP, convert it to high-quality JPEG `.jpg` so the file matches `imageUrl: '/plants/<id>.jpg'`.)*
 
 ### Step 2: Visual Vetting with User
-1. Copy the generated image into the conversation's artifact directory (`<appDataDir>/brain/<conversation-id>/<id>.jpg`) and embed it in your response so the user can inspect the botanical accuracy and framing.
+1. Embed `<appDataDir>/brain/<conversation-id>/<id>.jpg` in your response (or an artifact carousel) so the user can inspect the botanical accuracy and framing.
 2. Wait for the user's explicit approval before uploading to S3/CloudFront.
 
 ### Step 3: Upload to S3 & Invalidate CloudFront
-Once the user approves the image, upload `apps/plants/public/plants/<id>.jpg` to **both** production S3 buckets and invalidate CloudFront so the image goes live immediately at `https://plants.abhijeetkharkar.com/plants/<id>.jpg` (while also keeping `apps/plants/public/plants/<id>.jpg` committed in Git so future frontend deployments retain it):
+Once the user approves the image(s), run [`scripts/publish-images.ps1`](scripts/publish-images.ps1) with `-UploadToS3` to upload `<appDataDir>/brain/<conversation-id>/<id>.jpg` directly to **both** production S3 buckets (`plants-frontend-prod-797884421713` and `plants-catalog-images-prod-797884421713`) and invalidate CloudFront (`EH59GI05MOM4F`) in one command:
 
 ```powershell
-# 1. Upload to the active CloudFront origin bucket (plants-frontend-prod-797884421713)
-aws s3 cp "apps/plants/public/plants/<id>.jpg" "s3://plants-frontend-prod-797884421713/plants/<id>.jpg" --content-type "image/jpeg" --region us-east-1 --profile admin
-
-# 2. Upload to the dedicated catalog images bucket (plants-catalog-images-prod-797884421713)
-aws s3 cp "apps/plants/public/plants/<id>.jpg" "s3://plants-catalog-images-prod-797884421713/plants/<id>.jpg" --content-type "image/jpeg" --region us-east-1 --profile admin
-
-# 3. Invalidate /plants/<id>.jpg on the Plants CloudFront distribution (EH59GI05MOM4F)
-aws cloudfront create-invalidation --distribution-id EH59GI05MOM4F --paths "/plants/<id>.jpg" --region us-east-1 --profile admin
+powershell -ExecutionPolicy Bypass -File .agents/skills/plant-image-generator/scripts/publish-images.ps1 `
+  -PlantId "<id1>","<id2>" `
+  -ArtifactDir "<appDataDir>\brain\<conversation-id>" `
+  -UploadToS3
 ```
-*(Note: If the CloudFront Distribution ID ever changes, query it via `aws cloudformation describe-stacks --stack-name plants-stack-prod --region us-east-1 --profile admin --query "Stacks[0].Outputs[?OutputKey=='PlantsDistributionId'].OutputValue" --output text`.)*
+*(Note: Do NOT commit `.jpg` files to `apps/plants/public/plants/`. `apps/plants/infra/deploy.sh` excludes `plants/*` from `--delete`, and `apps/plants/vite.config.ts` proxies `/plants` to `https://plants.abhijeetkharkar.com` in local dev.)*
