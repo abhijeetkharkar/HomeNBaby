@@ -59,8 +59,8 @@ DIST_ID=$(aws cloudformation describe-stacks \
   --query "Stacks[0].Outputs[?OutputKey=='PlantsDistributionId'].OutputValue" \
   --output text)
 
-echo -e "\033[0;36mSyncing dist/ to s3://$BUCKET_NAME...\033[0m"
-aws s3 sync "$APP_ROOT/dist" "s3://$BUCKET_NAME" --delete --region "$REGION" ${PROFILE_ARGS[@]+"${PROFILE_ARGS[@]}"}
+echo -e "\033[0;36mSyncing dist/ to s3://$BUCKET_NAME (preserving s3://$BUCKET_NAME/plants/*)...\033[0m"
+aws s3 sync "$APP_ROOT/dist" "s3://$BUCKET_NAME" --delete --exclude "plants/*" --region "$REGION" ${PROFILE_ARGS[@]+"${PROFILE_ARGS[@]}"}
 
 echo -e "\033[0;36mInvalidating CloudFront cache for $DIST_ID...\033[0m"
 aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*" --region "$REGION" ${PROFILE_ARGS[@]+"${PROFILE_ARGS[@]}"} > /dev/null

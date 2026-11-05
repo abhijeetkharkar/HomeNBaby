@@ -1,21 +1,25 @@
 ---
 name: plant-catalog-curator
 description: >-
-  Curate, validate, and publish new plant botanical profiles into the Plants Tracker master catalog
-  (apps/plants/src/data/plants.ts and the DynamoDB plants-catalog table), or promote user-requested
-  plants from the plants-staging table. Use this skill whenever the user asks to add a new plant to
-  the master database, curate plant care data, or promote pending plants from staging.
+  Curate, validate, and publish new plant botanical profiles directly into the Plants Tracker
+  DynamoDB plants-catalog table, or promote user-requested plants from the plants-staging table.
+  Use this skill whenever the user asks to add a new plant to the master database, curate plant
+  care data, or promote pending plants from staging.
 ---
 
-# Plant Catalog Curator (`plants-catalog` & `plants.ts`)
+# Plant Catalog Curator (`plants-catalog`)
 
-Use this skill whenever adding new plants to the Plants Tracker master catalog or promoting user-requested plants from the `plants-staging` DynamoDB table.
+Use this skill whenever adding new plants to the Plants Tracker master catalog (`plants-catalog` DynamoDB table) or promoting user-requested plants from the `plants-staging` DynamoDB table.
 
 ---
 
 ## 1. Core Workflow (Advisor First)
 
-1. **Gather Input / Check Staging (Optional):**
+1. **Gather Input / Check Existing Catalog & Staging:**
+   - Query the live `plants-catalog` DynamoDB table to check existing `plantId`s and `normalizedName`s so there are no duplicates:
+     ```powershell
+     aws dynamodb scan --table-name plants-catalog --projection-expression "plantId, #n, #g, scientificName" --expression-attribute-names '{"#n":"name","#g":"group"}' --region us-east-1 --profile admin
+     ```
    - If the user asks to review requested/staged plants, scan `plants-staging` first:
      ```powershell
      aws dynamodb scan --table-name plants-staging --region us-east-1 --profile admin
@@ -23,39 +27,38 @@ Use this skill whenever adding new plants to the Plants Tracker master catalog o
    - Otherwise, start from the plant name(s) and group(s) specified by the user.
 2. **Draft Complete `PlantDef` Entries:**
    - Construct the complete botanical profile matching every schema rule in **Section 2** below.
-   - Present the proposed `PlantDef` entry (or entries) to the user for review and wait for explicit approval before editing files or writing to DynamoDB.
-3. **Update Source & Validate:**
-  - Once approved, add the new `PlantDef` object(s) to [`apps/plants-api/data/catalog-seed.ts`](../../../apps/plants-api/data/catalog-seed.ts) under the appropriate group section (`indoor`, `outdoor-potted`, or `outdoor-garden`).
-   - Run the seed script in `--dry-run` mode to verify there are no duplicate `id`s or group+name collisions:
+   - Present the proposed `PlantDef` entry (or entries) to the user for review and wait for explicit approval before writing to DynamoDB.
+3. **Validate & Publish Directly to DynamoDB (`plants-catalog`):**
+   - Do **not** add new plants to static TypeScript files (`plants.ts` or `catalog-seed.ts`); `plants-catalog` in DynamoDB is the single source of truth at runtime.
+   - Write the approved `PlantDef` array (or single object) to a temporary JSON file (e.g., `<scratchDir>/new-plants.json`) and run the bundled zero-dependency curator script [`scripts/upsert-catalog.cjs`](scripts/upsert-catalog.cjs):
      ```powershell
-     npx --prefix apps/plants-api tsx apps/plants-api/scripts/seed-catalog.ts --dry-run
+     # 1. Dry-run (validates schema, canonical fertilizers, and checks live DynamoDB for ID or group+name collisions)
+     node .agents/skills/plant-catalog-curator/scripts/upsert-catalog.cjs "<scratchDir>/new-plants.json" --dry-run
+
+     # 2. Live upsert into DynamoDB plants-catalog (supports batches of any size)
+     node .agents/skills/plant-catalog-curator/scripts/upsert-catalog.cjs "<scratchDir>/new-plants.json" --profile admin
      ```
-   - Run `npm --prefix apps/plants run build` and `npm --prefix apps/plants run lint` to confirm TypeScript & linter checks pass.
-4. **Publish to DynamoDB (`plants-catalog`) & Promote Staging (if applicable):**
-   - Upsert the validated catalog into DynamoDB `plants-catalog`:
-     ```powershell
-     npx --prefix apps/plants-api tsx apps/plants-api/scripts/seed-catalog.ts --profile admin
-     ```
+     *(Pass `--allow-overwrite` if intentionally updating an existing plant in `plants-catalog`.)*
    - **If the plant was promoted from `plants-staging`:**
-     - As long as the new catalog item's `normalizedName` (or `id`) matches the staged request, [`apps/plants-api/routes/home-plants.js`](../../../apps/plants-api/routes/home-plants.js) automatically upgrades any `"Coming Soon"` card (`comingSoon: true`) in `plants-home-plants` to the full published catalog profile on the next load.
+     - As long as the new catalog item's `normalizedName` (or `plantId`) matches the staged request, [`apps/plants-api/routes/home-plants.js`](../../../apps/plants-api/routes/home-plants.js) automatically upgrades any `"Coming Soon"` card (`comingSoon: true`) in `plants-home-plants` to the full published catalog profile on the next load.
      - Update the corresponding item in `plants-staging` to `status = "promoted"` and set `promotedCatalogId = "<id>"`.
-5. **Pair with Botanical Image Generation:**
+4. **Pair with Botanical Image Generation:**
    - Activate the `plant-image-generator` skill ([`../plant-image-generator/SKILL.md`](../plant-image-generator/SKILL.md)) to generate and upload `/plants/<id>.jpg` if the photograph does not exist yet.
 
 ---
 
 ## 2. Master Plant Schema & Field Rules (`PlantDef`)
 
-Every plant in [`apps/plants/src/data/plants.ts`](../../../apps/plants/src/data/plants.ts) and `plants-catalog` must conform to the following structure and domain constraints (tailored for **USDA Hardiness Zone 8b/9a — Austin, TX** for outdoor plants):
+Every plant in `plants-catalog` (matching [`PlantDef` in `apps/plants/src/data/plants.ts`](../../../apps/plants/src/data/plants.ts)) must conform to the following structure and domain constraints (tailored for **USDA Hardiness Zone 8b/9a — Austin, TX** for outdoor plants):
 
 ### A. Identity & Naming Standards
 | Field | Type | Required | Rules & Examples |
 | :--- | :--- | :--- | :--- |
-| `id` | `string` | **Yes** | Lowercase kebab-case slug (`'monstera-deliciosa'`, `'ficus-burgundy'`). Stored as `plantId` PK in `plants-catalog`. |
+| `id` / `plantId` | `string` | **Yes** | Lowercase kebab-case slug (`'monstera-deliciosa'`, `'ficus-burgundy'`). Stored as `plantId` PK in `plants-catalog`. |
 | `name` | `string` | **Yes** | **Clean real common name ONLY** (`'Monstera'`, `'Orange'`, `'Curry Leaf'`, `'Frankie Fittonia'`). **Never** include parenthetical ages (`Moringa (2yr)` ❌), pot sizes (`Orange (9in)` ❌), or colloquial brackets. |
 | `scientificName` | `string` | **Yes** | Accurate Latin binomial with cultivar in single quotes if applicable (`'Monstera deliciosa'`, `"Ficus elastica 'Burgundy'"`, `"Pilea spruceana 'Silver Tree'"`). |
 | `emoji` | `string` | **Yes** | Single representative botanical emoji (`'🌿'`, `'🪴'`, `'🌺'`, `'🍅'`, `'🍋'`). |
-| `imageUrl` | `string` | **Yes** | Always `'/plants/<id>.jpg'` (matching `id`). |
+| `imageUrl` | `string` | **Yes** | Always `'/plants/<id>.jpg'` (matching `plantId`). |
 | `group` | `PlantGroup` | **Yes** | Exactly one of: `'indoor'`, `'outdoor-potted'`, or `'outdoor-garden'`. |
 
 ### B. Light & Seasonal Lifecycle Metadata
