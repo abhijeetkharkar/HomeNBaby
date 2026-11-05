@@ -69,9 +69,12 @@ function parseArgs(argv) {
     inputFile: positional[0],
     dryRun: flags.has('dry-run'),
     allowOverwrite: flags.has('allow-overwrite'),
+    promoteStaging: flags.has('promote-staging'),
     profile: options.profile || 'admin',
     region: options.region || 'us-east-1',
     table: options.table || process.env.CATALOG_TABLE_NAME || 'plants-catalog',
+    stagingTable: options['staging-table'] || 'plants-staging',
+    homePlantsTable: options['home-plants-table'] || 'plants-home-plants',
   };
 }
 
@@ -276,6 +279,112 @@ function main() {
   }
 
   console.log(`Successfully published ${plants.length} plant(s) to "${opts.table}".`);
+
+  if (opts.promoteStaging) {
+    promoteStagingEntries(opts, plants, existingItems, now);
+  }
+}
+
+function promoteStagingEntries(opts, newPlants, existingCatalogItems, now) {
+  // Build map of normalizedName -> plantId across existing catalog + newly added plants
+  const nameToCatalogId = new Map();
+  for (const item of existingCatalogItems) {
+    const pid = item.plantId?.S;
+    const nName = item.normalizedName?.S || normalizePlantName(item.name?.S);
+    if (pid && nName) nameToCatalogId.set(nName, pid);
+  }
+  for (const p of newPlants) {
+    nameToCatalogId.set(normalizePlantName(p.name), p.id);
+    if (Array.isArray(p.aliases)) {
+      for (const alias of p.aliases) {
+        nameToCatalogId.set(normalizePlantName(alias), p.id);
+      }
+    }
+  }
+  // Common typo mappings
+  if (nameToCatalogId.has('monstera deliciosa')) {
+    nameToCatalogId.set('monstera delisiosa', nameToCatalogId.get('monstera deliciosa'));
+  }
+
+  const stagingScan = runAwsJson(
+    ['dynamodb', 'scan', '--table-name', opts.stagingTable],
+    opts.profile,
+    opts.region
+  );
+  const stagingItems = stagingScan.Items || [];
+  let promotedCount = 0;
+
+  for (const st of stagingItems) {
+    const normName = st.normalizedName?.S;
+    const status = st.status?.S;
+    const catalogId = nameToCatalogId.get(normName);
+    if (!normName || !catalogId || status === 'promoted') continue;
+
+    runAwsJson(
+      [
+        'dynamodb',
+        'update-item',
+        '--table-name',
+        opts.stagingTable,
+        '--key',
+        JSON.stringify({ normalizedName: { S: normName } }),
+        '--update-expression',
+        'SET #st = :promoted, promotedCatalogId = :cid, updatedAt = :now',
+        '--expression-attribute-names',
+        JSON.stringify({ '#st': 'status' }),
+        '--expression-attribute-values',
+        JSON.stringify({
+          ':promoted': { S: 'promoted' },
+          ':cid': { S: catalogId },
+          ':now': { S: now },
+        }),
+      ],
+      opts.profile,
+      opts.region
+    );
+    console.log(`Promoted staging entry "${normName}" -> catalogId "${catalogId}".`);
+    promotedCount++;
+  }
+
+  // Also upgrade any Coming Soon rows in plants-home-plants whose customName or staging catalogId matches
+  const homeScan = runAwsJson(
+    ['dynamodb', 'scan', '--table-name', opts.homePlantsTable],
+    opts.profile,
+    opts.region
+  );
+  for (const row of homeScan.Items || []) {
+    const catId = row.catalogId?.S || '';
+    const isStaging = row.comingSoon?.BOOL === true || catId.startsWith('staging:');
+    if (!isStaging) continue;
+    const normCustom = normalizePlantName(row.customName?.S || catId.replace(/^staging:/, ''));
+    const targetCatalogId = nameToCatalogId.get(normCustom);
+    if (!targetCatalogId) continue;
+
+    const homeId = row.homeId?.S;
+    const homePlantId = row.homePlantId?.S;
+    runAwsJson(
+      [
+        'dynamodb',
+        'update-item',
+        '--table-name',
+        opts.homePlantsTable,
+        '--key',
+        JSON.stringify({ homeId: { S: homeId }, homePlantId: { S: homePlantId } }),
+        '--update-expression',
+        'SET catalogId = :cid, comingSoon = :f, updatedAt = :now',
+        '--expression-attribute-values',
+        JSON.stringify({
+          ':cid': { S: targetCatalogId },
+          ':f': { BOOL: false },
+          ':now': { S: now },
+        }),
+      ],
+      opts.profile,
+      opts.region
+    );
+    console.log(`Upgraded home plant "${homePlantId}" in home "${homeId}" -> catalogId "${targetCatalogId}".`);
+  }
+  console.log(`Staging promotion complete (${promotedCount} staging row(s) marked promoted).`);
 }
 
 main();

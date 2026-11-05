@@ -256,6 +256,53 @@ test('only the home creator can delete a home, and deletion cleans up all member
     });
 });
 
+test('invited member can leave a home while home creator cannot leave their own home', async () => {
+    const ddb = createFakeDdb();
+    await withServer(ddb, {}, async base => {
+        const { home } = await (await req(base, '/plants/homes', {
+            method: 'POST',
+            user: 'owner@example.com',
+            body: { name: 'Shared Home' },
+        })).json();
+
+        await req(base, `/plants/homes/${home.homeId}/invite`, {
+            method: 'POST',
+            user: 'owner@example.com',
+            body: { inviteEmail: 'member@example.com' },
+        });
+
+        // Creator cannot leave their own home
+        const ownerLeave = await req(base, `/plants/homes/${home.homeId}/leave`, {
+            method: 'POST',
+            user: 'owner@example.com',
+        });
+        assert.strictEqual(ownerLeave.status, 400);
+        assert.match((await ownerLeave.json()).error, /creator cannot leave/);
+
+        // Non-member cannot leave
+        const strangerLeave = await req(base, `/plants/homes/${home.homeId}/leave`, {
+            method: 'POST',
+            user: 'stranger@example.com',
+        });
+        assert.strictEqual(strangerLeave.status, 403);
+
+        // Invited member can leave
+        const memberLeave = await req(base, `/plants/homes/${home.homeId}/leave`, {
+            method: 'POST',
+            user: 'member@example.com',
+        });
+        assert.strictEqual(memberLeave.status, 200);
+        assert.deepStrictEqual(await memberLeave.json(), { left: true, homeId: home.homeId });
+
+        // Member now has 0 homes; owner still has the home with only owner in members
+        const memberProfile = await (await req(base, '/plants/profile', { user: 'member@example.com' })).json();
+        const ownerProfile = await (await req(base, '/plants/profile', { user: 'owner@example.com' })).json();
+        assert.strictEqual(memberProfile.homes.length, 0);
+        assert.strictEqual(ownerProfile.homes.length, 1);
+        assert.deepStrictEqual(ownerProfile.homes[0].members, ['owner@example.com']);
+    });
+});
+
 test('PUT /plants/profile saves user account settings without counting against the 3-home quota', async () => {
     const ddb = createFakeDdb();
     await withServer(ddb, {}, async base => {
@@ -295,4 +342,3 @@ test('PUT /plants/profile saves user account settings without counting against t
         assert.strictEqual(getRes.homes.length, 3);
     });
 });
-

@@ -116,6 +116,7 @@ function App() {
     createHome,
     inviteMember,
     deleteHome,
+    leaveHome,
     completeHomeOnboarding,
   } = useHomeProfile();
   const { latestLogs, logCare, loading: logsLoading } = useCareApi(activeHomeId);
@@ -785,6 +786,7 @@ function App() {
           onCreateHome={createHome}
           onInviteMember={inviteMember}
           onDeleteHome={deleteHome}
+          onLeaveHome={leaveHome}
           onClose={() => setShowHomeModal(false)}
         />
       )}
