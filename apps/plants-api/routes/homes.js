@@ -63,7 +63,7 @@ async function listEnrichedUserHomes(ddb, email) {
 }
 
 /**
- * Home profile, creation, family member invitation, and owner-only home deletion.
+ * Home profile, creation, family member invitation, member leave, and owner-only home deletion.
  * Quotas:
  *  - Max 3 homes per user (MAX_HOMES_PER_USER = 3)
  *  - Max 4 members per home (MAX_MEMBERS_PER_HOME = 4)
@@ -332,6 +332,53 @@ function createHomesRouter(ddb, { isUserInCognito, sendEmail } = {}) {
             });
         } catch (err) {
             console.error('POST /plants/homes/:homeId/invite error:', err);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // ─── POST /plants/homes/:homeId/leave (non-owner members) ────────────────
+    router.post('/plants/homes/:homeId/leave', async (req, res) => {
+        try {
+            const email = req.user.email;
+            const { homeId } = req.params;
+
+            const memberships = await getUserMemberships(ddb, email);
+            if (!memberships.some(m => m.homeId === homeId)) {
+                return res.status(403).json({ error: 'You are not a member of this home.' });
+            }
+
+            const homeRes = await ddb.send(new GetCommand({
+                TableName: HOMES_TABLE,
+                Key: { homeId },
+            }));
+            if (!homeRes.Item) {
+                return res.status(404).json({ error: 'Home not found.' });
+            }
+            const home = homeRes.Item;
+
+            if (home.createdBy === email) {
+                return res.status(400).json({
+                    error: 'The home creator cannot leave their own home; delete the home instead.',
+                });
+            }
+
+            await ddb.send(new DeleteCommand({
+                TableName: USER_HOMES_TABLE,
+                Key: { email, homeId },
+            }));
+
+            const updatedMembers = (home.members || []).filter(m => m !== email);
+            await ddb.send(new PutCommand({
+                TableName: HOMES_TABLE,
+                Item: {
+                    ...home,
+                    members: updatedMembers,
+                },
+            }));
+
+            res.json({ left: true, homeId });
+        } catch (err) {
+            console.error('POST /plants/homes/:homeId/leave error:', err);
             res.status(500).json({ error: err.message });
         }
     });

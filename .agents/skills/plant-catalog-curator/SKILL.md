@@ -35,13 +35,10 @@ Use this skill whenever adding new plants to the Plants Tracker master catalog (
      # 1. Dry-run (validates schema, canonical fertilizers, and checks live DynamoDB for ID or group+name collisions)
      node .agents/skills/plant-catalog-curator/scripts/upsert-catalog.cjs "<scratchDir>/new-plants.json" --dry-run
 
-     # 2. Live upsert into DynamoDB plants-catalog (supports batches of any size)
-     node .agents/skills/plant-catalog-curator/scripts/upsert-catalog.cjs "<scratchDir>/new-plants.json" --profile admin
+     # 2. Live upsert into DynamoDB plants-catalog (add --promote-staging to also mark plants-staging rows promoted & upgrade Coming Soon cards)
+     node .agents/skills/plant-catalog-curator/scripts/upsert-catalog.cjs "<scratchDir>/new-plants.json" --promote-staging --profile admin
      ```
      *(Pass `--allow-overwrite` if intentionally updating an existing plant in `plants-catalog`.)*
-   - **If the plant was promoted from `plants-staging`:**
-     - As long as the new catalog item's `normalizedName` (or `plantId`) matches the staged request, [`apps/plants-api/routes/home-plants.js`](../../../apps/plants-api/routes/home-plants.js) automatically upgrades any `"Coming Soon"` card (`comingSoon: true`) in `plants-home-plants` to the full published catalog profile on the next load.
-     - Update the corresponding item in `plants-staging` to `status = "promoted"` and set `promotedCatalogId = "<id>"`.
 4. **Pair with Botanical Image Generation:**
    - Activate the `plant-image-generator` skill ([`../plant-image-generator/SKILL.md`](../plant-image-generator/SKILL.md)) to generate and upload `/plants/<id>.jpg` if the photograph does not exist yet.
 

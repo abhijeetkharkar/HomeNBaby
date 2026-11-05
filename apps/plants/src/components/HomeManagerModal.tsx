@@ -12,6 +12,7 @@ interface Props {
     inviteEmail: string,
   ) => Promise<{ success: boolean; userInSystem: boolean; members: string[] }>;
   onDeleteHome: (homeId: string) => Promise<void>;
+  onLeaveHome: (homeId: string) => Promise<void>;
   onClose: () => void;
 }
 
@@ -26,12 +27,14 @@ export function HomeManagerModal({
   onCreateHome,
   onInviteMember,
   onDeleteHome,
+  onLeaveHome,
   onClose,
 }: Props) {
   const [inviteEmail, setInviteEmail] = useState('');
   const [newHomeName, setNewHomeName] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(homes.length === 0);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmLeaveId, setConfirmLeaveId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -90,6 +93,21 @@ export function HomeManagerModal({
       setMessage('Home deleted.');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to delete home');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleLeave = async (homeId: string, homeName: string) => {
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await onLeaveHome(homeId);
+      setConfirmLeaveId(null);
+      setMessage(`You left "${homeName}".`);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to leave home');
     } finally {
       setBusy(false);
     }
@@ -188,8 +206,8 @@ export function HomeManagerModal({
                 </p>
               )}
 
-              {/* Owner-only Delete Home */}
-              {isOwner && (
+              {/* Owner-only Delete Home / Member-only Leave Home */}
+              {isOwner ? (
                 <div className="home-danger-zone">
                   {confirmDeleteId === activeHome.homeId ? (
                     <div className="home-delete-confirm">
@@ -222,6 +240,42 @@ export function HomeManagerModal({
                       onClick={() => setConfirmDeleteId(activeHome.homeId)}
                     >
                       🗑️ Delete &ldquo;{activeHome.name}&rdquo;
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="home-danger-zone">
+                  {confirmLeaveId === activeHome.homeId ? (
+                    <div className="home-delete-confirm">
+                      <span>
+                        Leave <strong>{activeHome.name}</strong>? You will no longer see this household unless re-invited.
+                      </span>
+                      <div className="home-delete-actions">
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => setConfirmLeaveId(null)}
+                          disabled={busy}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-danger"
+                          onClick={() => handleLeave(activeHome.homeId, activeHome.name)}
+                          disabled={busy}
+                        >
+                          {busy ? 'Leaving...' : 'Confirm Leave'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="home-delete-trigger"
+                      onClick={() => setConfirmLeaveId(activeHome.homeId)}
+                    >
+                      🚪 Leave &ldquo;{activeHome.name}&rdquo;
                     </button>
                   )}
                 </div>
