@@ -77,7 +77,8 @@ function computeUrgency(lastDate, freqDays) {
     const last = new Date(lastDate);
     const now = new Date();
     const daysSince = Math.floor((now.getTime() - last.getTime()) / 86400000);
-    const target = freqDays[1];
+    const target = Array.isArray(freqDays) ? (freqDays[1] || freqDays[0]) : freqDays;
+    if (!target) return { daysUntil: 999, status: 'ok' };
     const daysUntil = target - daysSince;
 
     let status;
@@ -87,6 +88,168 @@ function computeUrgency(lastDate, freqDays) {
     else status = 'ok';
 
     return { daysUntil, status };
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function renderPlantTable(plants) {
+    if (!plants || plants.length === 0) return '';
+    
+    let rowsHtml = '';
+    for (let i = 0; i < plants.length; i++) {
+        const p = plants[i];
+        const isLast = i === plants.length - 1;
+        const rowBorder = isLast ? '' : 'border-bottom: 1px solid #eef6f1;';
+        
+        const waterBadge = p.isWaterDue
+            ? `<span style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; background-color: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; white-space: nowrap;">${p.isSelfWatering ? 'Refill' : 'Due'}</span>`
+            : `<span style="color: #94a3b8; font-size: 14px; font-weight: 500;">—</span>`;
+
+        let fertText = 'Due';
+        if (p.fertRecommendation) {
+            fertText = p.fertRecommendation;
+        }
+
+        const fertBadge = p.isFertDue
+            ? `<span style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; white-space: nowrap;">${escapeHtml(fertText)}</span>`
+            : `<span style="color: #94a3b8; font-size: 14px; font-weight: 500;">—</span>`;
+
+        rowsHtml += `
+            <tr style="background-color: ${i % 2 === 0 ? '#ffffff' : '#fcfdfc'};">
+                <td style="padding: 12px 14px; vertical-align: middle; ${rowBorder}">
+                    <div style="font-size: 14px; font-weight: 600; color: #1d3527; line-height: 1.35;">
+                        ${escapeHtml(p.name)}
+                    </div>
+                    ${p.homeName ? `<div style="font-size: 12px; color: #647b6a; margin-top: 2px;">${escapeHtml(p.homeName)}</div>` : ''}
+                </td>
+                <td style="padding: 12px 10px; text-align: center; vertical-align: middle; ${rowBorder}">
+                    ${waterBadge}
+                </td>
+                <td style="padding: 12px 12px; text-align: center; vertical-align: middle; ${rowBorder}">
+                    ${fertBadge}
+                </td>
+            </tr>
+        `;
+    }
+
+    return `
+        <table role="presentation" style="width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 8px; margin-bottom: 24px; border: 1px solid rgba(46, 167, 111, 0.18); border-radius: 12px; overflow: hidden; background: #ffffff;">
+            <thead>
+                <tr style="background-color: #f4fdf8; border-bottom: 1px solid rgba(46, 167, 111, 0.18); text-align: left;">
+                    <th style="padding: 12px 14px; font-size: 12px; font-weight: 700; color: #647b6a; text-transform: uppercase; letter-spacing: 0.05em; width: 44%;">Plant</th>
+                    <th style="padding: 12px 10px; font-size: 12px; font-weight: 700; color: #647b6a; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; width: 24%;">Water 💧</th>
+                    <th style="padding: 12px 12px; font-size: 12px; font-weight: 700; color: #647b6a; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; width: 32%;">Fertilizer 🧪</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rowsHtml}
+            </tbody>
+        </table>
+    `;
+}
+
+function buildEmailHtml(userIndoor, userOutdoor) {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plants Care Reminder</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        img { -ms-interpolation-mode: bicubic; border: 0; outline: none; text-decoration: none; }
+        table { border-collapse: collapse !important; }
+        body { margin: 0 !important; padding: 0 !important; width: 100% !important; min-width: 100%; }
+        @media screen and (max-width: 600px) {
+            .email-container { width: 100% !important; margin: auto !important; }
+            .header-padding { padding: 20px 16px !important; }
+            .content-padding { padding: 16px 12px !important; }
+            .footer-padding { padding: 20px 16px !important; }
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4fdf8; font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1d3527;">
+    <div style="background-color: #f4fdf8; padding: 32px 12px; width: 100%; box-sizing: border-box;">
+        <table role="presentation" class="email-container" style="max-width: 600px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 16px; border: 1px solid rgba(46, 167, 111, 0.2); box-shadow: 0 4px 16px rgba(46, 167, 111, 0.08); overflow: hidden; border-spacing: 0;">
+            <!-- Header -->
+            <tr>
+                <td class="header-padding" style="padding: 24px 28px 20px 28px; background: linear-gradient(180deg, #e6f7ec 0%, #ffffff 100%); border-bottom: 1px solid rgba(46, 167, 111, 0.12);">
+                    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td>
+                                <div style="display: inline-block; font-size: 24px; font-weight: 700; color: #1d3527; letter-spacing: -0.01em;">
+                                    Plants Tracker 🌱
+                                </div>
+                                <div style="margin-top: 4px; font-size: 14px; color: #647b6a; font-weight: 500;">
+                                    Daily Care Digest &bull; Plants needing your attention today
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Summary Badges -->
+                    <div style="margin-top: 14px;">
+                        ${userIndoor.length > 0 ? `
+                            <span style="display: inline-block; padding: 5px 12px; margin-right: 8px; margin-bottom: 6px; border-radius: 20px; font-size: 12px; font-weight: 600; background-color: #ffffff; color: #1d3527; border: 1px solid rgba(46, 167, 111, 0.25);">
+                                🏠 Indoor: <strong>${userIndoor.length} Due</strong>
+                            </span>
+                        ` : ''}
+                        ${userOutdoor.length > 0 ? `
+                            <span style="display: inline-block; padding: 5px 12px; margin-right: 8px; margin-bottom: 6px; border-radius: 20px; font-size: 12px; font-weight: 600; background-color: #ffffff; color: #1d3527; border: 1px solid rgba(46, 167, 111, 0.25);">
+                                🪴 Outdoor: <strong>${userOutdoor.length} Due</strong>
+                            </span>
+                        ` : ''}
+                    </div>
+                </td>
+            </tr>
+
+            <!-- Content -->
+            <tr>
+                <td class="content-padding" style="padding: 24px 24px 12px 24px;">
+                    ${userIndoor.length > 0 ? `
+                        <div style="margin-bottom: 24px;">
+                            <h2 style="margin: 0 0 4px 0; font-size: 17px; font-weight: 700; color: #1d3527;">
+                                🏠 Indoor Plants <span style="font-size: 12px; font-weight: 600; color: #647b6a; background-color: #e6f7ec; padding: 2px 8px; border-radius: 12px; margin-left: 6px; vertical-align: middle;">${userIndoor.length}</span>
+                            </h2>
+                            ${renderPlantTable(userIndoor)}
+                        </div>
+                    ` : ''}
+
+                    ${userOutdoor.length > 0 ? `
+                        <div style="margin-bottom: 24px;">
+                            <h2 style="margin: 0 0 4px 0; font-size: 17px; font-weight: 700; color: #1d3527;">
+                                🪴 Outdoor Plants <span style="font-size: 12px; font-weight: 600; color: #647b6a; background-color: #e6f7ec; padding: 2px 8px; border-radius: 12px; margin-left: 6px; vertical-align: middle;">${userOutdoor.length}</span>
+                            </h2>
+                            ${renderPlantTable(userOutdoor)}
+                        </div>
+                    ` : ''}
+                </td>
+            </tr>
+
+            <!-- Footer CTA Matching App Theme -->
+            <tr>
+                <td class="footer-padding" style="padding: 24px 28px; background-color: #f4fdf8; border-top: 1px solid rgba(46, 167, 111, 0.12); text-align: center;">
+                    <a href="https://plants.abhijeetkharkar.com" target="_blank" style="display: inline-block; background-color: #2ea76f; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 28px; border-radius: 12px; box-shadow: 0 2px 8px rgba(46, 167, 111, 0.28);">
+                        Open Plants Tracker
+                    </a>
+                    <div style="margin-top: 14px; font-size: 12px; color: #647b6a; line-height: 1.5;">
+                        Log care or manage your notification preferences in Account Settings.
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>`;
 }
 
 function getCentralDateStr(offsetDays = 0) {
@@ -181,8 +344,6 @@ async function processBabyReminders(check) {
     }
 }
 
-// ── Multi-User Plant Reminders ───────────────────────────────────────────────
-
 async function scanAllItems(tableName) {
     const items = [];
     let ExclusiveStartKey;
@@ -247,7 +408,7 @@ async function processPlantReminders() {
 
     // 3. Cache home names and home plant calculations
     const homeNames = new Map();
-    const homeOverdueCache = new Map(); // homeId -> { indoor: [], outdoor: [] }
+    const homeOverdueCache = new Map(); // homeId -> { overdueIndoor: [], overdueOutdoor: [] }
 
     async function getHomeOverdue(homeId) {
         if (homeOverdueCache.has(homeId)) return homeOverdueCache.get(homeId);
@@ -290,10 +451,11 @@ async function processPlantReminders() {
             if (row.deleted) continue;
             const catalogItem = catalogMap.get(row.catalogId) || {};
             const effectiveGroup = row.groupOverride || catalogItem.group || row.group || 'indoor';
-            const plantName = row.nickname
-                ? `${catalogItem.name || row.customName || 'Plant'} (${row.nickname})`
+            
+            // Prioritize nickname; fallback to common name or customName
+            const plantDisplayName = (row.nickname && row.nickname.trim())
+                ? row.nickname.trim()
                 : (catalogItem.name || row.customName || 'Plant');
-            const emoji = catalogItem.emoji || '🌿';
 
             const isSelfWatering = row.potType === 'self-watering';
             const effectiveWaterFreq = isSelfWatering && catalogItem.selfWaterFreqDays
@@ -321,34 +483,14 @@ async function processPlantReminders() {
                 }
             }
 
-            const notes = [];
-            let isOverdue = false;
-
-            if (effectiveGroup === 'indoor') {
-                if (isWaterDue && isFertDue) {
-                    isOverdue = true;
-                    notes.push(`Needs Water + Fertilizer 💧🧪 (${catalogItem.fertRecommendation || 'Fertilizer'})`);
-                } else if (isWaterDue) {
-                    isOverdue = true;
-                    notes.push(isSelfWatering ? 'Refill Reservoir 💧' : 'Needs Water 💧');
-                }
-            } else {
-                if (isWaterDue && isFertDue) {
-                    isOverdue = true;
-                    notes.push(`Needs Water + Fertilizer 💧🧪 (${catalogItem.fertRecommendation || 'Fertilizer'})`);
-                } else if (isWaterDue) {
-                    isOverdue = true;
-                    notes.push('Needs Water 💧');
-                } else if (isFertDue) {
-                    isOverdue = true;
-                    notes.push(`Needs Fertilizer 🧪 (${catalogItem.fertRecommendation || 'Fertilizer'})`);
-                }
-            }
-
-            if (isOverdue) {
+            if (isWaterDue || isFertDue) {
                 const item = {
-                    name: `${emoji} ${plantName}`,
-                    notes: notes.join(', ')
+                    name: plantDisplayName,
+                    isWaterDue,
+                    isSelfWatering,
+                    isFertDue,
+                    fertRecommendation: catalogItem.fertRecommendation || '',
+                    effectiveGroup,
                 };
                 if (effectiveGroup === 'indoor') overdueIndoor.push(item);
                 else overdueOutdoor.push(item);
@@ -407,26 +549,7 @@ async function processPlantReminders() {
 
         // Dispatch Email
         if (sendEmailOpt) {
-            let htmlBody = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1a2b22;">
-                <h1 style="color: #2ea76f; font-size: 22px; margin-bottom: 8px;">Plants Care Digest 🌱</h1>
-                <p style="font-size: 15px; color: #567063; margin-top: 0;">Here are the plants that need your attention today:</p>`;
-
-            if (userIndoor.length > 0) {
-                htmlBody += `<h2 style="font-size: 17px; color: #1a2b22; margin-top: 20px; border-bottom: 2px solid #e6f7ec; padding-bottom: 4px;">🏠 Indoor Plants (${userIndoor.length})</h2><ul style="padding-left: 20px; line-height: 1.6;">`;
-                htmlBody += userIndoor.map(p => `<li><strong>${p.name}</strong> <span style="color: #567063; font-size: 13px;">[${p.homeName}]</span>: ${p.notes}</li>`).join('');
-                htmlBody += `</ul>`;
-            }
-
-            if (userOutdoor.length > 0) {
-                htmlBody += `<h2 style="font-size: 17px; color: #1a2b22; margin-top: 20px; border-bottom: 2px solid #e6f7ec; padding-bottom: 4px;">🪴 Outdoor Plants (${userOutdoor.length})</h2><ul style="padding-left: 20px; line-height: 1.6;">`;
-                htmlBody += userOutdoor.map(p => `<li><strong>${p.name}</strong> <span style="color: #567063; font-size: 13px;">[${p.homeName}]</span>: ${p.notes}</li>`).join('');
-                htmlBody += `</ul>`;
-            }
-
-            htmlBody += `<div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #edf2f7; font-size: 13px; color: #88998f;">
-                <p>Log care or manage notification preferences at <a href="https://plants.abhijeetkharkar.com" style="color: #2ea76f; text-decoration: none; font-weight: bold;">Plants Tracker</a>.</p>
-            </div></div>`;
-
+            const htmlBody = buildEmailHtml(userIndoor, userOutdoor);
             await sendEmail('🌱 Plants Care Reminder', htmlBody, [email], FROM_EMAIL);
         }
 
@@ -456,7 +579,7 @@ exports.handler = async (event) => {
         }
         return { statusCode: 200, body: 'Success' };
     } catch (err) {
-        console.error('Error in lambda-reminder:', err);
-        return { statusCode: 500, body: 'Error' };
+        console.error('Error processing reminders:', err);
+        return { statusCode: 500, body: err.message };
     }
 };
