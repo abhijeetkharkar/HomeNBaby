@@ -112,14 +112,17 @@ function renderPlantTable(plants) {
             ? `<span style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; background-color: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; white-space: nowrap;">${p.isSelfWatering ? 'Refill' : 'Due'}</span>`
             : `<span style="color: #94a3b8; font-size: 14px; font-weight: 500;">—</span>`;
 
-        let fertText = 'Due';
-        if (p.fertRecommendation) {
-            fertText = p.fertRecommendation;
+        let fertHtml = '';
+        if (p.isFertDue) {
+            const fertText = p.fertRecommendation || 'Feed';
+            fertHtml = `
+                <div style="margin-top: 5px;">
+                    <span style="display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; line-height: 1.3;">
+                        🧪 ${escapeHtml(fertText)}
+                    </span>
+                </div>
+            `;
         }
-
-        const fertBadge = p.isFertDue
-            ? `<span style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; white-space: nowrap;">${escapeHtml(fertText)}</span>`
-            : `<span style="color: #94a3b8; font-size: 14px; font-weight: 500;">—</span>`;
 
         rowsHtml += `
             <tr style="background-color: ${i % 2 === 0 ? '#ffffff' : '#fcfdfc'};">
@@ -128,12 +131,10 @@ function renderPlantTable(plants) {
                         ${escapeHtml(p.name)}
                     </div>
                     ${p.homeName ? `<div style="font-size: 12px; color: #647b6a; margin-top: 2px;">${escapeHtml(p.homeName)}</div>` : ''}
+                    ${fertHtml}
                 </td>
-                <td style="padding: 12px 10px; text-align: center; vertical-align: middle; ${rowBorder}">
+                <td style="padding: 12px 14px; text-align: right; vertical-align: middle; ${rowBorder}">
                     ${waterBadge}
-                </td>
-                <td style="padding: 12px 12px; text-align: center; vertical-align: middle; ${rowBorder}">
-                    ${fertBadge}
                 </td>
             </tr>
         `;
@@ -143,9 +144,8 @@ function renderPlantTable(plants) {
         <table role="presentation" style="width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 8px; margin-bottom: 24px; border: 1px solid rgba(46, 167, 111, 0.18); border-radius: 12px; overflow: hidden; background: #ffffff;">
             <thead>
                 <tr style="background-color: #f4fdf8; border-bottom: 1px solid rgba(46, 167, 111, 0.18); text-align: left;">
-                    <th style="padding: 12px 14px; font-size: 12px; font-weight: 700; color: #647b6a; text-transform: uppercase; letter-spacing: 0.05em; width: 44%;">Plant</th>
-                    <th style="padding: 12px 10px; font-size: 12px; font-weight: 700; color: #647b6a; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; width: 24%;">Water 💧</th>
-                    <th style="padding: 12px 12px; font-size: 12px; font-weight: 700; color: #647b6a; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; width: 32%;">Fertilizer 🧪</th>
+                    <th style="padding: 12px 14px; font-size: 12px; font-weight: 700; color: #647b6a; text-transform: uppercase; letter-spacing: 0.05em; width: 72%;">Plant & Care</th>
+                    <th style="padding: 12px 14px; font-size: 12px; font-weight: 700; color: #647b6a; text-transform: uppercase; letter-spacing: 0.05em; text-align: right; width: 28%;">Water 💧</th>
                 </tr>
             </thead>
             <tbody>
@@ -155,7 +155,7 @@ function renderPlantTable(plants) {
     `;
 }
 
-function buildEmailHtml(userIndoor, userOutdoor) {
+function buildEmailHtml(userIndoor, userOutdoor, recipientName = 'there') {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -187,10 +187,10 @@ function buildEmailHtml(userIndoor, userOutdoor) {
                         <tr>
                             <td>
                                 <div style="display: inline-block; font-size: 24px; font-weight: 700; color: #1d3527; letter-spacing: -0.01em;">
-                                    Plants Tracker 🌱
+                                    Hi ${escapeHtml(recipientName)} 👋
                                 </div>
                                 <div style="margin-top: 4px; font-size: 14px; color: #647b6a; font-weight: 500;">
-                                    Daily Care Digest &bull; Plants needing your attention today
+                                    Plants Tracker &bull; Here are your plants needing attention today
                                 </div>
                             </td>
                         </tr>
@@ -549,7 +549,10 @@ async function processPlantReminders() {
 
         // Dispatch Email
         if (sendEmailOpt) {
-            const htmlBody = buildEmailHtml(userIndoor, userOutdoor);
+            const recipientName = (profile.firstName && profile.firstName.trim())
+                ? profile.firstName.trim()
+                : (email.split('@')[0] || 'there');
+            const htmlBody = buildEmailHtml(userIndoor, userOutdoor, recipientName);
             await sendEmail('🌱 Plants Care Reminder', htmlBody, [email], FROM_EMAIL);
         }
 
