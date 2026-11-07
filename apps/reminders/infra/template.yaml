@@ -36,6 +36,11 @@ Resources:
                   - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/tracker-baby-logs'
                   - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/baby-tracker-logs'
                   - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/plants-care-logs'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/plants-user-homes'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/plants-homes'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/plants-home-plants'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/plants-catalog'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/plants-care-logs-v2'
               - Effect: Allow
                 Action:
                   - sns:Publish
@@ -67,8 +72,12 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: 'baby-tracker-logs'
-          PLANTS_TABLE_NAME: 'plants-care-logs'
           NOTIFICATIONS_MODE: '{"baby":"email","plants":"email"}'
+          USER_HOMES_TABLE_NAME: 'plants-user-homes'
+          HOMES_TABLE_NAME: 'plants-homes'
+          HOME_PLANTS_TABLE_NAME: 'plants-home-plants'
+          CATALOG_TABLE_NAME: 'plants-catalog'
+          CARE_LOGS_V2_TABLE_NAME: 'plants-care-logs-v2'
       Tags:
         - Key: App
           Value: reminders
