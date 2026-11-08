@@ -163,6 +163,7 @@ function App() {
   }, [showUserMenu]);
 
   const displayFullName = useMemo(() => {
+    if (userProfile.firstName?.trim()) return userProfile.firstName.trim();
     const full = `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim();
     if (full) return full;
     return userEmail ? userEmail.split('@')[0] : 'Account';
