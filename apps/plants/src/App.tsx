@@ -516,24 +516,26 @@ function App() {
         </div>
 
         <div className="header-mobile-subrow">
-          <button
-            type="button"
-            className="home-header-pill"
-            onClick={() => setShowHomeModal(true)}
-            title="Switch home, invite family members, or manage home settings"
-          >
-            <span>🏡 {activeHome ? activeHome.name : 'Set Up Home'}</span>
-          </button>
-
-          {activeHome && (
+          <div className="header-mobile-actions-row">
             <button
               type="button"
-              className="add-plant-header-btn"
-              onClick={() => setShowAddPlantModal(true)}
+              className="home-header-pill"
+              onClick={() => setShowHomeModal(true)}
+              title="Switch home, invite family members, or manage home settings"
             >
-              ➕ Add Plant
+              <span>🏡 {activeHome ? activeHome.name : 'Set Up Home'}</span>
             </button>
-          )}
+
+            {activeHome && (
+              <button
+                type="button"
+                className="add-plant-header-btn"
+                onClick={() => setShowAddPlantModal(true)}
+              >
+                ➕ Add Plant
+              </button>
+            )}
+          </div>
 
           <button
             className={`fert-guide-toggle-btn ${showFertGuide ? 'active' : ''}`}
